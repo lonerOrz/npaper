@@ -8,7 +8,7 @@
 # License:     MIT
 #
 # Description:
-#   Wallpaper management tool for Hyprland/Niri compositors.
+#   Wallpaper management tool for any Wayland compositor.
 #   Supports image and video wallpapers with swww transition effects.
 #   Integrates with mpvpaper for live wallpapers.
 #
@@ -57,33 +57,6 @@ readonly SWWW_FILTER="Lanczos3"
 # =============================================================================
 
 declare -a WALLPAPER_FILES=()
-
-# =============================================================================
-# Desktop Environment Detection
-# =============================================================================
-
-get_desktop_env() {
-    if [[ -n "${XDG_SESSION_DESKTOP:-}" ]]; then
-        case "${XDG_SESSION_DESKTOP,,}" in
-            hyprland|niri)
-                echo "${XDG_SESSION_DESKTOP,,}"
-                return
-                ;;
-        esac
-    fi
-
-    if pgrep -x hyprland >/dev/null 2>&1; then
-        echo "hyprland"
-        return
-    fi
-
-    if pgrep -x niri >/dev/null 2>&1; then
-        echo "niri"
-        return
-    fi
-
-    echo "unknown"
-}
 
 # =============================================================================
 # Collect Wallpapers
@@ -142,8 +115,6 @@ ensure_swww() {
 
 apply_image_wallpaper() {
     local path="$1"
-    local env
-    env=$(get_desktop_env)
 
     pkill mpvpaper 2>/dev/null || true
     pkill swaybg 2>/dev/null || true
