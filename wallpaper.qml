@@ -109,7 +109,7 @@ ShellRoot {
               const hash = f.replace('.png', '');
               root.thumbHashToPath[hash] = "file://" + root.cacheDir + '/' + f;
             });
-            root.cachedFileCount = files.length;  // 初始化缓存计数
+            root.cachedFileCount = files.length;  // Initialize cached file count
             console.log("Cache scanned:", files.length, "files");
             listProcess.exec({});
           }
@@ -497,10 +497,10 @@ ShaderEffect {
     visible: Math.abs(rawDistance) < 0.5 && useShaderBorder
 
     property real time: 0
-    // 用 ShaderEffect 实际宽高
+    // Use ShaderEffect's actual width and height
     property real innerWidth: width
     property real innerHeight: height
-    property real innerRadius: 12  // 和外层透明 Rectangle 的 radius 一致
+    property real innerRadius: 12  // Match outer transparent Rectangle's radius
     property bool useShaderBorder: true
 
     NumberAnimation on time {
@@ -519,7 +519,7 @@ ShaderEffect {
                 anchors.margins: 10
                 color: "transparent"
                 radius: 12
-                // Center card glow effect - 不使用 shader 边框时显示 QML 边框
+                // Center card glow effect - show QML border when shader border is disabled
                 border.color: (Math.abs(rawDistance) < 0.5 && !borderGlow.useShaderBorder) ? "#6a9eff" : "transparent"
                 border.width: 2
 
@@ -564,7 +564,7 @@ ShaderEffect {
                       mipmap: true
                       opacity: status === Image.Ready ? 1 : 0
                       sourceSize: Qt.size(450, 320)
-                      scale: 1.0  // 取消 hover 放大
+                      scale: 1.0  // Disable hover scaling
 
                       Component.onCompleted: {
                         if (delegateItem.wallpaperPath && !delegateItem.isVideo && !currentThumb) {
@@ -573,7 +573,7 @@ ShaderEffect {
                       }
                     }
 
-                    // 视频无缓存时显示默认图标
+                    // Show default icon for video when no thumbnail cached
                     Text {
                       anchors.centerIn: parent
                       text: "🎬"
@@ -699,7 +699,7 @@ ShaderEffect {
 
       function applyWallpaper(path) {
         Quickshell.execDetached({
-                                  command: ["/home/loner/.config/quickshell/widget-loner/wallpaper_selector.sh", "--apply", path]
+                                  command: [Qt.resolvedUrl("./wallpaper_selector.sh"), "--apply", path]
                                 });
         Qt.quit();
       }
