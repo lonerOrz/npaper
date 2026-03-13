@@ -1,0 +1,17 @@
+# Nix
+result
+result/
+result-*
+
+# Formatter cache
+.treefmt/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log

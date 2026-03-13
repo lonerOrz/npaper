@@ -21,17 +21,38 @@ A Quickshell-based wallpaper selector for Wayland compositors.
 - **swww** - Wallpaper daemon with transitions
 - **wlr-randr** - Monitor detection
 - **Quickshell** - QML-based Wayland shell
+- **ffmpeg** - Thumbnail generation
+- **imagemagick** - Dynamic logo color extraction
+- **mpvpaper** - Video wallpaper support
 
 ### Optional
 
-- **mpvpaper** - Video/live wallpaper support
-- **ffmpeg** - Thumbnail generation
-- **imagemagick** - Dynamic logo color extraction (extracts dominant wallpaper color)
+- None
 
 ### Installation (Arch Linux)
 
 ```bash
-sudo pacman -S swww wlr-randr mpvpaper ffmpeg imagemagick
+sudo pacman -S swww wlr-randr quickshell ffmpeg imagemagick mpvpaper
+```
+
+### Installation (NixOS)
+
+Add `npaper` to your `environment.systemPackages`:
+
+```nix
+{ pkgs, ... }: {
+  environment.systemPackages = [ pkgs.npaper ];
+}
+```
+
+Then run with:
+```bash
+npaper
+```
+
+Or run without installing:
+```bash
+nix run github:lonerOrz/npaper
 ```
 
 ## Usage
