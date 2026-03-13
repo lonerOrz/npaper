@@ -706,10 +706,7 @@ ShellRoot {
       }
 
       function applyWallpaper(path) {
-        const scriptPath = Qt.resolvedUrl("./wallpaper.sh").toString().replace("file://", "");
-        Quickshell.execDetached({
-                                  command: [scriptPath, "--apply", path]
-                                });
+        Quickshell.execDetached(["bash", Qt.resolvedUrl("./wallpaper.sh").toString().slice(7), "--apply", path]);
         Qt.quit();
       }
     }
