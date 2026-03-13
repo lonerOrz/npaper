@@ -118,7 +118,7 @@ ShellRoot {
 
       Process {
         id: listProcess
-        command: [Qt.resolvedUrl("./wallpaper_selector.sh"), "--list"]
+        command: [Qt.resolvedUrl("./wallpaper.sh"), "--list"]
         stdout: StdioCollector {
           onStreamFinished: {
             const wallList = text.trim().split('\n').filter(path => path.length > 0);
@@ -699,7 +699,7 @@ ShaderEffect {
 
       function applyWallpaper(path) {
         Quickshell.execDetached({
-                                  command: [Qt.resolvedUrl("./wallpaper_selector.sh"), "--apply", path]
+                                  command: [Qt.resolvedUrl("./wallpaper.sh"), "--apply", path]
                                 });
         Qt.quit();
       }

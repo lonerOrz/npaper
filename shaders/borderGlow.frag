@@ -7,9 +7,9 @@ layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
     float time;
-    float innerRadius;   // 内圆角值 (像素)
-    float innerWidth;    // 内层 Rectangle 宽度
-    float innerHeight;   // 内层 Rectangle 高度
+    float innerRadius;   // Inner corner radius (pixels)
+    float innerWidth;    // Inner Rectangle width
+    float innerHeight;   // Inner Rectangle height
 };
 
 float roundedRectSDF(vec2 p, vec2 b, float r){
@@ -23,14 +23,14 @@ void main() {
     vec2 p = (uv - 0.5) * vec2(innerWidth, innerHeight);
     vec2 halfSize = vec2(innerWidth, innerHeight) * 0.5;
 
-    float borderOffset = 0.0;  // 不加偏移，让边框和 outer Rectangle 对齐
+    float borderOffset = 0.0;  // No offset, align border with outer Rectangle
     float radius = innerRadius + borderOffset;
     float borderWidth = 3.0;
 
-    // 核心：半尺寸减去圆角半径，保证圆角完整
+    // Core: half-size minus corner radius for complete corners
     float d = roundedRectSDF(p, halfSize - radius, radius);
 
-    // 边框平滑
+    // Border smoothing
     float border = 1.0 - smoothstep(0.0, borderWidth, abs(d));
 
     if(border < 0.01){
