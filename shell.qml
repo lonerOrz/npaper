@@ -60,6 +60,7 @@ ShellRoot {
         visualScroll = scrollIndex;
         const c = Math.round(root.scrollIndex);
         if (c !== root.centerIndex) {
+          console.log("[shell.qml] Scroll index changed: center", root.centerIndex, "->", c);
           root.bgIndexB = root.bgIndexA;
           root.bgIndexA = c;
           root.bgOpacity = 0;
@@ -76,6 +77,8 @@ ShellRoot {
 
       // ========== Helper Functions (must be defined before use) ==========
       Component.onCompleted: {
+        console.log("[shell.qml] Component.onCompleted - Initializing wallpaper selector");
+        console.log("[shell.qml] Screen:", screen.width, "x", screen.height);
         createCacheDirProcess.exec({});
         initThumbnailWorkers();
       }
@@ -87,7 +90,7 @@ ShellRoot {
         stdout: StdioCollector {
           onStreamFinished: {
             root.hasFfmpeg = text.trim() === "OK";
-            console.log("ffmpeg check:", text.trim(), "hasFfmpeg:", root.hasFfmpeg);
+            console.log("[shell.qml] ffmpeg check:", text.trim(), "hasFfmpeg:", root.hasFfmpeg);
             scanCacheProcess.exec({});
           }
         }
@@ -110,7 +113,7 @@ ShellRoot {
                             root.thumbHashToPath[hash] = "file://" + root.cacheDir + '/' + f;
                           });
             root.cachedFileCount = files.length;  // Initialize cached file count
-            console.log("Cache scanned:", files.length, "files");
+            console.log("[shell.qml] Cache scanned:", files.length, "files, hash map size:", Object.keys(root.thumbHashToPath).length);
             listProcess.exec({});
           }
         }
@@ -132,6 +135,7 @@ ShellRoot {
             root.centerIndex = 0;
             root.bgIndexA = 0;
             root.bgOpacity = 1.0;
+            console.log("[shell.qml] Wallpaper list loaded:", wallList.length, "wallpapers");
             updateVisibleRange();
           }
         }
@@ -175,9 +179,9 @@ ShellRoot {
               root.thumbHashToPath[hash] = "file://" + thumbPath;
               root.thumbCacheVersion++;
               root.cachedFileCount++;
-              console.log("Thumbnail generated:", thumbPath, "(worker", _workerId + ")");
+              console.log("[shell.qml] Thumbnail generated:", thumbPath, "(worker", _workerId + ")");
             } else {
-              console.log("Thumbnail failed:", path, "exitCode:", exitCode);
+              console.log("[shell.qml] Thumbnail failed:", path, "exitCode:", exitCode, "worker:", _workerId);
             }
             delete root.queuedSet[path];
             processThumbnailQueue();
@@ -238,7 +242,7 @@ ShellRoot {
 
       function processThumbnailQueue() {
         if (!root.hasFfmpeg) {
-          console.log("No ffmpeg, clearing queue");
+          console.log("[shell.qml] No ffmpeg, clearing queue");
           root.thumbnailQueue = [];
           return;
         }
@@ -257,7 +261,7 @@ ShellRoot {
               const ssParam = item.isVideo ? ["-ss", "00:00:01"] : [];
               worker.command = ["ffmpeg", "-y", ...ssParam, "-i", item.path, "-vframes", "1", "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320", "-q:v", "5", "-update", "1", thumbPath];
               root.thumbnailJobRunning++;
-              console.log("Queue:", item.path, "(worker", i + ")");
+              console.log("[shell.qml] Queue:", item.path, "(worker", i + ")");
               worker.exec({});
               break;
             }
@@ -279,6 +283,7 @@ ShellRoot {
         const maxIdx = Math.min(root.count - 1, center + root.visibleRange + root.preloadRange);
         root.baseIndex = minIdx;
         root.loadedCount = root.count > 0 ? Math.max(1, maxIdx - minIdx + 1) : 0;
+        console.log("[shell.qml] Visible range updated: center=", center, "baseIndex=", minIdx, "loadedCount=", root.loadedCount);
         // Queue thumbnails for visible range
         for (let i = minIdx; i <= maxIdx && i < root.filteredWallpaperList.length; i++) {
           const path = root.filteredWallpaperList[i];
@@ -293,8 +298,10 @@ ShellRoot {
         if (root.count === 0)
           return;
         const clamped = Math.max(0, Math.min(v, root.count - 1));
-        if (clamped !== root.scrollIndex)
+        if (clamped !== root.scrollIndex) {
+          console.log("[shell.qml] setScrollIndex:", root.scrollIndex, "->", clamped);
           root.scrollIndex = clamped;
+        }
       }
 
       // Smooth background crossfade animation
@@ -321,6 +328,7 @@ ShellRoot {
       function performSearch() {
         root._searchPending = false;
         const text = root.searchText;
+        console.log("[shell.qml] performSearch:", text ? '"' + text + '"' : "(empty)");
         if (!text) {
           root.filteredWallpaperList = root.wallpaperList;
           root.filteredFilenames = root.wallpaperFilenames;
@@ -337,6 +345,7 @@ ShellRoot {
           }
           root.filteredWallpaperList = list;
           root.filteredFilenames = names;
+          console.log("[shell.qml] Search results:", list.length, "matches");
         }
         root.scrollIndex = 0;
         root._lastCenter = -1;
@@ -593,6 +602,7 @@ ShellRoot {
                       anchors.fill: parent
                       hoverEnabled: true
                       onClicked: {
+                        console.log("[shell.qml] Mouse click on index", realIndex, ":", delegateItem.wallpaperPath);
                         setScrollIndex(realIndex);
                         Qt.callLater(() => applyWallpaper(delegateItem.wallpaperPath));
                       }
@@ -663,6 +673,7 @@ ShellRoot {
             if (event.key === Qt.Key_Backspace) {
               if (root.searchText) {
                 root.searchText = root.searchText.slice(0, -1);
+                console.log("[shell.qml] Search:", root.searchText);
                 searchDebounce.restart();
               }
               event.accepted = true;
@@ -670,6 +681,7 @@ ShellRoot {
             }
             // 2. Exit keys (must be before text input)
             if (event.key === Qt.Key_Tab || event.key === Qt.Key_Escape) {
+              console.log("[shell.qml] Exit triggered");
               Qt.quit();
               event.accepted = true;
               return;
@@ -678,19 +690,23 @@ ShellRoot {
             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
               if (root.count > 0) {
                 const idx = Math.round(root.scrollIndex);
-                applyWallpaper(root.filteredWallpaperList[((idx % root.count) + root.count) % root.count]);
+                const path = root.filteredWallpaperList[((idx % root.count) + root.count) % root.count];
+                console.log("[shell.qml] Enter pressed - applying wallpaper at index", idx);
+                applyWallpaper(path);
               }
               event.accepted = true;
               return;
             }
             if (event.key === Qt.Key_Left) {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
+              console.log("[shell.qml] Left arrow - step", step);
               setScrollIndex(Math.round(root.scrollIndex) - step);
               event.accepted = true;
               return;
             }
             if (event.key === Qt.Key_Right) {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
+              console.log("[shell.qml] Right arrow - step", step);
               setScrollIndex(Math.round(root.scrollIndex) + step);
               event.accepted = true;
               return;
@@ -698,6 +714,7 @@ ShellRoot {
             // 4. Character input (for search) - must be last
             if (event.text && event.text.length === 1 && !event.modifiers) {
               root.searchText += event.text;
+              console.log("[shell.qml] Search input:", root.searchText);
               searchDebounce.restart();
               event.accepted = true;
             }
@@ -706,6 +723,7 @@ ShellRoot {
       }
 
       function applyWallpaper(path) {
+        console.log("[shell.qml] applyWallpaper:", path);
         Quickshell.execDetached(["bash", Qt.resolvedUrl("./wallpaper.sh").toString().slice(7), "--apply", path]);
         Qt.quit();
       }
