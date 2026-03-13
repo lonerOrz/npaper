@@ -141,6 +141,58 @@ ShellRoot {
         }
       }
 
+      // ========== Cache Refresh ==========
+      Process {
+        id: cleanupCacheProcess
+        command: ["rm", "-f"]
+        onExited: function (exitCode, exitStatus) {
+          console.log("[Cache] Cleanup:", exitCode === 0 ? "OK" : "Failed");
+        }
+      }
+
+      Process {
+        id: refreshCacheProcess
+        command: ["sh", "-c", `find "${root.cacheDir}" -maxdepth 1 -name '*.png' -printf '%f\\n' 2>/dev/null`]
+        stdout: StdioCollector {
+          onStreamFinished: {
+            const files = text.trim().split('\n').filter(f => f.length > 0 && f.endsWith('.png'));
+            // 构建有效壁纸 hash 集合
+            const validHashes = {};
+            root.wallpaperList.forEach(path => {
+              validHashes[getThumbnailHash(path)] = true;
+            });
+            // 找出无效缓存
+            const invalidFiles = [];
+            files.forEach(f => {
+              const hash = f.replace('.png', '');
+              if (!validHashes[hash]) {
+                invalidFiles.push(root.cacheDir + "/" + f);
+              }
+            });
+            // 删除无效缓存文件
+            if (invalidFiles.length > 0) {
+              cleanupCacheProcess.command = ["rm", "-f", ...invalidFiles];
+              cleanupCacheProcess.exec({});
+              console.log("[Cache] Removing", invalidFiles.length, "invalid files");
+              // 从内存中删除
+              invalidFiles.forEach(f => {
+                const hash = f.split('/').pop().replace('.png', '');
+                delete root.thumbHashToPath[hash];
+              });
+              root.cachedFileCount = Math.max(0, root.cachedFileCount - invalidFiles.length);
+              root.thumbCacheVersion++;
+            } else {
+              console.log("[Cache] All cached files are valid");
+            }
+          }
+        }
+      }
+
+      function refreshCache() {
+        console.log("[Cache] Refreshing...");
+        refreshCacheProcess.exec({});
+      }
+
       // ========== Thumbnail Queue ==========
       property var thumbnailQueue: []
       property int thumbnailJobRunning: 0  // Count of running jobs
@@ -652,7 +704,7 @@ ShellRoot {
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottomMargin: 25
-            text: "←/→ Navigate  |  Enter Apply  |  Shift+←/→ Fast Scroll  |  Type to Search  |  Esc Quit"
+            text: "←/→ Navigate  |  Enter Apply  |  F5 Refresh  |  Shift+←/→ Fast Scroll  |  Type to Search  |  Esc Quit"
             color: "#888888"
             font.pixelSize: 11
             style: Text.Outline
@@ -694,6 +746,12 @@ ShellRoot {
                 console.log("[shell.qml] Enter pressed - applying wallpaper at index", idx);
                 applyWallpaper(path);
               }
+              event.accepted = true;
+              return;
+            }
+            // 4. Refresh cache (F5)
+            if (event.key === Qt.Key_F5) {
+              refreshCache();
               event.accepted = true;
               return;
             }
