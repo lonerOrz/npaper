@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -66,14 +67,22 @@ ShellRoot {
           root.bgOpacity = 0;
           bgFadeIn.restart();
           root.centerIndex = c;
+          // Extract dominant color from new wallpaper
+          if (c >= 0 && c < root.filteredWallpaperList.length) {
+            extractDominantColor(root.filteredWallpaperList[c]);
+          }
         }
         updateVisibleRange();
       }
 
-      // Background crossfade (dual buffer)
+      // Background crossfade ( dual buffer)
       property int bgIndexA: -1
       property int bgIndexB: -1
       property real bgOpacity: 1.0
+
+      // Dominant color extraction for logo
+      property string dominantColor: "#6a9eff"  // Default blue
+      property bool hasImagemagick: false
 
       // ========== Helper Functions (must be defined before use) ==========
       Component.onCompleted: {
@@ -84,6 +93,18 @@ ShellRoot {
       }
 
       // ========== Init Processes ==========
+      Process {
+        id: checkImagemagick
+        command: ["sh", "-c", "command -v magick >/dev/null 2>&1 && echo OK"]
+        stdout: StdioCollector {
+          onStreamFinished: {
+            root.hasImagemagick = text.trim() === "OK";
+            console.log("[shell.qml] ImageMagick check:", text.trim(), "hasImagemagick:", root.hasImagemagick);
+          }
+        }
+        running: true
+      }
+
       Process {
         id: checkFfmpeg
         command: ["sh", "-c", "command -v ffmpeg >/dev/null 2>&1 && echo OK"]
@@ -136,6 +157,10 @@ ShellRoot {
             root.bgIndexA = 0;
             root.bgOpacity = 1.0;
             console.log("[shell.qml] Wallpaper list loaded:", wallList.length, "wallpapers");
+            // Extract color from first wallpaper
+            if (wallList.length > 0) {
+              extractDominantColor(wallList[0]);
+            }
             updateVisibleRange();
           }
         }
@@ -402,6 +427,10 @@ ShellRoot {
         root.scrollIndex = 0;
         root._lastCenter = -1;
         updateVisibleRange();
+        // Extract color from first filtered result
+        if (root.filteredWallpaperList.length > 0) {
+          extractDominantColor(root.filteredWallpaperList[0]);
+        }
       }
 
       Timer {
@@ -410,6 +439,64 @@ ShellRoot {
         onTriggered: {
           scheduleSearch();
         }
+      }
+
+      // ========== Dominant Color Extraction ==========
+      Process {
+        id: extractColorProcess
+        stdout: StdioCollector {
+          onStreamFinished: {
+            const output = text.trim();
+            // Parse txt: output: "#F0ECE0  srgb(...)"
+            const match = output.match(/#([0-9A-F]{6})/i);
+            if (match) {
+              root.dominantColor = "#" + match[1].toUpperCase();
+              console.log("[shell.qml] Dominant color extracted:", root.dominantColor);
+            } else {
+              console.log("[shell.qml] Color extraction failed, got:", output);
+            }
+          }
+        }
+      }
+
+      function extractDominantColor(wallpaperPath) {
+        if (!root.hasImagemagick || !wallpaperPath || wallpaperPath.length === 0) {
+          root.dominantColor = "#6a9eff";  // Default blue
+          console.log("[shell.qml] Using default color (no imagemagick or invalid path)");
+          return;
+        }
+        // Always use cached thumbnail if available (works for both images and videos)
+        const cachedThumb = getCachedThumb(wallpaperPath);
+        if (cachedThumb) {
+          const sourcePath = cachedThumb.replace(/^file:\/\//, '');
+          console.log("[shell.qml] Extracting color from thumbnail:", sourcePath);
+          extractColorProcess.command = [
+            "magick",
+            sourcePath,
+            "-resize", "1x1!",
+            "-modulate", "100,180",
+            "txt:"
+          ];
+          extractColorProcess.exec({});
+          return;
+        }
+        // No thumbnail: skip video files (no cache yet)
+        if (isVideoFile(wallpaperPath)) {
+          root.dominantColor = "#6a9eff";
+          console.log("[shell.qml] Skipping video (no thumbnail cached)");
+          return;
+        }
+        // Use original image for non-video files
+        console.log("[shell.qml] Extracting color from original:", wallpaperPath);
+        const path = wallpaperPath.toLowerCase().endsWith('.gif') ? wallpaperPath + '[0]' : wallpaperPath;
+        extractColorProcess.command = [
+          "magick",
+          path,
+          "-resize", "1x1!",
+          "-modulate", "100,180",
+          "txt:"
+        ];
+        extractColorProcess.exec({});
       }
 
       // ========== UI ==========
@@ -688,6 +775,7 @@ ShellRoot {
           }
 
           Text {
+            id: searchHint
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottomMargin: 150
@@ -697,6 +785,30 @@ ShellRoot {
             font.bold: true
             style: Text.Outline
             styleColor: "black"
+          }
+
+          // NixOS Logo Watermark - SVG alpha as mask with dynamic color + glow
+          Image {
+            id: nixosLogo
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: searchHint.top
+            anchors.bottomMargin: 15
+            width: 160
+            height: 160
+            source: Qt.resolvedUrl("assets/nixos-logo.svg")
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            visible: root.count > 0
+            z: 10
+
+            layer.enabled: true
+            layer.effect: MultiEffect {
+              colorization: 1.0
+              colorizationColor: root.dominantColor  // Dynamic color from wallpaper
+              blurEnabled: true
+              blur: 0.12
+              brightness: 1.3
+            }
           }
 
           // Keyboard shortcuts hint

@@ -26,11 +26,12 @@ A Quickshell-based wallpaper selector for Wayland compositors.
 
 - **mpvpaper** - Video/live wallpaper support
 - **ffmpeg** - Thumbnail generation
+- **imagemagick** - Dynamic logo color extraction (extracts dominant wallpaper color)
 
 ### Installation (Arch Linux)
 
 ```bash
-sudo pacman -S swww wlr-randr mpvpaper ffmpeg
+sudo pacman -S swww wlr-randr mpvpaper ffmpeg imagemagick
 ```
 
 ## Usage
@@ -87,6 +88,8 @@ Thumbnails are cached in `~/.cache/wallpaper_thumbs`.
 npaper/
 ├── wallpaper.sh          # CLI script
 ├── shell.qml             # Quickshell UI
+├── assets/
+│   └── nixos-logo.svg    # NixOS logo for watermark
 ├── shaders/
 │   ├── borderGlow.frag   # Shader source
 │   └── borderGlow.frag.qsb  # Compiled shader
