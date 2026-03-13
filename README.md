@@ -2,6 +2,10 @@
 
 A Quickshell-based wallpaper selector for Wayland compositors.
 
+## Preview
+
+![Preview](.github/preview/preview.png)
+
 ## Features
 
 - 🖼️ Image and video wallpaper support
