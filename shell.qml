@@ -106,9 +106,9 @@ ShellRoot {
           onStreamFinished: {
             const files = text.trim().split('\n').filter(f => f.length > 0 && f.endsWith('.png'));
             files.forEach(f => {
-              const hash = f.replace('.png', '');
-              root.thumbHashToPath[hash] = "file://" + root.cacheDir + '/' + f;
-            });
+                            const hash = f.replace('.png', '');
+                            root.thumbHashToPath[hash] = "file://" + root.cacheDir + '/' + f;
+                          });
             root.cachedFileCount = files.length;  // Initialize cached file count
             console.log("Cache scanned:", files.length, "files");
             listProcess.exec({});
@@ -148,7 +148,9 @@ ShellRoot {
       function initThumbnailWorkers() {
         var workers = [];
         for (let i = 0; i < root.thumbnailConcurrency; i++) {
-          workers.push(thumbWorkerComponent.createObject(root, { _workerId: i }));
+          workers.push(thumbWorkerComponent.createObject(root, {
+                                                           _workerId: i
+                                                         }));
         }
         root.thumbnailWorkers = workers;
       }
@@ -198,7 +200,8 @@ ShellRoot {
       }
 
       function getCachedThumb(wallpaperPath) {
-        if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/')) return "";
+        if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/'))
+          return "";
         const hash = getThumbnailHash(wallpaperPath);
         return root.thumbHashToPath[hash] || "";
       }
@@ -215,7 +218,8 @@ ShellRoot {
           return;
         }
         // O(1) duplicate check
-        if (root.queuedSet[wallpaperPath]) return;
+        if (root.queuedSet[wallpaperPath])
+          return;
 
         // Queue full: remove oldest
         if (root.thumbnailQueue.length >= root.thumbnailQueueMax) {
@@ -308,7 +312,8 @@ ShellRoot {
       property bool _searchPending: false
 
       function scheduleSearch() {
-        if (root._searchPending) return;
+        if (root._searchPending)
+          return;
         root._searchPending = true;
         Qt.callLater(performSearch);
       }
@@ -490,29 +495,29 @@ ShellRoot {
               }
 
               // Fire border effect (behind the card, slightly larger)
-ShaderEffect {
-    id: borderGlow
-    anchors.fill: parent
-    z: 4
-    visible: Math.abs(rawDistance) < 0.5 && useShaderBorder
+              ShaderEffect {
+                id: borderGlow
+                anchors.fill: parent
+                z: 4
+                visible: Math.abs(rawDistance) < 0.5 && useShaderBorder
 
-    property real time: 0
-    // Use ShaderEffect's actual width and height
-    property real innerWidth: width
-    property real innerHeight: height
-    property real innerRadius: 12  // Match outer transparent Rectangle's radius
-    property bool useShaderBorder: true
+                property real time: 0
+                // Use ShaderEffect's actual width and height
+                property real innerWidth: width
+                property real innerHeight: height
+                property real innerRadius: 12  // Match outer transparent Rectangle's radius
+                property bool useShaderBorder: true
 
-    NumberAnimation on time {
-        from: 0
-        to: 1000
-        duration: 30000
-        loops: Animation.Infinite
-        running: visible
-    }
+                NumberAnimation on time {
+                  from: 0
+                  to: 1000
+                  duration: 30000
+                  loops: Animation.Infinite
+                  running: visible
+                }
 
-    fragmentShader: Qt.resolvedUrl("shaders/borderGlow.frag.qsb")
-}
+                fragmentShader: Qt.resolvedUrl("shaders/borderGlow.frag.qsb")
+              }
 
               Rectangle {
                 anchors.fill: parent
@@ -552,9 +557,12 @@ ShaderEffect {
                       // Only use cached thumbnail, never regenerate source
                       source: {
                         const path = delegateItem.wallpaperPath;
-                        if (!path || path.length === 0 || path.endsWith('/')) return "";
-                        if (currentThumb) return currentThumb;
-                        if (delegateItem.isVideo) return "";
+                        if (!path || path.length === 0 || path.endsWith('/'))
+                        return "";
+                        if (currentThumb)
+                        return currentThumb;
+                        if (delegateItem.isVideo)
+                        return "";
                         return "file://" + path;
                       }
                       fillMode: Image.PreserveAspectCrop
@@ -582,12 +590,12 @@ ShaderEffect {
                     }
 
                     MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: {
-                          setScrollIndex(realIndex);
-                          Qt.callLater(() => applyWallpaper(delegateItem.wallpaperPath));
-                        }
+                      anchors.fill: parent
+                      hoverEnabled: true
+                      onClicked: {
+                        setScrollIndex(realIndex);
+                        Qt.callLater(() => applyWallpaper(delegateItem.wallpaperPath));
+                      }
                     }
                   }
 
@@ -698,8 +706,9 @@ ShaderEffect {
       }
 
       function applyWallpaper(path) {
+        const scriptPath = Qt.resolvedUrl("./wallpaper.sh").toString().replace("file://", "");
         Quickshell.execDetached({
-                                  command: [Qt.resolvedUrl("./wallpaper.sh"), "--apply", path]
+                                  command: [scriptPath, "--apply", path]
                                 });
         Qt.quit();
       }
