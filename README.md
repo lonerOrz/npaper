@@ -37,20 +37,32 @@ sudo pacman -S swww wlr-randr quickshell ffmpeg imagemagick mpvpaper
 
 ### Installation (NixOS)
 
-Add `npaper` to your `environment.systemPackages`:
+#### Using Flakes (Recommended)
+
+Add to your `flake.nix`:
 
 ```nix
-{ pkgs, ... }: {
-  environment.systemPackages = [ pkgs.npaper ];
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    npaper.url = "github:lonerOrz/npaper";
+  };
+
+  outputs = { nixpkgs, npaper, ... }: {
+    nixosConfigurations.your-host = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        ({ pkgs, ... }: {
+          environment.systemPackages = [ npaper.packages.${pkgs.stdenv.hostPlatform.system}.default ];
+        })
+      ];
+    };
+  };
 }
 ```
 
-Then run with:
-```bash
-npaper
-```
+#### Run without installing
 
-Or run without installing:
 ```bash
 nix run github:lonerOrz/npaper
 ```
