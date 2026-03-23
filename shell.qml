@@ -125,15 +125,24 @@ ShellRoot {
 
       Process {
         id: scanCacheProcess
-        command: ["sh", "-c", `find "${root.cacheDir}" -maxdepth 1 -name '*.png' -printf '%f\\n' 2>/dev/null`]
+        command: ["sh", "-c", `find "${root.cacheDir}" -maxdepth 1 \\( -name '*.png' -o -name '*_anim.gif' \\) -printf '%f\\n' 2>/dev/null`]
         stdout: StdioCollector {
           onStreamFinished: {
-            const files = text.trim().split('\n').filter(f => f.length > 0 && f.endsWith('.png'));
+            const files = text.trim().split('\n').filter(f => f.length > 0 && (f.endsWith('.png') || f.endsWith('_anim.gif')));
             files.forEach(f => {
-                            const hash = f.replace('.png', '');
-                            root.thumbHashToPath[hash] = "file://" + root.cacheDir + '/' + f;
-                          });
-            root.cachedFileCount = files.length;  // Initialize cached file count
+              if (f.endsWith('_anim.gif')) {
+                const hash = f.replace('_anim.gif', '');
+                root.thumbHashToPath[hash + '_anim.gif'] = "file://" + root.cacheDir + '/' + f;
+              } else if (f.endsWith('_bg.png')) {
+                // Background preview (1920x1080)
+                const hash = f.replace('_bg.png', '');
+                root.thumbHashToPath[hash + '_bg.png'] = "file://" + root.cacheDir + '/' + f;
+              } else {
+                const hash = f.replace('.png', '');
+                root.thumbHashToPath[hash] = "file://" + root.cacheDir + '/' + f;
+              }
+            });
+            root.cachedFileCount = files.length;
             console.log("[shell.qml] Cache scanned:", files.length, "files, hash map size:", Object.keys(root.thumbHashToPath).length);
             listProcess.exec({});
           }
@@ -177,32 +186,49 @@ ShellRoot {
 
       Process {
         id: refreshCacheProcess
-        command: ["sh", "-c", `find "${root.cacheDir}" -maxdepth 1 -name '*.png' -printf '%f\\n' 2>/dev/null`]
+        command: ["sh", "-c", `find "${root.cacheDir}" -maxdepth 1 \\( -name '*.png' -o -name '*_anim.gif' \\) -printf '%f\\n' 2>/dev/null`]
         stdout: StdioCollector {
           onStreamFinished: {
-            const files = text.trim().split('\n').filter(f => f.length > 0 && f.endsWith('.png'));
-            // 构建有效壁纸 hash 集合
+            const files = text.trim().split('\n').filter(f => f.length > 0 && (f.endsWith('.png') || f.endsWith('_anim.gif')));
+            // Build valid hash set
             const validHashes = {};
             root.wallpaperList.forEach(path => {
               validHashes[getThumbnailHash(path)] = true;
             });
-            // 找出无效缓存
+            // Find invalid cache files
             const invalidFiles = [];
             files.forEach(f => {
-              const hash = f.replace('.png', '');
+              let hash;
+              if (f.endsWith('_anim.gif')) {
+                hash = f.replace('_anim.gif', '');
+              } else if (f.endsWith('_bg.png')) {
+                hash = f.replace('_bg.png', '');
+              } else {
+                hash = f.replace('.png', '');
+              }
               if (!validHashes[hash]) {
                 invalidFiles.push(root.cacheDir + "/" + f);
               }
             });
-            // 删除无效缓存文件
+            // Remove invalid cache files
             if (invalidFiles.length > 0) {
               cleanupCacheProcess.command = ["rm", "-f", ...invalidFiles];
               cleanupCacheProcess.exec({});
               console.log("[Cache] Removing", invalidFiles.length, "invalid files");
-              // 从内存中删除
+              // Remove from memory
               invalidFiles.forEach(f => {
-                const hash = f.split('/').pop().replace('.png', '');
-                delete root.thumbHashToPath[hash];
+                const fname = f.split('/').pop();
+                let hash;
+                if (fname.endsWith('_anim.gif')) {
+                  hash = fname.replace('_anim.gif', '');
+                  delete root.thumbHashToPath[hash + '_anim.gif'];
+                } else if (fname.endsWith('_bg.png')) {
+                  hash = fname.replace('_bg.png', '');
+                  delete root.thumbHashToPath[hash + '_bg.png'];
+                } else {
+                  hash = fname.replace('.png', '');
+                  delete root.thumbHashToPath[hash];
+                }
               });
               root.cachedFileCount = Math.max(0, root.cachedFileCount - invalidFiles.length);
               root.thumbCacheVersion++;
@@ -243,22 +269,36 @@ ShellRoot {
           property int _workerId: 0
           property string _targetPath: ""
           property string _thumbPath: ""
+          property string _bgPath: ""
           property bool busy: false
           onExited: function (exitCode, exitStatus) {
             root.thumbnailJobRunning--;
             const path = _targetPath;
             const thumbPath = _thumbPath;
+            const bgPath = _bgPath;
             busy = false;
             _targetPath = "";
             _thumbPath = "";
-            if (exitCode === 0 && thumbPath) {
+            _bgPath = "";
+            if (exitCode === 0) {
               const hash = getThumbnailHash(path);
-              root.thumbHashToPath[hash] = "file://" + thumbPath;
+              // Store the generated files
+              if (thumbPath.endsWith('.gif')) {
+                root.thumbHashToPath[hash + '_anim.gif'] = "file://" + thumbPath;
+                console.log("[shell.qml] Generated animated GIF:", thumbPath, "(worker", _workerId + ")");
+              } else if (thumbPath) {
+                root.thumbHashToPath[hash] = "file://" + thumbPath;
+                console.log("[shell.qml] Generated thumbnail:", thumbPath, "(worker", _workerId + ")");
+              }
+              // Store background preview
+              if (bgPath) {
+                root.thumbHashToPath[hash + '_bg.png'] = "file://" + bgPath;
+                console.log("[shell.qml] Generated background preview:", bgPath, "(worker", _workerId + ")");
+              }
               root.thumbCacheVersion++;
               root.cachedFileCount++;
-              console.log("[shell.qml] Thumbnail generated:", thumbPath, "(worker", _workerId + ")");
             } else {
-              console.log("[shell.qml] Thumbnail failed:", path, "exitCode:", exitCode, "worker:", _workerId);
+              console.log("[shell.qml] Failed:", path, "exitCode:", exitCode, "worker:", _workerId);
             }
             delete root.queuedSet[path];
             processThumbnailQueue();
@@ -280,6 +320,25 @@ ShellRoot {
         return root.cacheDir + '/' + getThumbnailHash(wallpaperPath) + '.png';
       }
 
+      function getBackgroundPreviewPath(wallpaperPath) {
+        // Return cached background preview (1920x1080) for video/GIF
+        if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/'))
+          return "";
+        const hash = getThumbnailHash(wallpaperPath);
+        return root.thumbHashToPath[hash + '_bg.png'] || "";
+      }
+
+      function getCachedAnimatedGif(wallpaperPath) {
+        // Check if animated preview exists in cache
+        if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/'))
+          return "";
+        const hash = getThumbnailHash(wallpaperPath);
+        const animFile = hash + '_anim.gif';
+        // Check if we have this in our cache map
+        const cached = root.thumbHashToPath[animFile];
+        return cached || "";
+      }
+
       function getCachedThumb(wallpaperPath) {
         if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/'))
           return "";
@@ -288,19 +347,54 @@ ShellRoot {
       }
 
       function isVideoFile(path) {
-        return path && path.length > 0 && !path.endsWith('/') && path.match(/\.(mp4|mkv|mov|webm)$/i) !== null;
+        if (!path || path.length === 0 || path.endsWith('/')) return false;
+        const lower = path.toLowerCase();
+        return lower.endsWith('.mp4') || lower.endsWith('.mkv') || lower.endsWith('.mov') || lower.endsWith('.webm');
+      }
+
+      function isGifFile(path) {
+        if (!path || path.length === 0 || path.endsWith('/')) return false;
+        return path.toLowerCase().endsWith('.gif');
       }
 
       function queueThumbnail(wallpaperPath, isVideo) {
         if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/'))
           return;
-        const cached = getCachedThumb(wallpaperPath);
-        if (cached) {
-          return;
+        const isG = isGifFile(wallpaperPath);
+        // For GIF files, check if animated preview exists
+        if (isG) {
+          const cachedAnim = getCachedAnimatedGif(wallpaperPath);
+          if (cachedAnim) {
+            console.log("[queueThumbnail] GIF already has anim cache:", wallpaperPath);
+            return;
+          }
+          // Check if already queued for anim generation
+          if (root.queuedSet[wallpaperPath]) {
+            console.log("[queueThumbnail] GIF already queued:", wallpaperPath);
+            return;
+          }
+        } else if (isVideo) {
+          // For video files, check if animated preview exists
+          const cachedAnim = getCachedAnimatedGif(wallpaperPath);
+          if (cachedAnim) {
+            console.log("[queueThumbnail] Video already has anim cache:", wallpaperPath);
+            return;
+          }
+          // Check if already queued for anim generation
+          if (root.queuedSet[wallpaperPath]) {
+            console.log("[queueThumbnail] Video already queued:", wallpaperPath);
+            return;
+          }
+        } else {
+          // For non-GIF, non-video files, use existing static thumbnail cache logic
+          const cached = getCachedThumb(wallpaperPath);
+          if (cached) {
+            return;
+          }
+          // O(1) duplicate check
+          if (root.queuedSet[wallpaperPath])
+            return;
         }
-        // O(1) duplicate check
-        if (root.queuedSet[wallpaperPath])
-          return;
 
         // Queue full: remove oldest
         if (root.thumbnailQueue.length >= root.thumbnailQueueMax) {
@@ -312,7 +406,8 @@ ShellRoot {
         root.thumbnailQueue.push({
                                    path: wallpaperPath,
                                    hash: getThumbnailHash(wallpaperPath),
-                                   isVideo: isVideo
+                                   isVideo: isVideo,
+                                   isGif: isG
                                  });
         processThumbnailQueue();
       }
@@ -327,6 +422,8 @@ ShellRoot {
         while (root.thumbnailJobRunning < root.thumbnailConcurrency && root.thumbnailQueue.length > 0) {
           const item = root.thumbnailQueue.shift();
           const thumbPath = getThumbnailPath(item.path);
+          const hash = getThumbnailHash(item.path);
+          const bgPath = root.cacheDir + '/' + hash + '_bg.png';  // Background preview (1920x1080)
           // Find an idle worker
           for (let i = 0; i < root.thumbnailWorkers.length; i++) {
             const worker = root.thumbnailWorkers[i];
@@ -334,9 +431,28 @@ ShellRoot {
               worker.busy = true;
               worker._targetPath = item.path;
               worker._thumbPath = thumbPath;
-              // For videos use -ss, for images don't use -ss (single frame)
-              const ssParam = item.isVideo ? ["-ss", "00:00:01"] : [];
-              worker.command = ["ffmpeg", "-y", ...ssParam, "-i", item.path, "-vframes", "1", "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320", "-q:v", "5", "-update", "1", thumbPath];
+              worker._bgPath = bgPath;
+              // For GIF and video: generate animated preview (30fps, 450x320) + background preview (1920x1080)
+              // For images: single frame thumbnail + background preview
+              if (item.isGif || item.isVideo) {
+                // Generate animated GIF preview
+                const animPath = root.cacheDir + '/' + hash + '_anim.gif';
+                worker._thumbPath = animPath;  // Override output path
+                if (item.isVideo) {
+                  // Video: extract 10s clip starting from 1s mark, 30fps
+                  worker.command = ["ffmpeg", "-y", "-ss", "00:00:01", "-i", item.path, "-r", "30", "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320", "-t", "10", animPath];
+                } else {
+                  // GIF: re-encode as optimized 30fps GIF
+                  worker.command = ["ffmpeg", "-y", "-i", item.path, "-r", "30", "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320", "-t", "10", animPath];
+                }
+                // Also generate background preview (1920x1080) in same command
+                // Use filter_complex to output both
+                const ssParam = item.isVideo ? "-ss 00:00:01 " : "";
+                worker.command = ["sh", "-c", `ffmpeg -y ${ssParam}-i "${item.path}" -vframes 1 -vf "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080" -q:v 2 "${bgPath}" && ffmpeg -y ${ssParam}-i "${item.path}" -r 30 -vf "scale=450:320:force_original_aspect_ratio=increase,crop=450:320" -t 10 "${animPath}"`];
+              } else {
+                // Static image: generate thumbnail (450x320) and background preview (1920x1080)
+                worker.command = ["sh", "-c", `ffmpeg -y -i "${item.path}" -vframes 1 -vf "scale=450:320:force_original_aspect_ratio=increase,crop=450:320" -q:v 5 -update 1 "${thumbPath}" && ffmpeg -y -i "${item.path}" -vframes 1 -vf "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080" -q:v 2 "${bgPath}"`];
+              }
               root.thumbnailJobRunning++;
               console.log("[shell.qml] Queue:", item.path, "(worker", i + ")");
               worker.exec({});
@@ -501,26 +617,30 @@ ShellRoot {
 
       // ========== UI ==========
       // Background layer (outside Layout to avoid z-order issues)
-      // Dual buffer for crossfade
+      // Dual buffer for crossfade - uses 1920x1080 preview for all types
       Image {
         id: bgImageA
         anchors.fill: parent
         z: -2
         visible: root.bgIndexA >= 0 && root.bgIndexA < root.filteredWallpaperList.length && root.bgOpacity > 0.01
-        // Fix: Don't load video files as background
+        // Use 1920x1080 background preview for all types
         source: {
           if (root.bgIndexA < 0 || root.bgIndexA >= root.filteredWallpaperList.length)
-          return "";
+            return "";
           const path = root.filteredWallpaperList[root.bgIndexA];
-          return isVideoFile(path) ? "" : "file://" + path;
+          const bgPreview = getBackgroundPreviewPath(path);
+          if (bgPreview)
+            return bgPreview;
+          // Fallback: use original if no preview cached yet
+          return "file://" + path;
         }
         fillMode: Image.PreserveAspectCrop
         opacity: root.bgOpacity * 0.85  // Increased for better visibility
         asynchronous: true
         smooth: true
         mipmap: true
-        // Dynamic source size based on screen resolution (lower for performance)
-        sourceSize: Qt.size(Math.min(1920, screen.width), Math.min(1080, screen.height))
+        // Fixed source size for 1920x1080 preview
+        sourceSize: Qt.size(1920, 1080)
         cache: true  // Enable caching to avoid reload
         scale: 1.0
       }
@@ -530,12 +650,16 @@ ShellRoot {
         anchors.fill: parent
         z: -2
         visible: root.bgIndexB >= 0 && root.bgIndexB < root.filteredWallpaperList.length && (1.0 - root.bgOpacity) > 0.01
-        // Fix: Don't load video files as background
+        // Use 1920x1080 background preview for all types
         source: {
           if (root.bgIndexB < 0 || root.bgIndexB >= root.filteredWallpaperList.length)
-          return "";
+            return "";
           const path = root.filteredWallpaperList[root.bgIndexB];
-          return isVideoFile(path) ? "" : "file://" + path;
+          const bgPreview = getBackgroundPreviewPath(path);
+          if (bgPreview)
+            return bgPreview;
+          // Fallback: use original if no preview cached yet
+          return "file://" + path;
         }
         fillMode: Image.PreserveAspectCrop
         opacity: (1.0 - root.bgOpacity) * 0.85  // Increased for better visibility
@@ -591,6 +715,7 @@ ShellRoot {
               property string wallpaperPath: realIndex < root.filteredWallpaperList.length ? root.filteredWallpaperList[realIndex] : ""
               property string filename: realIndex < root.filteredFilenames.length ? root.filteredFilenames[realIndex] : ""
               property bool isVideo: isVideoFile(wallpaperPath)
+              property bool isGif: isGifFile(wallpaperPath)
 
               property real rawDistance: realIndex - root.visualScroll
               property real absDist: Math.abs(rawDistance)
@@ -692,25 +817,56 @@ ShellRoot {
                     anchors.fill: parent
                     anchors.margins: Math.abs(rawDistance) < 0.5 ? Math.ceil(imageFrame.radius * 0.3) : 0
 
+                    // Fallback background for when no media is loaded
                     Rectangle {
                       anchors.fill: parent
                       color: "#1a1a1a"
-                      visible: delegateItem.isVideo
+                      visible: !delegateItem.isVideo && !delegateItem.isGif && imageItem.status !== Image.Ready
+                    }
+
+                    // AnimatedImage for center card only (uses optimized 30fps preview for GIF and video)
+                    AnimatedImage {
+                      id: animatedGif
+                      anchors.fill: parent
+                      // Only show on exact center card when GIF/video and animated preview exists
+                      // Fix: Only evaluate source for actual GIF/video files to avoid binding loops
+                      visible: (delegateItem.isGif || delegateItem.isVideo) && absDist < 0.1
+                      source: {
+                        if (!delegateItem.isGif && !delegateItem.isVideo)
+                          return "";  // Never load for static images
+                        const path = delegateItem.wallpaperPath;
+                        if (!path || path.length === 0 || path.endsWith('/'))
+                          return "";
+                        // Use optimized animated preview (30fps)
+                        return getCachedAnimatedGif(path);
+                      }
+                      fillMode: Image.PreserveAspectCrop
+                      asynchronous: true
+                      smooth: true
+                      mipmap: true
+                      scale: 1.0
+                      playing: visible  // Only play when visible
+                      // Limit source size for performance
+                      sourceSize: Qt.size(450, 320)
                     }
 
                     Image {
                       id: imageItem
                       anchors.fill: parent
                       property string currentThumb: getCachedThumb(delegateItem.wallpaperPath)
-                      // Only use cached thumbnail, never regenerate source
+                      // Use cached thumbnail, or original for static preview
                       source: {
                         const path = delegateItem.wallpaperPath;
                         if (!path || path.length === 0 || path.endsWith('/'))
-                        return "";
+                          return "";
+                        // GIF/video: hide static image when animated version is ready and visible
+                        if ((delegateItem.isGif || delegateItem.isVideo) && absDist < 0.1 && animatedGif.status === AnimatedImage.Ready && animatedGif.visible)
+                          return "";
+                        // Use cached thumbnail if available
                         if (currentThumb)
-                        return currentThumb;
+                          return currentThumb;
                         if (delegateItem.isVideo)
-                        return "";
+                          return "";
                         return "file://" + path;
                       }
                       fillMode: Image.PreserveAspectCrop
@@ -729,12 +885,13 @@ ShellRoot {
                       }
                     }
 
-                    // Show default icon for video when no thumbnail cached
+                    // Show default icon for video/GIF when no thumbnail/animation cached
                     Text {
                       anchors.centerIn: parent
                       text: "🎬"
                       font.pixelSize: 48
-                      visible: delegateItem.isVideo && imageItem.status !== Image.Ready
+                      // Hide when animated preview is ready and visible, or when static thumbnail is ready
+                      visible: (delegateItem.isVideo || delegateItem.isGif) && imageItem.status !== Image.Ready && (animatedGif.status !== AnimatedImage.Ready || !animatedGif.visible)
                     }
 
                     MouseArea {
