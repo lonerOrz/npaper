@@ -84,20 +84,30 @@ ShellRoot {
           if (c !== bgCurrent && c >= 0 && c < root.filteredWallpaperList.length) {
             bgPrevious = bgCurrent;
             bgCurrent = c;
-            bgOpacity = 0;
-            bgScale = 1.02;
-            bgFadeIn.restart();
-            // Extract dominant color when background changes
+            // Reset and trigger slide animation
+            bgSlideProgress = 0;
+            bgSlideAnim.restart();
+            // Extract dominant color for new wallpaper
             extractDominantColor(root.filteredWallpaperList[c]);
           }
         }
       }
 
+      // Background slide animation (drives progress only)
+      PropertyAnimation {
+        id: bgSlideAnim
+        target: root
+        properties: "bgSlideProgress"
+        from: 0
+        to: 1.0
+        duration: 500
+        easing.type: Easing.OutCubic
+      }
+
       // Background Crossfade
       property int bgCurrent: -1
       property int bgPrevious: -1
-      property real bgOpacity: 1.0
-      property real bgScale: 1.0
+      property real bgSlideProgress: 0.0  // 0 = start, 1 = complete
       property string _bgSourceA: ""
       property string _bgSourceB: ""
 
@@ -205,7 +215,7 @@ ShellRoot {
             root.filteredFilenames = root.wallpaperFilenames;
             root.scrollIndex = 0;
             root.bgCurrent = 0;
-            root.bgOpacity = 1.0;
+            root.bgSlideProgress = 1.0;  // Set to 1 for initial image (no animation)
             if (wallList.length > 0) {
               extractDominantColor(wallList[0]);
             }
@@ -235,19 +245,19 @@ ShellRoot {
         }
       }
 
-      // Smooth background crossfade + scale animation
+      // Smooth background crossfade (for initial load)
       PropertyAnimation {
         id: bgFadeIn
         target: root
-        properties: "bgOpacity, bgScale"
-        from: 0, 1.02
-        to: 1.0, 1.0
+        properties: "bgOpacity"
+        from: 0
+        to: 1.0
         duration: 400
         easing.type: Easing.InOutCubic
       }
 
-      // Background parallax offset
-      readonly property real bgParallaxX: (scrollIndex - centerIndex) * 40
+      // Background parallax offset (separate from slide)
+      readonly property real bgBaseParallaxX: (scrollIndex - centerIndex) * 40
 
       // Search
       property var _searchResults: []
@@ -356,17 +366,16 @@ ShellRoot {
       }
 
       // UI
-      // Background Crossfade (dual buffer)
+      // Background Crossfade (dual buffer with slide effect)
       Image {
         id: bgImageA
         anchors.fill: parent
-        x: root.bgParallaxX
+        x: root.bgBaseParallaxX + (root.bgSlideProgress * root.width)
         z: -2
-        visible: root.bgCurrent >= 0 && root.bgCurrent < root.filteredWallpaperList.length && root.bgOpacity > 0.01
+        visible: root.bgCurrent >= 0 && root.bgCurrent < root.filteredWallpaperList.length
+        opacity: visible ? root.bgSlideProgress : 0
         source: _bgSourceA
         fillMode: Image.PreserveAspectCrop
-        opacity: root.bgOpacity * 0.9
-        scale: root.bgScale
         asynchronous: true
         smooth: true
         mipmap: true
@@ -377,13 +386,12 @@ ShellRoot {
       Image {
         id: bgImageB
         anchors.fill: parent
-        x: root.bgParallaxX
+        x: root.bgBaseParallaxX + ((root.bgSlideProgress - 1) * root.width)
         z: -2
-        visible: root.bgPrevious >= 0 && root.bgPrevious < root.filteredWallpaperList.length && (1.0 - root.bgOpacity) > 0.01
+        visible: root.bgPrevious >= 0 && root.bgPrevious < root.filteredWallpaperList.length
+        opacity: visible ? (1.0 - root.bgSlideProgress) : 0
         source: _bgSourceB
         fillMode: Image.PreserveAspectCrop
-        opacity: (1.0 - root.bgOpacity) * 0.9
-        scale: root.bgScale
         asynchronous: true
         smooth: true
         mipmap: true
@@ -391,12 +399,12 @@ ShellRoot {
         cache: true
       }
 
-      // Dark overlay to dim background (slightly darker for better contrast)
+      // Dark overlay to dim background
       Rectangle {
         anchors.fill: parent
-        color: "#000000"  // Solid black background to block system desktop
-        opacity: 0.45     // Reduced to let more background show through
-        z: -1             // Behind everything
+        color: "#000000"
+        opacity: 0.4
+        z: -1
       }
 
       ColumnLayout {
@@ -439,17 +447,22 @@ ShellRoot {
 
               // Precompute all metrics in one JS block (reduces binding churn)
               readonly property var metrics: {
-                const raw = realIndex - root._cachedScrollIndex
-                const abs = Math.abs(raw)
-                const cos = Math.cos(Math.min(abs, 3) * 0.523599)  // PI/6 ≈ 0.523599
-                const perspectiveScale = 1.0 / (1.0 + abs * 0.3)
-                return { raw, abs, cos, perspectiveScale }
+                const raw = realIndex - root._cachedScrollIndex;
+                const abs = Math.abs(raw);
+                const cos = Math.cos(Math.min(abs, 3) * 0.523599);  // PI/6 ≈ 0.523599
+                const perspectiveScale = 1.0 / (1.0 + abs * 0.3);
+                return {
+                  raw,
+                  abs,
+                  cos,
+                  perspectiveScale
+                };
               }
 
               // Unified visual properties (computed once, used everywhere)
               readonly property var visual: {
-                const abs = metrics.abs
-                const isCenter = abs < 0.5
+                const abs = metrics.abs;
+                const isCenter = abs < 0.5;
                 return {
                   scale: metrics.perspectiveScale * (0.85 + metrics.cos * 0.15) + (isCenter ? 0.06 : 0),
                   opacity: abs > 6 ? 0 : Math.pow(Math.max(0, 1 - abs * 0.12), 2.5),
@@ -458,7 +471,7 @@ ShellRoot {
                   spacingFactor: 0.45 + metrics.cos * 0.35,
                   yOffset: abs * 8,
                   shadowOpacity: abs < 0.6 ? 0.25 : 0
-                }
+                };
               }
 
               width: pathViewContainer.itemWidth
@@ -472,7 +485,11 @@ ShellRoot {
 
               transform: [
                 Rotation {
-                  axis { x: 0; y: 1; z: 0 }
+                  axis {
+                    x: 0
+                    y: 1
+                    z: 0
+                  }
                   angle: visual.rotationY
                   origin.x: width / 2
                   origin.y: height / 2
@@ -555,13 +572,13 @@ ShellRoot {
                       visible: (delegateItem.isGif || delegateItem.isVideo) && realIndex === root.centerIndex
                       source: {
                         if (!delegateItem.isGif && !delegateItem.isVideo)
-                          return "";
+                        return "";
                         const path = delegateItem.wallpaperPath;
                         if (!path || path.length === 0 || path.endsWith('/'))
-                          return "";
+                        return "";
                         const cachedAnim = CacheUtils.getCachedAnimatedGif(cacheManager.thumbHashToPath, path);
                         if (cachedAnim)
-                          return "file://" + cachedAnim;
+                        return "file://" + cachedAnim;
                         return "";
                       }
                       fillMode: Image.PreserveAspectCrop
@@ -580,15 +597,15 @@ ShellRoot {
                       source: {
                         const path = delegateItem.wallpaperPath;
                         if (!path || path.length === 0 || path.endsWith('/'))
-                          return "";
+                        return "";
                         // GIF/video: hide static image when animated version is ready and visible
                         if ((delegateItem.isGif || delegateItem.isVideo) && realIndex === root.centerIndex && animatedGif.status === AnimatedImage.Ready && animatedGif.visible)
-                          return "";
+                        return "";
                         // Use cached thumbnail if available
                         if (currentThumb)
-                          return "file://" + currentThumb;
+                        return "file://" + currentThumb;
                         if (delegateItem.isVideo)
-                          return "";
+                        return "";
                         return "file://" + path;
                       }
                       fillMode: Image.PreserveAspectCrop
@@ -666,7 +683,7 @@ ShellRoot {
             styleColor: "black"
           }
 
-          // NixOS Logo Watermark - SVG alpha as mask with dynamic color + glow
+          // NixOS Logo Watermark - SVG with dynamic color + glow
           Image {
             id: nixosLogo
             anchors.horizontalCenter: parent.horizontalCenter
@@ -683,7 +700,7 @@ ShellRoot {
             layer.enabled: true
             layer.effect: MultiEffect {
               colorization: 1.0
-              colorizationColor: root.dominantColor  // Dynamic color from wallpaper
+              colorizationColor: Qt.color(root.dominantColor)
               blurEnabled: true
               blur: 0.12
               brightness: 1.3
