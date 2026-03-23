@@ -270,27 +270,67 @@ ShellRoot {
           property string _targetPath: ""
           property string _thumbPath: ""
           property string _bgPath: ""
+          property string _animPath: ""
+          property var _ssArgs: []
+          property int _step: 0  // 0=none, 1=bg done, 2=anim done
+          property bool _needBg: false
+          property bool _needAnim: false
           property bool busy: false
           onExited: function (exitCode, exitStatus) {
             root.thumbnailJobRunning--;
             const path = _targetPath;
             const thumbPath = _thumbPath;
             const bgPath = _bgPath;
-            busy = false;
-            _targetPath = "";
-            _thumbPath = "";
-            _bgPath = "";
+            const animPath = _animPath;
+            const step = _step;
+            
             if (exitCode === 0) {
               const hash = getThumbnailHash(path);
-              // Store the generated files
-              if (thumbPath.endsWith('.gif')) {
-                root.thumbHashToPath[hash + '_anim.gif'] = "file://" + thumbPath;
-                console.log("[shell.qml] Generated animated GIF:", thumbPath, "(worker", _workerId + ")");
-              } else if (thumbPath) {
+              
+              // Step-based processing for multi-pass generation
+              if (_needAnim && step === 1) {
+                // Background done, now generate animated preview
+                _step = 2;
+                busy = true;
+                root.thumbnailJobRunning++;
+                command = [
+                  "ffmpeg", "-y",
+                  ..._ssArgs,
+                  "-i", path,
+                  "-r", "30",
+                  "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320",
+                  "-t", "10",
+                  animPath
+                ];
+                exec({});
+                return;  // Don't clear state yet
+              } else if (_needBg && step === 0) {
+                // Thumbnail done, now generate background preview
+                _step = 1;
+                _needBg = false;
+                busy = true;
+                root.thumbnailJobRunning++;
+                command = [
+                  "ffmpeg", "-y",
+                  "-i", path,
+                  "-vframes", "1",
+                  "-vf", "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080",
+                  "-q:v", "2",
+                  bgPath
+                ];
+                exec({});
+                return;  // Don't clear state yet
+              }
+              
+              // All done - store the generated files
+              if (animPath) {
+                root.thumbHashToPath[hash + '_anim.gif'] = "file://" + animPath;
+                console.log("[shell.qml] Generated animated GIF:", animPath, "(worker", _workerId + ")");
+              }
+              if (thumbPath && !thumbPath.endsWith('.gif')) {
                 root.thumbHashToPath[hash] = "file://" + thumbPath;
                 console.log("[shell.qml] Generated thumbnail:", thumbPath, "(worker", _workerId + ")");
               }
-              // Store background preview
               if (bgPath) {
                 root.thumbHashToPath[hash + '_bg.png'] = "file://" + bgPath;
                 console.log("[shell.qml] Generated background preview:", bgPath, "(worker", _workerId + ")");
@@ -298,8 +338,19 @@ ShellRoot {
               root.thumbCacheVersion++;
               root.cachedFileCount++;
             } else {
-              console.log("[shell.qml] Failed:", path, "exitCode:", exitCode, "worker:", _workerId);
+              console.log("[shell.qml] Failed:", path, "exitCode:", exitCode, "worker:", _workerId, "step:", step);
             }
+            
+            // Clear state
+            busy = false;
+            _targetPath = "";
+            _thumbPath = "";
+            _bgPath = "";
+            _animPath = "";
+            _ssArgs = [];
+            _step = 0;
+            _needBg = false;
+            _needAnim = false;
             delete root.queuedSet[path];
             processThumbnailQueue();
           }
@@ -435,23 +486,35 @@ ShellRoot {
               // For GIF and video: generate animated preview (30fps, 450x320) + background preview (1920x1080)
               // For images: single frame thumbnail + background preview
               if (item.isGif || item.isVideo) {
-                // Generate animated GIF preview
+                // Generate animated GIF preview (two passes)
                 const animPath = root.cacheDir + '/' + hash + '_anim.gif';
                 worker._thumbPath = animPath;  // Override output path
-                if (item.isVideo) {
-                  // Video: extract 10s clip starting from 1s mark, 30fps
-                  worker.command = ["ffmpeg", "-y", "-ss", "00:00:01", "-i", item.path, "-r", "30", "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320", "-t", "10", animPath];
-                } else {
-                  // GIF: re-encode as optimized 30fps GIF
-                  worker.command = ["ffmpeg", "-y", "-i", item.path, "-r", "30", "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320", "-t", "10", animPath];
-                }
-                // Also generate background preview (1920x1080) in same command
-                // Use filter_complex to output both
-                const ssParam = item.isVideo ? "-ss 00:00:01 " : "";
-                worker.command = ["sh", "-c", `ffmpeg -y ${ssParam}-i "${item.path}" -vframes 1 -vf "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080" -q:v 2 "${bgPath}" && ffmpeg -y ${ssParam}-i "${item.path}" -r 30 -vf "scale=450:320:force_original_aspect_ratio=increase,crop=450:320" -t 10 "${animPath}"`];
+                worker._animPath = animPath;
+                worker._ssArgs = item.isVideo ? ["-ss", "00:00:01"] : [];
+                worker._step = 1;  // Start with background
+                worker._needAnim = true;
+                // First pass: background preview
+                worker.command = [
+                  "ffmpeg", "-y",
+                  ...worker._ssArgs,
+                  "-i", item.path,
+                  "-vframes", "1",
+                  "-vf", "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080",
+                  "-q:v", "2",
+                  bgPath
+                ];
               } else {
-                // Static image: generate thumbnail (450x320) and background preview (1920x1080)
-                worker.command = ["sh", "-c", `ffmpeg -y -i "${item.path}" -vframes 1 -vf "scale=450:320:force_original_aspect_ratio=increase,crop=450:320" -q:v 5 -update 1 "${thumbPath}" && ffmpeg -y -i "${item.path}" -vframes 1 -vf "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080" -q:v 2 "${bgPath}"`];
+                // Static image: generate thumbnail first, then background
+                worker.command = [
+                  "ffmpeg", "-y",
+                  "-i", item.path,
+                  "-vframes", "1",
+                  "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320",
+                  "-q:v", "5",
+                  "-update", "1",
+                  thumbPath
+                ];
+                worker._needBg = true;  // Generate bg after thumbnail
               }
               root.thumbnailJobRunning++;
               console.log("[shell.qml] Queue:", item.path, "(worker", i + ")");
