@@ -222,10 +222,20 @@ ShellRoot {
       }
 
       // Dominant Color Extraction
+      Timer {
+        id: extractColorTimeout
+        interval: 5000
+        onTriggered: {
+          console.log("[npaper] Color extraction timeout");
+          root.dominantColor = "#6a9eff";
+        }
+      }
+
       Process {
         id: extractColorProcess
         stdout: StdioCollector {
           onStreamFinished: {
+            extractColorTimeout.stop();
             const output = text.trim();
             const match = output.match(/#([0-9A-F]{6})/i);
             if (match) {
@@ -238,6 +248,7 @@ ShellRoot {
           }
         }
         onExited: function (exitCode, exitStatus) {
+          extractColorTimeout.stop();
           if (exitCode !== 0) {
             console.log("[npaper] Color extraction process failed, exitCode:", exitCode);
             root.dominantColor = "#6a9eff";
@@ -253,7 +264,7 @@ ShellRoot {
         }
         const cachedThumb = CacheUtils.getCachedThumb(cacheManager.thumbHashToPath, wallpaperPath);
         if (cachedThumb) {
-          runColorExtract(cachedThumb.replace(/^file:\/\//, ''));
+          runColorExtract(cachedThumb);
           return;
         }
         if (FileTypes.isVideoFile(wallpaperPath)) {
@@ -267,6 +278,7 @@ ShellRoot {
 
       function runColorExtract(sourcePath) {
         console.log("[npaper] Extracting color from:", sourcePath);
+        extractColorTimeout.start();
         extractColorProcess.command = [
           "magick",
           sourcePath,
@@ -284,25 +296,22 @@ ShellRoot {
         anchors.fill: parent
         z: -2
         visible: root.bgCurrent >= 0 && root.bgCurrent < root.filteredWallpaperList.length && root.bgOpacity > 0.01
-        // Use 1920x1080 background preview for all types
         source: {
           if (root.bgCurrent < 0 || root.bgCurrent >= root.filteredWallpaperList.length)
             return "";
           const path = root.filteredWallpaperList[root.bgCurrent];
           const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
           if (bgPreview)
-            return bgPreview;
-          // Fallback: use original if no preview cached yet
+            return "file://" + bgPreview;
           return "file://" + path;
         }
         fillMode: Image.PreserveAspectCrop
-        opacity: root.bgOpacity * 0.85  // Increased for better visibility
+        opacity: root.bgOpacity * 0.85
         asynchronous: true
         smooth: true
         mipmap: true
-        // Fixed source size for 1920x1080 preview
         sourceSize: Qt.size(1920, 1080)
-        cache: true  // Enable caching to avoid reload
+        cache: true
         scale: 1.0
       }
 
@@ -311,24 +320,22 @@ ShellRoot {
         anchors.fill: parent
         z: -2
         visible: root.bgPrevious >= 0 && root.bgPrevious < root.filteredWallpaperList.length && (1.0 - root.bgOpacity) > 0.01
-        // Use 1920x1080 background preview for all types
         source: {
           if (root.bgPrevious < 0 || root.bgPrevious >= root.filteredWallpaperList.length)
             return "";
           const path = root.filteredWallpaperList[root.bgPrevious];
           const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
           if (bgPreview)
-            return bgPreview;
-          // Fallback: use original if no preview cached yet
+            return "file://" + bgPreview;
           return "file://" + path;
         }
         fillMode: Image.PreserveAspectCrop
-        opacity: (1.0 - root.bgOpacity) * 0.85  // Increased for better visibility
+        opacity: (1.0 - root.bgOpacity) * 0.85
         asynchronous: true
         smooth: true
         mipmap: true
         sourceSize: Qt.size(Math.min(1920, screen.width), Math.min(1080, screen.height))
-        cache: true  // Enable caching to avoid reload
+        cache: true
         scale: 1.0
       }
 
@@ -489,25 +496,24 @@ ShellRoot {
                     AnimatedImage {
                       id: animatedGif
                       anchors.fill: parent
-                      // Only show on exact center card when GIF/video and animated preview exists
-                      // Fix: Only evaluate source for actual GIF/video files to avoid binding loops
                       visible: (delegateItem.isGif || delegateItem.isVideo) && absDist < 0.1
                       source: {
                         if (!delegateItem.isGif && !delegateItem.isVideo)
-                          return "";  // Never load for static images
+                          return "";
                         const path = delegateItem.wallpaperPath;
                         if (!path || path.length === 0 || path.endsWith('/'))
                           return "";
-                        // Use optimized animated preview (30fps)
-                        return CacheUtils.getCachedAnimatedGif(cacheManager.thumbHashToPath, path);
+                        const cachedAnim = CacheUtils.getCachedAnimatedGif(cacheManager.thumbHashToPath, path);
+                        if (cachedAnim)
+                          return "file://" + cachedAnim;
+                        return "";
                       }
                       fillMode: Image.PreserveAspectCrop
                       asynchronous: true
                       smooth: true
                       mipmap: true
                       scale: 1.0
-                      playing: visible  // Only play when visible
-                      // Limit source size for performance
+                      playing: visible
                       sourceSize: Qt.size(450, 320)
                     }
 
@@ -515,29 +521,25 @@ ShellRoot {
                       id: imageItem
                       anchors.fill: parent
                       property string currentThumb: CacheUtils.getCachedThumb(cacheManager.thumbHashToPath, delegateItem.wallpaperPath)
-                      // Use cached thumbnail, or original for static preview
                       source: {
                         const path = delegateItem.wallpaperPath;
                         if (!path || path.length === 0 || path.endsWith('/'))
                           return "";
-                        // GIF/video: hide static image when animated version is ready and visible
                         if ((delegateItem.isGif || delegateItem.isVideo) && absDist < 0.1 && animatedGif.status === AnimatedImage.Ready && animatedGif.visible)
                           return "";
-                        // Use cached thumbnail if available
                         if (currentThumb)
-                          return currentThumb;
+                          return "file://" + currentThumb;
                         if (delegateItem.isVideo)
                           return "";
                         return "file://" + path;
                       }
                       fillMode: Image.PreserveAspectCrop
                       asynchronous: true
-                      // Only smooth center card (GPU optimization)
                       smooth: absDist < 1.2
                       mipmap: true
                       opacity: status === Image.Ready ? 1 : 0
                       sourceSize: Qt.size(450, 320)
-                      scale: 1.0  // Disable hover scaling
+                      scale: 1.0
 
                       Component.onCompleted: {
                         if (delegateItem.wallpaperPath && !delegateItem.isVideo && !currentThumb) {

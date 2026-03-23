@@ -42,13 +42,13 @@ Item {
                 files.forEach(f => {
                     if (f.endsWith('_anim.gif')) {
                         const hash = f.replace('_anim.gif', '');
-                        root.thumbHashToPath[hash + '_anim.gif'] = "file://" + root.cacheDir + '/' + f;
+                        root.thumbHashToPath[hash + '_anim.gif'] = root.cacheDir + '/' + f;
                     } else if (f.endsWith('_bg.png')) {
                         const hash = f.replace('_bg.png', '');
-                        root.thumbHashToPath[hash + '_bg.png'] = "file://" + root.cacheDir + '/' + f;
+                        root.thumbHashToPath[hash + '_bg.png'] = root.cacheDir + '/' + f;
                     } else {
                         const hash = f.replace('.png', '');
-                        root.thumbHashToPath[hash] = "file://" + root.cacheDir + '/' + f;
+                        root.thumbHashToPath[hash] = root.cacheDir + '/' + f;
                     }
                 });
                 root.cachedFileCount = files.length;
@@ -176,15 +176,15 @@ Item {
                 root.thumbnailGenerated(_targetPath, _thumbPath, _bgPath, _animPath);
 
                 if (_animPath) {
-                    root.thumbHashToPath[hash + '_anim.gif'] = "file://" + _animPath;
+                    root.thumbHashToPath[hash + '_anim.gif'] = _animPath;
                     console.log("[npaper] Generated animated GIF:", _animPath);
                 }
                 if (_thumbPath) {
-                    root.thumbHashToPath[hash] = "file://" + _thumbPath;
+                    root.thumbHashToPath[hash] = _thumbPath;
                     console.log("[npaper] Generated thumbnail:", _thumbPath);
                 }
                 if (_bgPath) {
-                    root.thumbHashToPath[hash + '_bg.png'] = "file://" + _bgPath;
+                    root.thumbHashToPath[hash + '_bg.png'] = _bgPath;
                     console.log("[npaper] Generated background:", _bgPath);
                 }
                 root.thumbCacheVersion++;
