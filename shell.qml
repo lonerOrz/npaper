@@ -10,6 +10,7 @@ import Quickshell.Wayland
 import "utils/HashUtils.js" as HashUtils
 import "utils/FileTypes.js" as FileTypes
 import "utils/CacheUtils.js" as CacheUtils
+import "utils"
 
 ShellRoot {
   Variants {
@@ -35,12 +36,9 @@ ShellRoot {
       property var filteredFilenames: []
       property string searchText: ""
 
-      // Thumbnail Cache
+      // Cache Manager
       readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/wallpaper_thumbs"
       property bool hasFfmpeg: false
-      property var thumbHashToPath: ({})  // hash -> "file:///cache/path.png"
-      property int thumbCacheVersion: 0
-      property int cachedFileCount: 0
 
       // Scroll & Virtualization
       property real scrollIndex: 0
@@ -80,16 +78,35 @@ ShellRoot {
         }
         for (let i = baseIndex; i <= maxIndex && i < root.filteredWallpaperList.length; i++) {
           const path = root.filteredWallpaperList[i];
-          queueThumbnail(path, FileTypes.isVideoFile(path));
+          cacheManager.queueThumbnail(path, FileTypes.isVideoFile(path), FileTypes.isGifFile(path));
         }
       }
 
       property string dominantColor: "#6a9eff"
       property bool hasImagemagick: false
 
+      // Cache Manager Instance
+      CacheManager {
+        id: cacheManager
+        cacheDir: root.cacheDir
+        hasFfmpeg: root.hasFfmpeg
+
+        onCacheScanned: {
+          // First scan cache, then load wallpaper list
+          listProcess.exec({});
+        }
+
+        onCacheRefreshed: {
+          console.log("[shell.qml] Cache refresh completed");
+        }
+
+        onThumbnailGenerated: {
+          // Thumbnail generated, UI will auto-update via thumbHashToPath changes
+        }
+      }
+
       Component.onCompleted: {
-        createCacheDirProcess.exec({});
-        initThumbnailWorkers();
+        cacheManager.initialize();
       }
 
       // Init Processes
@@ -112,41 +129,10 @@ ShellRoot {
           onStreamFinished: {
             root.hasFfmpeg = text.trim() === "OK";
             console.log("[shell.qml] ffmpeg check:", text.trim(), "hasFfmpeg:", root.hasFfmpeg);
-            scanCacheProcess.exec({});
+            cacheManager.scanCache();
           }
         }
         running: true
-      }
-
-      Process {
-        id: createCacheDirProcess
-        command: ["mkdir", "-p", root.cacheDir]
-      }
-
-      Process {
-        id: scanCacheProcess
-        command: ["sh", "-c", `find "${root.cacheDir}" -maxdepth 1 \\( -name '*.png' -o -name '*_anim.gif' \\) -printf '%f\\n' 2>/dev/null`]
-        stdout: StdioCollector {
-          onStreamFinished: {
-            const files = text.trim().split('\n').filter(f => f.length > 0 && (f.endsWith('.png') || f.endsWith('_anim.gif')));
-            files.forEach(f => {
-              if (f.endsWith('_anim.gif')) {
-                const hash = f.replace('_anim.gif', '');
-                root.thumbHashToPath[hash + '_anim.gif'] = "file://" + root.cacheDir + '/' + f;
-              } else if (f.endsWith('_bg.png')) {
-                // Background preview (1920x1080)
-                const hash = f.replace('_bg.png', '');
-                root.thumbHashToPath[hash + '_bg.png'] = "file://" + root.cacheDir + '/' + f;
-              } else {
-                const hash = f.replace('.png', '');
-                root.thumbHashToPath[hash] = "file://" + root.cacheDir + '/' + f;
-              }
-            });
-            root.cachedFileCount = files.length;
-            console.log("[shell.qml] Cache scanned:", files.length, "files, hash map size:", Object.keys(root.thumbHashToPath).length);
-            listProcess.exec({});
-          }
-        }
       }
 
       Process {
@@ -174,331 +160,10 @@ ShellRoot {
         }
       }
 
-      // Cache Refresh
-      Process {
-        id: cleanupCacheProcess
-        command: ["rm", "-f"]
-        onExited: function (exitCode, exitStatus) {
-          console.log("[Cache] Cleanup:", exitCode === 0 ? "OK" : "Failed");
-        }
-      }
-
-      Process {
-        id: refreshCacheProcess
-        command: ["sh", "-c", `find "${root.cacheDir}" -maxdepth 1 \\( -name '*.png' -o -name '*_anim.gif' \\) -printf '%f\\n' 2>/dev/null`]
-        stdout: StdioCollector {
-          onStreamFinished: {
-            const files = text.trim().split('\n').filter(f => f.length > 0 && (f.endsWith('.png') || f.endsWith('_anim.gif')));
-            // Build valid hash set
-            const validHashes = {};
-            root.wallpaperList.forEach(path => {
-              validHashes[HashUtils.getThumbnailHash(path)] = true;
-            });
-            // Find invalid cache files
-            const invalidFiles = [];
-            files.forEach(f => {
-              let hash;
-              if (f.endsWith('_anim.gif')) {
-                hash = f.replace('_anim.gif', '');
-              } else if (f.endsWith('_bg.png')) {
-                hash = f.replace('_bg.png', '');
-              } else {
-                hash = f.replace('.png', '');
-              }
-              if (!validHashes[hash]) {
-                invalidFiles.push(root.cacheDir + "/" + f);
-              }
-            });
-            // Remove invalid cache files
-            if (invalidFiles.length > 0) {
-              cleanupCacheProcess.command = ["rm", "-f", ...invalidFiles];
-              cleanupCacheProcess.exec({});
-              console.log("[Cache] Removing", invalidFiles.length, "invalid files");
-              // Remove from memory
-              invalidFiles.forEach(f => {
-                const fname = f.split('/').pop();
-                let hash;
-                if (fname.endsWith('_anim.gif')) {
-                  hash = fname.replace('_anim.gif', '');
-                  delete root.thumbHashToPath[hash + '_anim.gif'];
-                } else if (fname.endsWith('_bg.png')) {
-                  hash = fname.replace('_bg.png', '');
-                  delete root.thumbHashToPath[hash + '_bg.png'];
-                } else {
-                  hash = fname.replace('.png', '');
-                  delete root.thumbHashToPath[hash];
-                }
-              });
-              root.cachedFileCount = Math.max(0, root.cachedFileCount - invalidFiles.length);
-              root.thumbCacheVersion++;
-            } else {
-              console.log("[Cache] All cached files are valid");
-            }
-          }
-        }
-      }
-
+      // Cache Refresh via cacheManager
       function refreshCache() {
         console.log("[Cache] Refreshing...");
-        refreshCacheProcess.exec({});
-      }
-
-      // Thumbnail Queue
-      property var thumbnailQueue: []
-      property int thumbnailJobRunning: 0
-      readonly property int thumbnailQueueMax: 50
-      readonly property int thumbnailConcurrency: 2
-      property var thumbnailWorkers: []
-      property var queuedSet: ({})
-
-      function initThumbnailWorkers() {
-        var workers = [];
-        for (let i = 0; i < root.thumbnailConcurrency; i++) {
-          workers.push(thumbWorkerComponent.createObject(root, {
-                                                           _workerId: i
-                                                         }));
-        }
-        root.thumbnailWorkers = workers;
-      }
-
-      // Worker component for concurrent thumbnail generation
-      Component {
-        id: thumbWorkerComponent
-        Process {
-          property int _workerId: 0
-          property string _targetPath: ""
-          property string _thumbPath: ""
-          property string _bgPath: ""
-          property string _animPath: ""
-          property var _ssArgs: []
-          property int _step: 0  // 0=none, 1=thumb+bg done, 2=anim done
-          property bool _needAnim: false
-          property bool busy: false
-          
-          function runNext() {
-            if (_step === 0) {
-              // First pass: generate thumbnail (and background for static images)
-              if (_needAnim) {
-                // Video/gif: generate static thumbnail only (for card display)
-                command = [
-                  "ffmpeg", "-y",
-                  ..._ssArgs,
-                  "-i", _targetPath,
-                  "-vframes", "1",
-                  "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320",
-                  "-q:v", "5",
-                  _thumbPath
-                ];
-              } else {
-                // Static image: generate thumbnail + background in one pass (multi-output)
-                command = [
-                  "ffmpeg", "-y",
-                  "-i", _targetPath,
-                  "-vframes", "1",
-                  "-filter_complex", "[0:v]split=2[a][b];[a]scale=450:320:force_original_aspect_ratio=increase,crop=450:320[thumb];[b]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080[bg]",
-                  "-map", "[thumb]", "-q:v", "5", "-update", "1", _thumbPath,
-                  "-map", "[bg]", "-q:v", "2", _bgPath
-                ];
-              }
-            } else if (_step === 1 && _needAnim) {
-              // Second pass: generate animated preview
-              command = [
-                "ffmpeg", "-y",
-                ..._ssArgs,
-                "-i", _targetPath,
-                "-r", "30",
-                "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320",
-                "-t", "10",
-                _animPath
-              ];
-            }
-            if (command.length > 0) {
-              exec({});
-            }
-          }
-          
-          onExited: function (exitCode, exitStatus) {
-            root.thumbnailJobRunning--;
-            const path = _targetPath;
-            const thumbPath = _thumbPath;
-            const bgPath = _bgPath;
-            const animPath = _animPath;
-            const step = _step;
-
-            if (exitCode !== 0) {
-              console.log("[shell.qml] Failed:", path, "exitCode:", exitCode, "worker:", _workerId, "step:", step);
-              busy = false;
-              _targetPath = "";
-              _thumbPath = "";
-              _bgPath = "";
-              _animPath = "";
-              _ssArgs = [];
-              _step = 0;
-              _needAnim = false;
-              delete root.queuedSet[path];
-              processThumbnailQueue();
-              return;
-            }
-
-            const hash = HashUtils.getThumbnailHash(path);
-
-            // Advance stage
-            _step++;
-
-            if (_step === 1 && _needAnim) {
-              // Thumbnail done, generate background preview
-              busy = true;
-              root.thumbnailJobRunning++;
-              command = [
-                "ffmpeg", "-y",
-                ..._ssArgs,
-                "-i", path,
-                "-vframes", "1",
-                "-vf", "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080",
-                "-q:v", "2",
-                bgPath
-              ];
-              exec({});
-              return;
-            }
-            
-            if (_step === 2 && _needAnim) {
-              // Background done, generate animated preview
-              busy = true;
-              root.thumbnailJobRunning++;
-              command = [
-                "ffmpeg", "-y",
-                ..._ssArgs,
-                "-i", path,
-                "-r", "30",
-                "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320",
-                "-t", "10",
-                animPath
-              ];
-              exec({});
-              return;
-            }
-
-            // All done - store the generated files
-            if (animPath) {
-              root.thumbHashToPath[hash + '_anim.gif'] = "file://" + animPath;
-              console.log("[shell.qml] Generated animated GIF:", animPath, "(worker", _workerId + ")");
-            }
-            if (thumbPath) {
-              root.thumbHashToPath[hash] = "file://" + thumbPath;
-              console.log("[shell.qml] Generated thumbnail:", thumbPath, "(worker", _workerId + ")");
-            }
-            if (bgPath) {
-              root.thumbHashToPath[hash + '_bg.png'] = "file://" + bgPath;
-              console.log("[shell.qml] Generated background preview:", bgPath, "(worker", _workerId + ")");
-            }
-            root.thumbCacheVersion++;
-            root.cachedFileCount++;
-
-            // Clear state
-            busy = false;
-            _targetPath = "";
-            _thumbPath = "";
-            _bgPath = "";
-            _animPath = "";
-            _ssArgs = [];
-            _step = 0;
-            _needAnim = false;
-            delete root.queuedSet[path];
-            processThumbnailQueue();
-          }
-        }
-      }
-
-      // Cache Helpers
-      function queueThumbnail(wallpaperPath, isVideo) {
-        if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/'))
-          return;
-        const isG = FileTypes.isGifFile(wallpaperPath);
-        // For GIF files, check if animated preview exists
-        if (isG) {
-          const cachedAnim = CacheUtils.getCachedAnimatedGif(root.thumbHashToPath, wallpaperPath);
-          if (cachedAnim) {
-            console.log("[queueThumbnail] GIF already has anim cache:", wallpaperPath);
-            return;
-          }
-          // Check if already queued for anim generation
-          if (root.queuedSet[wallpaperPath]) {
-            console.log("[queueThumbnail] GIF already queued:", wallpaperPath);
-            return;
-          }
-        } else if (isVideo) {
-          // For video files, check if animated preview exists
-          const cachedAnim = CacheUtils.getCachedAnimatedGif(root.thumbHashToPath, wallpaperPath);
-          if (cachedAnim) {
-            console.log("[queueThumbnail] Video already has anim cache:", wallpaperPath);
-            return;
-          }
-          // Check if already queued for anim generation
-          if (root.queuedSet[wallpaperPath]) {
-            console.log("[queueThumbnail] Video already queued:", wallpaperPath);
-            return;
-          }
-        } else {
-          // For non-GIF, non-video files, use existing static thumbnail cache logic
-          const cached = CacheUtils.getCachedThumb(root.thumbHashToPath, wallpaperPath);
-          if (cached) {
-            return;
-          }
-          // O(1) duplicate check
-          if (root.queuedSet[wallpaperPath])
-            return;
-        }
-
-        // Queue full: remove oldest
-        if (root.thumbnailQueue.length >= root.thumbnailQueueMax) {
-          const removed = root.thumbnailQueue.shift();
-          delete root.queuedSet[removed.path];
-        }
-
-        root.queuedSet[wallpaperPath] = true;
-        root.thumbnailQueue.push({
-                                   path: wallpaperPath,
-                                   hash: HashUtils.getThumbnailHash(wallpaperPath),
-                                   isVideo: isVideo,
-                                   isGif: isG
-                                 });
-        processThumbnailQueue();
-      }
-
-      function processThumbnailQueue() {
-        if (!root.hasFfmpeg) {
-          console.log("[shell.qml] No ffmpeg, clearing queue");
-          root.thumbnailQueue = [];
-          return;
-        }
-        // Start as many concurrent jobs as allowed
-        while (root.thumbnailJobRunning < root.thumbnailConcurrency && root.thumbnailQueue.length > 0) {
-          const item = root.thumbnailQueue.shift();
-          const thumbPath = CacheUtils.getThumbnailPath(root.cacheDir, item.path);
-          const hash = HashUtils.getThumbnailHash(item.path);
-          const bgPath = root.cacheDir + '/' + hash + '_bg.png';
-          const animPath = root.cacheDir + '/' + hash + '_anim.gif';
-          // Find an idle worker
-          for (let i = 0; i < root.thumbnailWorkers.length; i++) {
-            const worker = root.thumbnailWorkers[i];
-            if (worker && !worker.busy) {
-              const isAnim = item.isGif || item.isVideo;
-              worker.busy = true;
-              worker._targetPath = item.path;
-              worker._thumbPath = thumbPath;
-              worker._bgPath = bgPath;
-              worker._animPath = animPath;
-              worker._ssArgs = item.isVideo ? ["-ss", "00:00:01"] : [];
-              worker._needAnim = isAnim;
-              worker._step = 0;
-              root.thumbnailJobRunning++;
-              worker.runNext();  // Set command and exec
-              console.log("[shell.qml] Queue:", item.path, "(worker", i + ")");
-              break;
-            }
-          }
-        }
+        cacheManager.refreshCache(root.wallpaperList);
       }
 
       // Scroll Helper
@@ -596,7 +261,7 @@ ShellRoot {
           return;
         }
         // Always use cached thumbnail if available (works for both images and videos)
-        const cachedThumb = CacheUtils.getCachedThumb(root.thumbHashToPath, wallpaperPath);
+        const cachedThumb = CacheUtils.getCachedThumb(cacheManager.thumbHashToPath, wallpaperPath);
         if (cachedThumb) {
           const sourcePath = cachedThumb.replace(/^file:\/\//, '');
           console.log("[shell.qml] Extracting color from thumbnail:", sourcePath);
@@ -641,7 +306,7 @@ ShellRoot {
           if (root.bgCurrent < 0 || root.bgCurrent >= root.filteredWallpaperList.length)
             return "";
           const path = root.filteredWallpaperList[root.bgCurrent];
-          const bgPreview = CacheUtils.getCachedBgPreview(root.thumbHashToPath, path);
+          const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
           if (bgPreview)
             return bgPreview;
           // Fallback: use original if no preview cached yet
@@ -668,7 +333,7 @@ ShellRoot {
           if (root.bgPrevious < 0 || root.bgPrevious >= root.filteredWallpaperList.length)
             return "";
           const path = root.filteredWallpaperList[root.bgPrevious];
-          const bgPreview = CacheUtils.getCachedBgPreview(root.thumbHashToPath, path);
+          const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
           if (bgPreview)
             return bgPreview;
           // Fallback: use original if no preview cached yet
@@ -851,7 +516,7 @@ ShellRoot {
                         if (!path || path.length === 0 || path.endsWith('/'))
                           return "";
                         // Use optimized animated preview (30fps)
-                        return CacheUtils.getCachedAnimatedGif(root.thumbHashToPath, path);
+                        return CacheUtils.getCachedAnimatedGif(cacheManager.thumbHashToPath, path);
                       }
                       fillMode: Image.PreserveAspectCrop
                       asynchronous: true
@@ -866,7 +531,7 @@ ShellRoot {
                     Image {
                       id: imageItem
                       anchors.fill: parent
-                      property string currentThumb: CacheUtils.getCachedThumb(root.thumbHashToPath, delegateItem.wallpaperPath)
+                      property string currentThumb: CacheUtils.getCachedThumb(cacheManager.thumbHashToPath, delegateItem.wallpaperPath)
                       // Use cached thumbnail, or original for static preview
                       source: {
                         const path = delegateItem.wallpaperPath;
@@ -893,7 +558,7 @@ ShellRoot {
 
                       Component.onCompleted: {
                         if (delegateItem.wallpaperPath && !delegateItem.isVideo && !currentThumb) {
-                          queueThumbnail(delegateItem.wallpaperPath, false);
+                          cacheManager.queueThumbnail(delegateItem.wallpaperPath, false, false);
                         }
                       }
                     }
@@ -997,7 +662,7 @@ ShellRoot {
             anchors.bottom: parent.bottom
             anchors.right: parent.right
             anchors.bottomMargin: 20
-            text: root.count + " wallpapers | cache: " + root.cachedFileCount
+            text: root.count + " wallpapers | cache: " + cacheManager.cachedFileCount
             color: "#666666"
             font.pixelSize: 11
           }
