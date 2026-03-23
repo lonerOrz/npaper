@@ -21,15 +21,19 @@ ShellRoot {
       property var modelData
       screen: modelData
 
-      implicitWidth: screen.width
-      implicitHeight: screen.height
-      color: "transparent"
-
       // Debug mode: set to true for verbose logging
       readonly property bool debugMode: false
 
+      visible: true
+      color: "transparent"
+
+      // Fullscreen size
+      implicitWidth: screen.width
+      implicitHeight: screen.height
+
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+      WlrLayershell.exclusiveZone: -1  // Cover entire screen, ignore waybar's reserved zone
 
       // Data
       property var wallpaperList: []
