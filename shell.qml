@@ -78,7 +78,7 @@ ShellRoot {
       // Debounce for background changes (prevent flicker during fast scroll)
       Timer {
         id: bgChangeDebounce
-        interval: 20
+        interval: 10
         onTriggered: {
           const c = centerIndex;
           if (c !== bgCurrent && c >= 0 && c < root.filteredWallpaperList.length) {
@@ -87,6 +87,7 @@ ShellRoot {
             bgOpacity = 0;
             bgScale = 1.02;
             bgFadeIn.restart();
+            // Extract dominant color when background changes
             extractDominantColor(root.filteredWallpaperList[c]);
           }
         }
@@ -97,6 +98,25 @@ ShellRoot {
       property int bgPrevious: -1
       property real bgOpacity: 1.0
       property real bgScale: 1.0
+      property string _bgSourceA: ""
+      property string _bgSourceB: ""
+
+      onBgCurrentChanged: {
+        // Update background source immediately
+        if (bgCurrent >= 0 && bgCurrent < root.filteredWallpaperList.length) {
+          const path = root.filteredWallpaperList[bgCurrent];
+          const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
+          _bgSourceA = bgPreview ? ("file://" + bgPreview) : ("file://" + path);
+        }
+      }
+
+      onBgPreviousChanged: {
+        if (bgPrevious >= 0 && bgPrevious < root.filteredWallpaperList.length) {
+          const path = root.filteredWallpaperList[bgPrevious];
+          const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
+          _bgSourceB = bgPreview ? ("file://" + bgPreview) : ("file://" + path);
+        }
+      }
 
       readonly property int centerIndex: Math.round(scrollIndex)
       readonly property int baseIndex: Math.max(0, centerIndex - visibleRange - preloadRange)
@@ -120,7 +140,7 @@ ShellRoot {
         // Restart debounce timer instead of immediate background change
         bgChangeDebounce.restart();
 
-        // Queue thumbnails immediately (no debounce needed)
+        // Queue thumbnails for visible range (deduplicated by cacheManager)
         for (let i = baseIndex; i <= maxIndex && i < root.filteredWallpaperList.length; i++) {
           const path = root.filteredWallpaperList[i];
           cacheManager.queueThumbnail(path, FileTypes.isVideoFile(path), FileTypes.isGifFile(path));
@@ -351,15 +371,7 @@ ShellRoot {
         x: root.bgParallaxX
         z: -2
         visible: root.bgCurrent >= 0 && root.bgCurrent < root.filteredWallpaperList.length && root.bgOpacity > 0.01
-        source: {
-          if (root.bgCurrent < 0 || root.bgCurrent >= root.filteredWallpaperList.length)
-          return "";
-          const path = root.filteredWallpaperList[root.bgCurrent];
-          const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
-          if (bgPreview)
-          return "file://" + bgPreview;
-          return "file://" + path;
-        }
+        source: _bgSourceA
         fillMode: Image.PreserveAspectCrop
         opacity: root.bgOpacity * 0.9
         scale: root.bgScale
@@ -376,15 +388,7 @@ ShellRoot {
         x: root.bgParallaxX
         z: -2
         visible: root.bgPrevious >= 0 && root.bgPrevious < root.filteredWallpaperList.length && (1.0 - root.bgOpacity) > 0.01
-        source: {
-          if (root.bgPrevious < 0 || root.bgPrevious >= root.filteredWallpaperList.length)
-          return "";
-          const path = root.filteredWallpaperList[root.bgPrevious];
-          const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
-          if (bgPreview)
-          return "file://" + bgPreview;
-          return "file://" + path;
-        }
+        source: _bgSourceB
         fillMode: Image.PreserveAspectCrop
         opacity: (1.0 - root.bgOpacity) * 0.9
         scale: root.bgScale
