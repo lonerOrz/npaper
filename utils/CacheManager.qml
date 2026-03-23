@@ -120,7 +120,7 @@ Item {
             }
 
             onExited: function (exitCode, exitStatus) {
-                root.thumbnailJobRunning--;
+                root.thumbnailJobRunning = Math.max(0, root.thumbnailJobRunning - 1);
 
                 if (exitCode !== 0) {
                     console.log("[npaper] Failed:", _targetPath, "exitCode:", exitCode, "worker:", _workerId);
@@ -206,6 +206,10 @@ Item {
     }
 
     function initialize() {
+        if (root.thumbnailWorkers && root.thumbnailWorkers.length > 0) {
+            console.log("[npaper] CacheManager already initialized");
+            return;
+        }
         createCacheDirProcess.exec({});
         initWorkers();
     }
@@ -305,8 +309,6 @@ Item {
             root.thumbnailQueue = [];
             return;
         }
-
-        if (root.thumbnailJobRunning < 0) root.thumbnailJobRunning = 0;
 
         while (root.thumbnailJobRunning < root.thumbnailConcurrency && root.thumbnailQueue.length > 0) {
             const item = root.thumbnailQueue.shift();
