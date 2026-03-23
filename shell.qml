@@ -2,14 +2,14 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import "utils/HashUtils.js" as HashUtils
-import "utils/FileTypes.js" as FileTypes
 import "utils/CacheUtils.js" as CacheUtils
+import "utils/FileTypes.js" as FileTypes
+import "utils/HashUtils.js" as HashUtils
 import "utils"
 
 ShellRoot {
@@ -24,6 +24,9 @@ ShellRoot {
       implicitWidth: screen.width
       implicitHeight: screen.height
       color: "transparent"
+
+      // Debug mode: set to true for verbose logging
+      readonly property bool debugMode: false
 
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
@@ -90,6 +93,7 @@ ShellRoot {
         id: cacheManager
         cacheDir: root.cacheDir
         hasFfmpeg: root.hasFfmpeg
+        debugMode: root.debugMode
 
         onCacheScanned: {
           // First scan cache, then load wallpaper list
@@ -116,6 +120,7 @@ ShellRoot {
         stdout: StdioCollector {
           onStreamFinished: {
             root.hasImagemagick = text.trim() === "OK";
+            if (root.debugMode)
             console.log("[npaper] ImageMagick check:", text.trim(), "hasImagemagick:", root.hasImagemagick);
           }
         }
@@ -128,6 +133,7 @@ ShellRoot {
         stdout: StdioCollector {
           onStreamFinished: {
             root.hasFfmpeg = text.trim() === "OK";
+            if (root.debugMode)
             console.log("[npaper] ffmpeg check:", text.trim(), "hasFfmpeg:", root.hasFfmpeg);
             cacheManager.scanCache();
           }
@@ -149,6 +155,7 @@ ShellRoot {
             root.scrollIndex = 0;
             root.bgCurrent = 0;
             root.bgOpacity = 1.0;
+            if (root.debugMode)
             console.log("[npaper] Wallpaper list loaded:", wallList.length, "wallpapers");
             if (wallList.length > 0) {
               extractDominantColor(wallList[0]);
@@ -157,7 +164,8 @@ ShellRoot {
         }
         onExited: function (exitCode, exitStatus) {
           if (exitCode !== 0) {
-            console.log("[npaper] Wallpaper list failed, exitCode:", exitCode);
+            if (root.debugMode)
+              console.log("[npaper] Wallpaper list failed, exitCode:", exitCode);
           }
         }
       }
@@ -174,7 +182,8 @@ ShellRoot {
           return;
         const clamped = Math.max(0, Math.min(v, root.count - 1));
         if (clamped !== root.scrollIndex) {
-          console.log("[npaper] setScrollIndex:", root.scrollIndex, "->", clamped);
+          if (root.debugMode)
+            console.log("[npaper] setScrollIndex:", root.scrollIndex, "->", clamped);
           root.scrollIndex = clamped;
         }
       }
@@ -191,28 +200,33 @@ ShellRoot {
       }
 
       // Search
+      property var _searchResults: []
+      property var _searchNames: []
+
       Timer {
         id: searchDebounce
         interval: 150
         onTriggered: {
           const text = root.searchText;
+          if (root.debugMode)
           console.log("[npaper] performSearch:", text ? '"' + text + '"' : "(empty)");
           if (!text) {
             root.filteredWallpaperList = root.wallpaperList;
             root.filteredFilenames = root.wallpaperFilenames;
           } else {
             const lower = text.toLowerCase();
-            const list = [];
-            const names = [];
-            for (let i = 0; i < root.wallpaperListLower.length; i++) {
+            root._searchResults = [];
+            root._searchNames = [];
+            for (let i = 0; i < root.wallpaperList.length; i++) {
               if (root.wallpaperListLower[i].includes(lower)) {
-                list.push(root.wallpaperList[i]);
-                names.push(root.wallpaperFilenames[i]);
+                root._searchResults.push(root.wallpaperList[i]);
+                root._searchNames.push(root.wallpaperFilenames[i]);
               }
             }
-            root.filteredWallpaperList = list;
-            root.filteredFilenames = names;
-            console.log("[npaper] Search results:", list.length, "matches");
+            root.filteredWallpaperList = root._searchResults;
+            root.filteredFilenames = root._searchNames;
+            if (root.debugMode)
+            console.log("[npaper] Search results:", root._searchResults.length, "matches");
           }
           root.scrollIndex = 0;
           if (root.filteredWallpaperList.length > 0) {
@@ -226,6 +240,7 @@ ShellRoot {
         id: extractColorTimeout
         interval: 5000
         onTriggered: {
+          if (root.debugMode)
           console.log("[npaper] Color extraction timeout");
           root.dominantColor = "#6a9eff";
         }
@@ -240,9 +255,12 @@ ShellRoot {
             const match = output.match(/#([0-9A-F]{6})/i);
             if (match) {
               root.dominantColor = "#" + match[1].toUpperCase();
+              if (root.debugMode)
               console.log("[npaper] Dominant color extracted:", root.dominantColor);
             } else {
-              console.log("[npaper] Color extraction failed, got:", output);
+              if (root.debugMode) {
+                console.log("[npaper] Color extraction failed, got:", output);
+              }
               root.dominantColor = "#6a9eff";
             }
           }
@@ -250,7 +268,8 @@ ShellRoot {
         onExited: function (exitCode, exitStatus) {
           extractColorTimeout.stop();
           if (exitCode !== 0) {
-            console.log("[npaper] Color extraction process failed, exitCode:", exitCode);
+            if (root.debugMode)
+              console.log("[npaper] Color extraction process failed, exitCode:", exitCode);
             root.dominantColor = "#6a9eff";
           }
         }
@@ -259,7 +278,8 @@ ShellRoot {
       function extractDominantColor(wallpaperPath) {
         if (!root.hasImagemagick || !wallpaperPath || wallpaperPath.length === 0) {
           root.dominantColor = "#6a9eff";
-          console.log("[npaper] Using default color (no imagemagick or invalid path)");
+          if (root.debugMode)
+            console.log("[npaper] Using default color (no imagemagick or invalid path)");
           return;
         }
         const cachedThumb = CacheUtils.getCachedThumb(cacheManager.thumbHashToPath, wallpaperPath);
@@ -269,7 +289,8 @@ ShellRoot {
         }
         if (FileTypes.isVideoFile(wallpaperPath)) {
           root.dominantColor = "#6a9eff";
-          console.log("[npaper] Skipping video (no thumbnail cached)");
+          if (root.debugMode)
+            console.log("[npaper] Skipping video (no thumbnail cached)");
           return;
         }
         const path = wallpaperPath.toLowerCase().endsWith('.gif') ? wallpaperPath + '[0]' : wallpaperPath;
@@ -277,15 +298,10 @@ ShellRoot {
       }
 
       function runColorExtract(sourcePath) {
-        console.log("[npaper] Extracting color from:", sourcePath);
+        if (root.debugMode)
+          console.log("[npaper] Extracting color from:", sourcePath);
         extractColorTimeout.start();
-        extractColorProcess.command = [
-          "magick",
-          sourcePath,
-          "-resize", "1x1!",
-          "-modulate", "100,180",
-          "txt:"
-        ];
+        extractColorProcess.command = ["magick", sourcePath, "-resize", "1x1!", "-modulate", "100,180", "txt:"];
         extractColorProcess.exec({});
       }
 
@@ -298,11 +314,11 @@ ShellRoot {
         visible: root.bgCurrent >= 0 && root.bgCurrent < root.filteredWallpaperList.length && root.bgOpacity > 0.01
         source: {
           if (root.bgCurrent < 0 || root.bgCurrent >= root.filteredWallpaperList.length)
-            return "";
+          return "";
           const path = root.filteredWallpaperList[root.bgCurrent];
           const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
           if (bgPreview)
-            return "file://" + bgPreview;
+          return "file://" + bgPreview;
           return "file://" + path;
         }
         fillMode: Image.PreserveAspectCrop
@@ -322,11 +338,11 @@ ShellRoot {
         visible: root.bgPrevious >= 0 && root.bgPrevious < root.filteredWallpaperList.length && (1.0 - root.bgOpacity) > 0.01
         source: {
           if (root.bgPrevious < 0 || root.bgPrevious >= root.filteredWallpaperList.length)
-            return "";
+          return "";
           const path = root.filteredWallpaperList[root.bgPrevious];
           const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
           if (bgPreview)
-            return "file://" + bgPreview;
+          return "file://" + bgPreview;
           return "file://" + path;
         }
         fillMode: Image.PreserveAspectCrop
@@ -388,14 +404,15 @@ ShellRoot {
               property real rawDistance: realIndex - root.visualScroll
               property real absDist: Math.abs(rawDistance)
               // Opacity only (no visible property to avoid scene graph rebuild)
-              property real itemOpacity: Math.max(0, 1 - absDist * 0.15)
+              property real itemOpacity: absDist > 6.67 ? 0 : Math.max(0, 1 - absDist * 0.15)
 
-              // Finder-style CoverFlow curves
-              property real itemScale: 0.78 + Math.cos(Math.min(absDist, 3) * Math.PI / 6) * 0.22
+              // Finder-style CoverFlow curves - precompute cos value
+              readonly property real cosVal: Math.cos(Math.min(absDist, 3) * 0.523599) // PI/6 ≈ 0.523599
+              property real itemScale: 0.78 + cosVal * 0.22
               // Fixed z to avoid SceneGraph resorting every frame
               property real itemZ: -absDist * 30
               // Non-linear spacing: center wide, edges compressed
-              property real spacingFactor: 0.45 + Math.cos(Math.min(absDist, 3) * Math.PI / 6) * 0.35
+              property real spacingFactor: 0.45 + cosVal * 0.35
               property real xOffset: rawDistance * (width + pathViewContainer.spacing) * spacingFactor
               // Parallax Y offset
               property real yOffset: absDist * 8
@@ -499,13 +516,13 @@ ShellRoot {
                       visible: (delegateItem.isGif || delegateItem.isVideo) && absDist < 0.1
                       source: {
                         if (!delegateItem.isGif && !delegateItem.isVideo)
-                          return "";
+                        return "";
                         const path = delegateItem.wallpaperPath;
                         if (!path || path.length === 0 || path.endsWith('/'))
-                          return "";
+                        return "";
                         const cachedAnim = CacheUtils.getCachedAnimatedGif(cacheManager.thumbHashToPath, path);
                         if (cachedAnim)
-                          return "file://" + cachedAnim;
+                        return "file://" + cachedAnim;
                         return "";
                       }
                       fillMode: Image.PreserveAspectCrop
@@ -524,13 +541,13 @@ ShellRoot {
                       source: {
                         const path = delegateItem.wallpaperPath;
                         if (!path || path.length === 0 || path.endsWith('/'))
-                          return "";
+                        return "";
                         if ((delegateItem.isGif || delegateItem.isVideo) && absDist < 0.1 && animatedGif.status === AnimatedImage.Ready && animatedGif.visible)
-                          return "";
+                        return "";
                         if (currentThumb)
-                          return "file://" + currentThumb;
+                        return "file://" + currentThumb;
                         if (delegateItem.isVideo)
-                          return "";
+                        return "";
                         return "file://" + path;
                       }
                       fillMode: Image.PreserveAspectCrop
@@ -561,6 +578,7 @@ ShellRoot {
                       anchors.fill: parent
                       hoverEnabled: true
                       onClicked: {
+                        if (root.debugMode)
                         console.log("[npaper] Mouse click on index", realIndex, ":", delegateItem.wallpaperPath);
                         setScrollIndex(realIndex);
                         Qt.callLater(() => applyWallpaper(delegateItem.wallpaperPath));
@@ -656,6 +674,7 @@ ShellRoot {
             if (event.key === Qt.Key_Backspace) {
               if (root.searchText) {
                 root.searchText = root.searchText.slice(0, -1);
+                if (root.debugMode)
                 console.log("[npaper] Search:", root.searchText);
                 searchDebounce.restart();
               }
@@ -663,6 +682,7 @@ ShellRoot {
               return;
             }
             if (event.key === Qt.Key_Tab || event.key === Qt.Key_Escape) {
+              if (root.debugMode)
               console.log("[npaper] Exit triggered");
               Qt.quit();
               event.accepted = true;
@@ -672,6 +692,7 @@ ShellRoot {
               if (root.count > 0) {
                 const idx = Math.round(root.scrollIndex);
                 const path = root.filteredWallpaperList[((idx % root.count) + root.count) % root.count];
+                if (root.debugMode)
                 console.log("[npaper] Enter pressed - applying wallpaper at index", idx);
                 applyWallpaper(path);
               }
@@ -685,6 +706,7 @@ ShellRoot {
             }
             if (event.key === Qt.Key_Left) {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
+              if (root.debugMode)
               console.log("[npaper] Left arrow - step", step);
               setScrollIndex(Math.round(root.scrollIndex) - step);
               event.accepted = true;
@@ -692,6 +714,7 @@ ShellRoot {
             }
             if (event.key === Qt.Key_Right) {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
+              if (root.debugMode)
               console.log("[npaper] Right arrow - step", step);
               setScrollIndex(Math.round(root.scrollIndex) + step);
               event.accepted = true;
@@ -699,6 +722,7 @@ ShellRoot {
             }
             if (event.text && event.text.length === 1 && !event.modifiers) {
               root.searchText += event.text;
+              if (root.debugMode)
               console.log("[npaper] Search input:", root.searchText);
               searchDebounce.restart();
               event.accepted = true;
@@ -708,7 +732,8 @@ ShellRoot {
       }
 
       function applyWallpaper(path) {
-        console.log("[npaper] applyWallpaper:", path);
+        if (root.debugMode)
+          console.log("[npaper] applyWallpaper:", path);
         Quickshell.execDetached(["bash", Qt.resolvedUrl("./wallpaper.sh").toString().slice(7), "--apply", path]);
         Qt.quit();
       }
