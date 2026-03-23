@@ -56,8 +56,8 @@ ShellRoot {
 
       Behavior on visualScroll {
         NumberAnimation {
-          duration: 200
-          easing.type: Easing.OutCubic
+          duration: 300
+          easing.type: Easing.OutExpo
         }
       }
 
@@ -70,6 +70,7 @@ ShellRoot {
       property int bgCurrent: -1
       property int bgPrevious: -1
       property real bgOpacity: 1.0
+      property real bgScale: 1.0
 
       onCenterIndexChanged: {
         visualScroll = scrollIndex;
@@ -78,6 +79,7 @@ ShellRoot {
           bgPrevious = bgCurrent;
           bgCurrent = c;
           bgOpacity = 0;
+          bgScale = 1.02;
           bgFadeIn.restart();
           if (c >= 0 && c < root.filteredWallpaperList.length) {
             extractDominantColor(root.filteredWallpaperList[c]);
@@ -192,14 +194,14 @@ ShellRoot {
         }
       }
 
-      // Smooth background crossfade animation
+      // Smooth background crossfade + scale animation
       PropertyAnimation {
         id: bgFadeIn
         target: root
-        properties: "bgOpacity"
-        from: 0
-        to: 1.0
-        duration: 260
+        properties: "bgOpacity, bgScale"
+        from: 0, 1.02
+        to: 1.0, 1.0
+        duration: 400
         easing.type: Easing.InOutCubic
       }
 
@@ -318,21 +320,21 @@ ShellRoot {
         visible: root.bgCurrent >= 0 && root.bgCurrent < root.filteredWallpaperList.length && root.bgOpacity > 0.01
         source: {
           if (root.bgCurrent < 0 || root.bgCurrent >= root.filteredWallpaperList.length)
-          return "";
+            return "";
           const path = root.filteredWallpaperList[root.bgCurrent];
           const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
           if (bgPreview)
-          return "file://" + bgPreview;
+            return "file://" + bgPreview;
           return "file://" + path;
         }
         fillMode: Image.PreserveAspectCrop
-        opacity: root.bgOpacity * 0.85
+        opacity: root.bgOpacity * 0.9
+        scale: root.bgScale
         asynchronous: true
         smooth: true
         mipmap: true
         sourceSize: Qt.size(1920, 1080)
         cache: true
-        scale: 1.0
       }
 
       Image {
@@ -342,28 +344,28 @@ ShellRoot {
         visible: root.bgPrevious >= 0 && root.bgPrevious < root.filteredWallpaperList.length && (1.0 - root.bgOpacity) > 0.01
         source: {
           if (root.bgPrevious < 0 || root.bgPrevious >= root.filteredWallpaperList.length)
-          return "";
+            return "";
           const path = root.filteredWallpaperList[root.bgPrevious];
           const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
           if (bgPreview)
-          return "file://" + bgPreview;
+            return "file://" + bgPreview;
           return "file://" + path;
         }
         fillMode: Image.PreserveAspectCrop
-        opacity: (1.0 - root.bgOpacity) * 0.85
+        opacity: (1.0 - root.bgOpacity) * 0.9
+        scale: root.bgScale
         asynchronous: true
         smooth: true
         mipmap: true
         sourceSize: Qt.size(Math.min(1920, screen.width), Math.min(1080, screen.height))
         cache: true
-        scale: 1.0
       }
 
       // Dark overlay to dim background (slightly darker for better contrast)
       Rectangle {
         anchors.fill: parent
         color: "#000000"  // Solid black background to block system desktop
-        opacity: 0.55     // Balanced for visibility
+        opacity: 0.45     // Reduced to let more background show through
         z: -1             // Behind everything
       }
 
@@ -413,8 +415,8 @@ ShellRoot {
               // Finder-style CoverFlow curves - precompute cos value
               readonly property real cosVal: Math.cos(Math.min(absDist, 3) * 0.523599) // PI/6 ≈ 0.523599
               property real itemScale: 0.78 + cosVal * 0.22
-              // Fixed z to avoid SceneGraph resorting every frame
-              property real itemZ: -absDist * 30
+              // Z-depth: center card on top, edges behind
+              property real itemZ: (100 - absDist * 50)
               // Non-linear spacing: center wide, edges compressed
               property real spacingFactor: 0.45 + cosVal * 0.35
               property real xOffset: rawDistance * (width + pathViewContainer.spacing) * spacingFactor
@@ -430,19 +432,17 @@ ShellRoot {
               z: itemZ
               transformOrigin: Item.Center
 
-              // 3D rotation for coverflow effect (NO Behavior - follows visualScroll directly)
+              // 3D rotation for coverflow effect
               property real rotationY: rawDistance * -40
 
-              transform: Rotation {
-                axis {
-                  x: 0
-                  y: 1
-                  z: 0
+              transform: [
+                Rotation {
+                  axis { x: 0; y: 1; z: 0 }
+                  angle: rotationY
+                  origin.x: width / 2
+                  origin.y: height / 2
                 }
-                angle: rotationY
-                origin.x: width / 2
-                origin.y: height / 2
-              }
+              ]
 
               // Center card shadow (float effect) - simulated with Rectangle
               Rectangle {
