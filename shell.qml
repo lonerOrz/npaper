@@ -27,31 +27,28 @@ ShellRoot {
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
-      // ========== Data ==========
+      // Data
       property var wallpaperList: []
-      property var wallpaperListLower: []  // Cached lowercase for search
-      property var wallpaperFilenames: []  // Cached filenames
+      property var wallpaperListLower: []
+      property var wallpaperFilenames: []
       property var filteredWallpaperList: []
       property var filteredFilenames: []
       property string searchText: ""
 
-      // ========== Thumbnail Cache ==========
+      // Thumbnail Cache
       readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/wallpaper_thumbs"
       property bool hasFfmpeg: false
       property var thumbHashToPath: ({})  // hash -> "file:///cache/path.png"
       property int thumbCacheVersion: 0
       property int cachedFileCount: 0
 
-      property int baseIndex: 0
-      property int loadedCount: 0
-      readonly property int count: filteredWallpaperList.length
+      // Scroll & Virtualization
       property real scrollIndex: 0
-      property real visualScroll: 0  // Smooth scroll visualization
-
+      property real visualScroll: 0
+      readonly property int count: filteredWallpaperList.length
       readonly property int visibleRange: 4
       readonly property int preloadRange: 2
 
-      // Smooth scroll animation for visualScroll
       Behavior on visualScroll {
         NumberAnimation {
           duration: 200
@@ -59,43 +56,43 @@ ShellRoot {
         }
       }
 
-      // Sync visualScroll with scrollIndex (no animation on scrollIndex itself)
-      onScrollIndexChanged: {
+      readonly property int centerIndex: Math.round(scrollIndex)
+      readonly property int baseIndex: Math.max(0, centerIndex - visibleRange - preloadRange)
+      readonly property int maxIndex: Math.min(count - 1, centerIndex + visibleRange + preloadRange)
+      readonly property int loadedCount: count > 0 ? (maxIndex - baseIndex + 1) : 0
+
+      // Background Crossfade
+      property int bgCurrent: -1
+      property int bgPrevious: -1
+      property real bgOpacity: 1.0
+
+      onCenterIndexChanged: {
         visualScroll = scrollIndex;
-        const c = Math.round(root.scrollIndex);
-        if (c !== root.centerIndex) {
-          console.log("[shell.qml] Scroll index changed: center", root.centerIndex, "->", c);
-          root.bgIndexB = root.bgIndexA;
-          root.bgIndexA = c;
-          root.bgOpacity = 0;
+        const c = centerIndex;
+        if (c !== bgCurrent) {
+          bgPrevious = bgCurrent;
+          bgCurrent = c;
+          bgOpacity = 0;
           bgFadeIn.restart();
-          root.centerIndex = c;
-          // Extract dominant color from new wallpaper
           if (c >= 0 && c < root.filteredWallpaperList.length) {
             extractDominantColor(root.filteredWallpaperList[c]);
           }
         }
-        updateVisibleRange();
+        for (let i = baseIndex; i <= maxIndex && i < root.filteredWallpaperList.length; i++) {
+          const path = root.filteredWallpaperList[i];
+          queueThumbnail(path, FileTypes.isVideoFile(path));
+        }
       }
 
-      // Background crossfade ( dual buffer)
-      property int bgIndexA: -1
-      property int bgIndexB: -1
-      property real bgOpacity: 1.0
-
-      // Dominant color extraction for logo
-      property string dominantColor: "#6a9eff"  // Default blue
+      property string dominantColor: "#6a9eff"
       property bool hasImagemagick: false
 
-      // ========== Helper Functions (must be defined before use) ==========
       Component.onCompleted: {
-        console.log("[shell.qml] Component.onCompleted - Initializing wallpaper selector");
-        console.log("[shell.qml] Screen:", screen.width, "x", screen.height);
         createCacheDirProcess.exec({});
         initThumbnailWorkers();
       }
 
-      // ========== Init Processes ==========
+      // Init Processes
       Process {
         id: checkImagemagick
         command: ["sh", "-c", "command -v magick >/dev/null 2>&1 && echo OK"]
@@ -165,20 +162,19 @@ ShellRoot {
             root.filteredWallpaperList = wallList;
             root.filteredFilenames = root.wallpaperFilenames;
             root.scrollIndex = 0;
-            root.centerIndex = 0;
-            root.bgIndexA = 0;
+            root.bgCurrent = 0;
             root.bgOpacity = 1.0;
             console.log("[shell.qml] Wallpaper list loaded:", wallList.length, "wallpapers");
             // Extract color from first wallpaper
             if (wallList.length > 0) {
               extractDominantColor(wallList[0]);
             }
-            updateVisibleRange();
+            // updateVisibleRange is now called automatically via onCenterIndexChanged
           }
         }
       }
 
-      // ========== Cache Refresh ==========
+      // Cache Refresh
       Process {
         id: cleanupCacheProcess
         command: ["rm", "-f"]
@@ -247,13 +243,13 @@ ShellRoot {
         refreshCacheProcess.exec({});
       }
 
-      // ========== Thumbnail Queue ==========
+      // Thumbnail Queue
       property var thumbnailQueue: []
-      property int thumbnailJobRunning: 0  // Count of running jobs
-      readonly property int thumbnailQueueMax: 50  // Queue size limit
-      readonly property int thumbnailConcurrency: 2  // Max parallel ffmpeg jobs (2 for stability)
-      property var thumbnailWorkers: []  // Array of Process objects
-      property var queuedSet: ({})  // Set of paths already queued or processing (O(1) lookup)
+      property int thumbnailJobRunning: 0
+      readonly property int thumbnailQueueMax: 50
+      readonly property int thumbnailConcurrency: 2
+      property var thumbnailWorkers: []
+      property var queuedSet: ({})
 
       function initThumbnailWorkers() {
         var workers = [];
@@ -414,9 +410,7 @@ ShellRoot {
         }
       }
 
-      // ========== Cache Helpers (using Utils modules) ==========
-      // Note: getThumbnailHash, isVideoFile, isGifFile, etc. are in utils/
-
+      // Cache Helpers
       function queueThumbnail(wallpaperPath, isVideo) {
         if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/'))
           return;
@@ -507,31 +501,7 @@ ShellRoot {
         }
       }
 
-      // ========== Virtualization ==========
-      property int _lastCenter: -1
-
-      function updateVisibleRange() {
-        const center = Math.round(root.scrollIndex);
-        // Only update if center changed (reduce queue checks by ~80%)
-        if (center === root._lastCenter)
-          return;
-        root._lastCenter = center;
-
-        const minIdx = Math.max(0, center - root.visibleRange - root.preloadRange);
-        const maxIdx = Math.min(root.count - 1, center + root.visibleRange + root.preloadRange);
-        root.baseIndex = minIdx;
-        root.loadedCount = root.count > 0 ? Math.max(1, maxIdx - minIdx + 1) : 0;
-        console.log("[shell.qml] Visible range updated: center=", center, "baseIndex=", minIdx, "loadedCount=", root.loadedCount);
-        // Queue thumbnails for visible range
-        for (let i = minIdx; i <= maxIdx && i < root.filteredWallpaperList.length; i++) {
-          const path = root.filteredWallpaperList[i];
-          queueThumbnail(path, FileTypes.isVideoFile(path));
-        }
-      }
-
-      // ========== Scroll Helper ==========
-      property int centerIndex: -1
-
+      // Scroll Helper
       function setScrollIndex(v) {
         if (root.count === 0)
           return;
@@ -553,7 +523,7 @@ ShellRoot {
         easing.type: Easing.InOutCubic
       }
 
-      // ========== Search ==========
+      // Search
       property bool _searchPending: false
 
       function scheduleSearch() {
@@ -586,8 +556,7 @@ ShellRoot {
           console.log("[shell.qml] Search results:", list.length, "matches");
         }
         root.scrollIndex = 0;
-        root._lastCenter = -1;
-        updateVisibleRange();
+        // updateVisibleRange is now called automatically via onCenterIndexChanged
         // Extract color from first filtered result
         if (root.filteredWallpaperList.length > 0) {
           extractDominantColor(root.filteredWallpaperList[0]);
@@ -602,7 +571,7 @@ ShellRoot {
         }
       }
 
-      // ========== Dominant Color Extraction ==========
+      // Dominant Color Extraction
       Process {
         id: extractColorProcess
         stdout: StdioCollector {
@@ -660,19 +629,18 @@ ShellRoot {
         extractColorProcess.exec({});
       }
 
-      // ========== UI ==========
-      // Background layer (outside Layout to avoid z-order issues)
-      // Dual buffer for crossfade - uses 1920x1080 preview for all types
+      // UI
+      // Background Crossfade (dual buffer)
       Image {
         id: bgImageA
         anchors.fill: parent
         z: -2
-        visible: root.bgIndexA >= 0 && root.bgIndexA < root.filteredWallpaperList.length && root.bgOpacity > 0.01
+        visible: root.bgCurrent >= 0 && root.bgCurrent < root.filteredWallpaperList.length && root.bgOpacity > 0.01
         // Use 1920x1080 background preview for all types
         source: {
-          if (root.bgIndexA < 0 || root.bgIndexA >= root.filteredWallpaperList.length)
+          if (root.bgCurrent < 0 || root.bgCurrent >= root.filteredWallpaperList.length)
             return "";
-          const path = root.filteredWallpaperList[root.bgIndexA];
+          const path = root.filteredWallpaperList[root.bgCurrent];
           const bgPreview = CacheUtils.getCachedBgPreview(root.thumbHashToPath, path);
           if (bgPreview)
             return bgPreview;
@@ -694,12 +662,12 @@ ShellRoot {
         id: bgImageB
         anchors.fill: parent
         z: -2
-        visible: root.bgIndexB >= 0 && root.bgIndexB < root.filteredWallpaperList.length && (1.0 - root.bgOpacity) > 0.01
+        visible: root.bgPrevious >= 0 && root.bgPrevious < root.filteredWallpaperList.length && (1.0 - root.bgOpacity) > 0.01
         // Use 1920x1080 background preview for all types
         source: {
-          if (root.bgIndexB < 0 || root.bgIndexB >= root.filteredWallpaperList.length)
+          if (root.bgPrevious < 0 || root.bgPrevious >= root.filteredWallpaperList.length)
             return "";
-          const path = root.filteredWallpaperList[root.bgIndexB];
+          const path = root.filteredWallpaperList[root.bgPrevious];
           const bgPreview = CacheUtils.getCachedBgPreview(root.thumbHashToPath, path);
           if (bgPreview)
             return bgPreview;
