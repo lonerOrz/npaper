@@ -49,22 +49,48 @@ ShellRoot {
 
       // Scroll & Virtualization
       property real scrollIndex: 0
-      property real visualScroll: 0
+      property real _cachedScrollIndex: 0  // Cached for delegate binding stability
+      property real scrollVelocity: 0
+      property real lastScrollIndex: 0
+      property int scrollTimestamp: 0
+      property real targetScrollIndex: 0  // Target for smooth scrolling
       readonly property int count: filteredWallpaperList.length
       readonly property int visibleRange: 4
       readonly property int preloadRange: 2
 
-      Behavior on visualScroll {
+      // Smooth scrolling with Behavior
+      Behavior on targetScrollIndex {
         NumberAnimation {
-          duration: 300
-          easing.type: Easing.OutExpo
+          duration: 350
+          easing.type: Easing.OutCubic
         }
       }
 
-      readonly property int centerIndex: Math.round(scrollIndex)
-      readonly property int baseIndex: Math.max(0, centerIndex - visibleRange - preloadRange)
-      readonly property int maxIndex: Math.min(count - 1, centerIndex + visibleRange + preloadRange)
-      readonly property int loadedCount: count > 0 ? (maxIndex - baseIndex + 1) : 0
+      onTargetScrollIndexChanged: {
+        scrollIndex = targetScrollIndex;
+      }
+
+      Component.onCompleted: {
+        targetScrollIndex = 0;
+        cacheManager.initialize();
+      }
+
+      // Debounce for background changes (prevent flicker during fast scroll)
+      Timer {
+        id: bgChangeDebounce
+        interval: 20
+        onTriggered: {
+          const c = centerIndex;
+          if (c !== bgCurrent && c >= 0 && c < root.filteredWallpaperList.length) {
+            bgPrevious = bgCurrent;
+            bgCurrent = c;
+            bgOpacity = 0;
+            bgScale = 1.02;
+            bgFadeIn.restart();
+            extractDominantColor(root.filteredWallpaperList[c]);
+          }
+        }
+      }
 
       // Background Crossfade
       property int bgCurrent: -1
@@ -72,19 +98,29 @@ ShellRoot {
       property real bgOpacity: 1.0
       property real bgScale: 1.0
 
-      onCenterIndexChanged: {
-        visualScroll = scrollIndex;
-        const c = centerIndex;
-        if (c !== bgCurrent) {
-          bgPrevious = bgCurrent;
-          bgCurrent = c;
-          bgOpacity = 0;
-          bgScale = 1.02;
-          bgFadeIn.restart();
-          if (c >= 0 && c < root.filteredWallpaperList.length) {
-            extractDominantColor(root.filteredWallpaperList[c]);
-          }
+      readonly property int centerIndex: Math.round(scrollIndex)
+      readonly property int baseIndex: Math.max(0, centerIndex - visibleRange - preloadRange)
+      readonly property int maxIndex: Math.min(count - 1, centerIndex + visibleRange + preloadRange)
+      readonly property int loadedCount: count > 0 ? Math.max(0, maxIndex - baseIndex + 1) : 0
+
+      // Handle scroll changes (sync cached value + velocity + debounce + thumbnail queue)
+      onScrollIndexChanged: {
+        // Sync cached value for stable delegate bindings
+        _cachedScrollIndex = scrollIndex;
+
+        // Calculate velocity for inertia
+        const now = Date.now();
+        const dt = now - scrollTimestamp;
+        if (dt > 0 && dt < 200) {
+          scrollVelocity = (scrollIndex - lastScrollIndex) / dt * 1000;
         }
+        lastScrollIndex = scrollIndex;
+        scrollTimestamp = now;
+
+        // Restart debounce timer instead of immediate background change
+        bgChangeDebounce.restart();
+
+        // Queue thumbnails immediately (no debounce needed)
         for (let i = baseIndex; i <= maxIndex && i < root.filteredWallpaperList.length; i++) {
           const path = root.filteredWallpaperList[i];
           cacheManager.queueThumbnail(path, FileTypes.isVideoFile(path), FileTypes.isGifFile(path));
@@ -102,7 +138,6 @@ ShellRoot {
         debugMode: root.debugMode
 
         onCacheScanned: {
-          // First scan cache, then load wallpaper list
           listProcess.exec({});
         }
 
@@ -110,13 +145,7 @@ ShellRoot {
           console.log("[npaper] Cache refresh completed");
         }
 
-        onThumbnailGenerated: {
-          // Thumbnail generated, UI will auto-update via thumbHashToPath changes
-        }
-      }
-
-      Component.onCompleted: {
-        cacheManager.initialize();
+        onThumbnailGenerated: {}
       }
 
       // Init Processes
@@ -187,10 +216,10 @@ ShellRoot {
         if (root.count === 0)
           return;
         const clamped = Math.max(0, Math.min(v, root.count - 1));
-        if (clamped !== root.scrollIndex) {
+        if (clamped !== root.targetScrollIndex) {
           if (root.debugMode)
             console.log("[npaper] setScrollIndex:", root.scrollIndex, "->", clamped);
-          root.scrollIndex = clamped;
+          root.targetScrollIndex = clamped;
         }
       }
 
@@ -204,6 +233,9 @@ ShellRoot {
         duration: 400
         easing.type: Easing.InOutCubic
       }
+
+      // Background parallax offset
+      readonly property real bgParallaxX: (scrollIndex - centerIndex) * 40
 
       // Search
       property var _searchResults: []
@@ -316,15 +348,16 @@ ShellRoot {
       Image {
         id: bgImageA
         anchors.fill: parent
+        x: root.bgParallaxX
         z: -2
         visible: root.bgCurrent >= 0 && root.bgCurrent < root.filteredWallpaperList.length && root.bgOpacity > 0.01
         source: {
           if (root.bgCurrent < 0 || root.bgCurrent >= root.filteredWallpaperList.length)
-            return "";
+          return "";
           const path = root.filteredWallpaperList[root.bgCurrent];
           const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
           if (bgPreview)
-            return "file://" + bgPreview;
+          return "file://" + bgPreview;
           return "file://" + path;
         }
         fillMode: Image.PreserveAspectCrop
@@ -340,15 +373,16 @@ ShellRoot {
       Image {
         id: bgImageB
         anchors.fill: parent
+        x: root.bgParallaxX
         z: -2
         visible: root.bgPrevious >= 0 && root.bgPrevious < root.filteredWallpaperList.length && (1.0 - root.bgOpacity) > 0.01
         source: {
           if (root.bgPrevious < 0 || root.bgPrevious >= root.filteredWallpaperList.length)
-            return "";
+          return "";
           const path = root.filteredWallpaperList[root.bgPrevious];
           const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
           if (bgPreview)
-            return "file://" + bgPreview;
+          return "file://" + bgPreview;
           return "file://" + path;
         }
         fillMode: Image.PreserveAspectCrop
@@ -407,52 +441,56 @@ ShellRoot {
               property bool isVideo: FileTypes.isVideoFile(wallpaperPath)
               property bool isGif: FileTypes.isGifFile(wallpaperPath)
 
-              property real rawDistance: realIndex - root.visualScroll
-              property real absDist: Math.abs(rawDistance)
-              // Opacity only (no visible property to avoid scene graph rebuild)
-              property real itemOpacity: absDist > 6.67 ? 0 : Math.max(0, 1 - absDist * 0.15)
+              // Precompute all metrics in one JS block (reduces binding churn)
+              readonly property var metrics: {
+                const raw = realIndex - root._cachedScrollIndex
+                const abs = Math.abs(raw)
+                const cos = Math.cos(Math.min(abs, 3) * 0.523599)  // PI/6 ≈ 0.523599
+                const perspectiveScale = 1.0 / (1.0 + abs * 0.3)
+                return { raw, abs, cos, perspectiveScale }
+              }
 
-              // Finder-style CoverFlow curves - precompute cos value
-              readonly property real cosVal: Math.cos(Math.min(absDist, 3) * 0.523599) // PI/6 ≈ 0.523599
-              property real itemScale: 0.78 + cosVal * 0.22
-              // Z-depth: center card on top, edges behind
-              property real itemZ: (100 - absDist * 50)
-              // Non-linear spacing: center wide, edges compressed
-              property real spacingFactor: 0.45 + cosVal * 0.35
-              property real xOffset: rawDistance * (width + pathViewContainer.spacing) * spacingFactor
-              // Parallax Y offset
-              property real yOffset: absDist * 8
+              // Unified visual properties (computed once, used everywhere)
+              readonly property var visual: {
+                const abs = metrics.abs
+                const isCenter = abs < 0.5
+                return {
+                  scale: metrics.perspectiveScale * (0.85 + metrics.cos * 0.15) + (isCenter ? 0.06 : 0),
+                  opacity: abs > 6 ? 0 : Math.pow(Math.max(0, 1 - abs * 0.12), 2.5),
+                  rotationY: metrics.raw * -40,
+                  z: 100 - abs * 50,
+                  spacingFactor: 0.45 + metrics.cos * 0.35,
+                  yOffset: abs * 8,
+                  shadowOpacity: abs < 0.6 ? 0.25 : 0
+                }
+              }
 
               width: pathViewContainer.itemWidth
               height: pathViewContainer.itemHeight
-              x: pathViewContainer.centerX - width / 2 + xOffset
-              y: pathViewContainer.centerY - height / 2 + yOffset
-              scale: itemScale
-              opacity: itemOpacity
-              z: itemZ
+              x: pathViewContainer.centerX - width / 2 + metrics.raw * (width + pathViewContainer.spacing) * visual.spacingFactor
+              y: pathViewContainer.centerY - height / 2 + visual.yOffset
+              scale: visual.scale
+              opacity: visual.opacity
+              z: visual.z
               transformOrigin: Item.Center
-
-              // 3D rotation for coverflow effect
-              property real rotationY: rawDistance * -40
 
               transform: [
                 Rotation {
                   axis { x: 0; y: 1; z: 0 }
-                  angle: rotationY
+                  angle: visual.rotationY
                   origin.x: width / 2
                   origin.y: height / 2
                 }
               ]
 
-              // Center card shadow (float effect) - simulated with Rectangle
+              // Center card shadow (float effect)
               Rectangle {
                 anchors.fill: parent
                 anchors.margins: 10
                 anchors.topMargin: 12
                 radius: 12
                 color: "#000000"
-                // Use opacity instead of visible to avoid SceneGraph rebuild
-                opacity: absDist < 0.6 ? 0.25 : 0
+                opacity: visual.shadowOpacity
                 z: -1
               }
 
@@ -461,7 +499,7 @@ ShellRoot {
                 id: borderGlow
                 anchors.fill: parent
                 z: 4
-                visible: Math.abs(rawDistance) < 0.5 && useShaderBorder
+                visible: Math.abs(metrics.raw) < 0.5 && useShaderBorder
 
                 property real time: 0
                 // Use ShaderEffect's actual width and height
@@ -487,7 +525,7 @@ ShellRoot {
                 color: "transparent"
                 radius: 12
                 // Center card glow effect - show QML border when shader border is disabled
-                border.color: (Math.abs(rawDistance) < 0.5 && !borderGlow.useShaderBorder) ? "#6a9eff" : "transparent"
+                border.color: (Math.abs(metrics.raw) < 0.5 && !borderGlow.useShaderBorder) ? "#6a9eff" : "transparent"
                 border.width: 2
 
                 Rectangle {
@@ -504,7 +542,7 @@ ShellRoot {
 
                   Item {
                     anchors.fill: parent
-                    anchors.margins: Math.abs(rawDistance) < 0.5 ? Math.ceil(imageFrame.radius * 0.3) : 0
+                    anchors.margins: Math.abs(metrics.raw) < 0.5 ? Math.ceil(imageFrame.radius * 0.3) : 0
 
                     // Fallback background for when no media is loaded
                     Rectangle {
@@ -517,16 +555,17 @@ ShellRoot {
                     AnimatedImage {
                       id: animatedGif
                       anchors.fill: parent
-                      visible: (delegateItem.isGif || delegateItem.isVideo) && absDist < 0.1
+                      // Only exact center card for GIF/video (single active decoder)
+                      visible: (delegateItem.isGif || delegateItem.isVideo) && realIndex === root.centerIndex
                       source: {
                         if (!delegateItem.isGif && !delegateItem.isVideo)
-                        return "";
+                          return "";
                         const path = delegateItem.wallpaperPath;
                         if (!path || path.length === 0 || path.endsWith('/'))
-                        return "";
+                          return "";
                         const cachedAnim = CacheUtils.getCachedAnimatedGif(cacheManager.thumbHashToPath, path);
                         if (cachedAnim)
-                        return "file://" + cachedAnim;
+                          return "file://" + cachedAnim;
                         return "";
                       }
                       fillMode: Image.PreserveAspectCrop
@@ -545,18 +584,20 @@ ShellRoot {
                       source: {
                         const path = delegateItem.wallpaperPath;
                         if (!path || path.length === 0 || path.endsWith('/'))
-                        return "";
-                        if ((delegateItem.isGif || delegateItem.isVideo) && absDist < 0.1 && animatedGif.status === AnimatedImage.Ready && animatedGif.visible)
-                        return "";
+                          return "";
+                        // GIF/video: hide static image when animated version is ready and visible
+                        if ((delegateItem.isGif || delegateItem.isVideo) && realIndex === root.centerIndex && animatedGif.status === AnimatedImage.Ready && animatedGif.visible)
+                          return "";
+                        // Use cached thumbnail if available
                         if (currentThumb)
-                        return "file://" + currentThumb;
+                          return "file://" + currentThumb;
                         if (delegateItem.isVideo)
-                        return "";
+                          return "";
                         return "file://" + path;
                       }
                       fillMode: Image.PreserveAspectCrop
                       asynchronous: true
-                      smooth: absDist < 1.2
+                      smooth: realIndex === root.centerIndex
                       mipmap: true
                       opacity: status === Image.Ready ? 1 : 0
                       sourceSize: Qt.size(450, 320)
@@ -575,7 +616,7 @@ ShellRoot {
                       text: "🎬"
                       font.pixelSize: 48
                       // Hide when animated preview is ready and visible, or when static thumbnail is ready
-                      visible: (delegateItem.isVideo || delegateItem.isGif) && imageItem.status !== Image.Ready && (animatedGif.status !== AnimatedImage.Ready || !animatedGif.visible)
+                      visible: (delegateItem.isVideo || delegateItem.isGif) && realIndex !== root.centerIndex && imageItem.status !== Image.Ready
                     }
 
                     MouseArea {
@@ -599,7 +640,7 @@ ShellRoot {
                     color: "#00000055"
                     radius: 6
                     // Fade filename based on distance
-                    opacity: Math.max(0, 1 - absDist)
+                    opacity: Math.max(0, 1 - metrics.abs)
                     visible: opacity > 0.1
                     Text {
                       anchors.centerIn: parent
@@ -712,7 +753,7 @@ ShellRoot {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
               if (root.debugMode)
               console.log("[npaper] Left arrow - step", step);
-              setScrollIndex(Math.round(root.scrollIndex) - step);
+              targetScrollIndex = Math.max(0, targetScrollIndex - step);
               event.accepted = true;
               return;
             }
@@ -720,7 +761,7 @@ ShellRoot {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
               if (root.debugMode)
               console.log("[npaper] Right arrow - step", step);
-              setScrollIndex(Math.round(root.scrollIndex) + step);
+              targetScrollIndex = Math.min(root.count - 1, targetScrollIndex + step);
               event.accepted = true;
               return;
             }
