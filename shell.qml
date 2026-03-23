@@ -97,7 +97,7 @@ ShellRoot {
         }
 
         onCacheRefreshed: {
-          console.log("[shell.qml] Cache refresh completed");
+          console.log("[npaper] Cache refresh completed");
         }
 
         onThumbnailGenerated: {
@@ -116,7 +116,7 @@ ShellRoot {
         stdout: StdioCollector {
           onStreamFinished: {
             root.hasImagemagick = text.trim() === "OK";
-            console.log("[shell.qml] ImageMagick check:", text.trim(), "hasImagemagick:", root.hasImagemagick);
+            console.log("[npaper] ImageMagick check:", text.trim(), "hasImagemagick:", root.hasImagemagick);
           }
         }
         running: true
@@ -128,7 +128,7 @@ ShellRoot {
         stdout: StdioCollector {
           onStreamFinished: {
             root.hasFfmpeg = text.trim() === "OK";
-            console.log("[shell.qml] ffmpeg check:", text.trim(), "hasFfmpeg:", root.hasFfmpeg);
+            console.log("[npaper] ffmpeg check:", text.trim(), "hasFfmpeg:", root.hasFfmpeg);
             cacheManager.scanCache();
           }
         }
@@ -143,26 +143,28 @@ ShellRoot {
             const wallList = text.trim().split('\n').filter(path => path.length > 0);
             root.wallpaperList = wallList;
             root.wallpaperListLower = wallList.map(p => p.toLowerCase());
-            // Pre-compute filenames to avoid repeated split() in delegate
             root.wallpaperFilenames = wallList.map(p => p.split('/').pop());
             root.filteredWallpaperList = wallList;
             root.filteredFilenames = root.wallpaperFilenames;
             root.scrollIndex = 0;
             root.bgCurrent = 0;
             root.bgOpacity = 1.0;
-            console.log("[shell.qml] Wallpaper list loaded:", wallList.length, "wallpapers");
-            // Extract color from first wallpaper
+            console.log("[npaper] Wallpaper list loaded:", wallList.length, "wallpapers");
             if (wallList.length > 0) {
               extractDominantColor(wallList[0]);
             }
-            // updateVisibleRange is now called automatically via onCenterIndexChanged
+          }
+        }
+        onExited: function (exitCode, exitStatus) {
+          if (exitCode !== 0) {
+            console.log("[npaper] Wallpaper list failed, exitCode:", exitCode);
           }
         }
       }
 
       // Cache Refresh via cacheManager
       function refreshCache() {
-        console.log("[Cache] Refreshing...");
+        console.log("[npaper] Refreshing...");
         cacheManager.refreshCache(root.wallpaperList);
       }
 
@@ -172,7 +174,7 @@ ShellRoot {
           return;
         const clamped = Math.max(0, Math.min(v, root.count - 1));
         if (clamped !== root.scrollIndex) {
-          console.log("[shell.qml] setScrollIndex:", root.scrollIndex, "->", clamped);
+          console.log("[npaper] setScrollIndex:", root.scrollIndex, "->", clamped);
           root.scrollIndex = clamped;
         }
       }
@@ -189,50 +191,33 @@ ShellRoot {
       }
 
       // Search
-      property bool _searchPending: false
-
-      function scheduleSearch() {
-        if (root._searchPending)
-          return;
-        root._searchPending = true;
-        Qt.callLater(performSearch);
-      }
-
-      function performSearch() {
-        root._searchPending = false;
-        const text = root.searchText;
-        console.log("[shell.qml] performSearch:", text ? '"' + text + '"' : "(empty)");
-        if (!text) {
-          root.filteredWallpaperList = root.wallpaperList;
-          root.filteredFilenames = root.wallpaperFilenames;
-        } else {
-          const lower = text.toLowerCase();
-          // Single pass to reduce GC pressure (vs reduce + 2x map)
-          const list = [];
-          const names = [];
-          for (let i = 0; i < root.wallpaperListLower.length; i++) {
-            if (root.wallpaperListLower[i].includes(lower)) {
-              list.push(root.wallpaperList[i]);
-              names.push(root.wallpaperFilenames[i]);
-            }
-          }
-          root.filteredWallpaperList = list;
-          root.filteredFilenames = names;
-          console.log("[shell.qml] Search results:", list.length, "matches");
-        }
-        root.scrollIndex = 0;
-        // updateVisibleRange is now called automatically via onCenterIndexChanged
-        // Extract color from first filtered result
-        if (root.filteredWallpaperList.length > 0) {
-          extractDominantColor(root.filteredWallpaperList[0]);
-        }
-      }
-
       Timer {
         id: searchDebounce
         interval: 150
         onTriggered: {
-          scheduleSearch();
+          const text = root.searchText;
+          console.log("[npaper] performSearch:", text ? '"' + text + '"' : "(empty)");
+          if (!text) {
+            root.filteredWallpaperList = root.wallpaperList;
+            root.filteredFilenames = root.wallpaperFilenames;
+          } else {
+            const lower = text.toLowerCase();
+            const list = [];
+            const names = [];
+            for (let i = 0; i < root.wallpaperListLower.length; i++) {
+              if (root.wallpaperListLower[i].includes(lower)) {
+                list.push(root.wallpaperList[i]);
+                names.push(root.wallpaperFilenames[i]);
+              }
+            }
+            root.filteredWallpaperList = list;
+            root.filteredFilenames = names;
+            console.log("[npaper] Search results:", list.length, "matches");
+          }
+          root.scrollIndex = 0;
+          if (root.filteredWallpaperList.length > 0) {
+            extractDominantColor(root.filteredWallpaperList[0]);
+          }
         }
       }
 
@@ -242,51 +227,49 @@ ShellRoot {
         stdout: StdioCollector {
           onStreamFinished: {
             const output = text.trim();
-            // Parse txt: output: "#F0ECE0  srgb(...)"
             const match = output.match(/#([0-9A-F]{6})/i);
             if (match) {
               root.dominantColor = "#" + match[1].toUpperCase();
-              console.log("[shell.qml] Dominant color extracted:", root.dominantColor);
+              console.log("[npaper] Dominant color extracted:", root.dominantColor);
             } else {
-              console.log("[shell.qml] Color extraction failed, got:", output);
+              console.log("[npaper] Color extraction failed, got:", output);
+              root.dominantColor = "#6a9eff";
             }
+          }
+        }
+        onExited: function (exitCode, exitStatus) {
+          if (exitCode !== 0) {
+            console.log("[npaper] Color extraction process failed, exitCode:", exitCode);
+            root.dominantColor = "#6a9eff";
           }
         }
       }
 
       function extractDominantColor(wallpaperPath) {
         if (!root.hasImagemagick || !wallpaperPath || wallpaperPath.length === 0) {
-          root.dominantColor = "#6a9eff";  // Default blue
-          console.log("[shell.qml] Using default color (no imagemagick or invalid path)");
+          root.dominantColor = "#6a9eff";
+          console.log("[npaper] Using default color (no imagemagick or invalid path)");
           return;
         }
-        // Always use cached thumbnail if available (works for both images and videos)
         const cachedThumb = CacheUtils.getCachedThumb(cacheManager.thumbHashToPath, wallpaperPath);
         if (cachedThumb) {
-          const sourcePath = cachedThumb.replace(/^file:\/\//, '');
-          console.log("[shell.qml] Extracting color from thumbnail:", sourcePath);
-          extractColorProcess.command = [
-            "magick",
-            sourcePath,
-            "-resize", "1x1!",
-            "-modulate", "100,180",
-            "txt:"
-          ];
-          extractColorProcess.exec({});
+          runColorExtract(cachedThumb.replace(/^file:\/\//, ''));
           return;
         }
-        // No thumbnail: skip video files (no cache yet)
         if (FileTypes.isVideoFile(wallpaperPath)) {
           root.dominantColor = "#6a9eff";
-          console.log("[shell.qml] Skipping video (no thumbnail cached)");
+          console.log("[npaper] Skipping video (no thumbnail cached)");
           return;
         }
-        // Use original image for non-video files
-        console.log("[shell.qml] Extracting color from original:", wallpaperPath);
         const path = wallpaperPath.toLowerCase().endsWith('.gif') ? wallpaperPath + '[0]' : wallpaperPath;
+        runColorExtract(path);
+      }
+
+      function runColorExtract(sourcePath) {
+        console.log("[npaper] Extracting color from:", sourcePath);
         extractColorProcess.command = [
           "magick",
-          path,
+          sourcePath,
           "-resize", "1x1!",
           "-modulate", "100,180",
           "txt:"
@@ -576,7 +559,7 @@ ShellRoot {
                       anchors.fill: parent
                       hoverEnabled: true
                       onClicked: {
-                        console.log("[shell.qml] Mouse click on index", realIndex, ":", delegateItem.wallpaperPath);
+                        console.log("[npaper] Mouse click on index", realIndex, ":", delegateItem.wallpaperPath);
                         setScrollIndex(realIndex);
                         Qt.callLater(() => applyWallpaper(delegateItem.wallpaperPath));
                       }
@@ -668,35 +651,31 @@ ShellRoot {
           }
 
           Keys.onPressed: event => {
-            // 1. Backspace (search)
             if (event.key === Qt.Key_Backspace) {
               if (root.searchText) {
                 root.searchText = root.searchText.slice(0, -1);
-                console.log("[shell.qml] Search:", root.searchText);
+                console.log("[npaper] Search:", root.searchText);
                 searchDebounce.restart();
               }
               event.accepted = true;
               return;
             }
-            // 2. Exit keys (must be before text input)
             if (event.key === Qt.Key_Tab || event.key === Qt.Key_Escape) {
-              console.log("[shell.qml] Exit triggered");
+              console.log("[npaper] Exit triggered");
               Qt.quit();
               event.accepted = true;
               return;
             }
-            // 3. Navigation
             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
               if (root.count > 0) {
                 const idx = Math.round(root.scrollIndex);
                 const path = root.filteredWallpaperList[((idx % root.count) + root.count) % root.count];
-                console.log("[shell.qml] Enter pressed - applying wallpaper at index", idx);
+                console.log("[npaper] Enter pressed - applying wallpaper at index", idx);
                 applyWallpaper(path);
               }
               event.accepted = true;
               return;
             }
-            // 4. Refresh cache (F5)
             if (event.key === Qt.Key_F5) {
               refreshCache();
               event.accepted = true;
@@ -704,22 +683,21 @@ ShellRoot {
             }
             if (event.key === Qt.Key_Left) {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
-              console.log("[shell.qml] Left arrow - step", step);
+              console.log("[npaper] Left arrow - step", step);
               setScrollIndex(Math.round(root.scrollIndex) - step);
               event.accepted = true;
               return;
             }
             if (event.key === Qt.Key_Right) {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
-              console.log("[shell.qml] Right arrow - step", step);
+              console.log("[npaper] Right arrow - step", step);
               setScrollIndex(Math.round(root.scrollIndex) + step);
               event.accepted = true;
               return;
             }
-            // 4. Character input (for search) - must be last
             if (event.text && event.text.length === 1 && !event.modifiers) {
               root.searchText += event.text;
-              console.log("[shell.qml] Search input:", root.searchText);
+              console.log("[npaper] Search input:", root.searchText);
               searchDebounce.restart();
               event.accepted = true;
             }
@@ -728,7 +706,7 @@ ShellRoot {
       }
 
       function applyWallpaper(path) {
-        console.log("[shell.qml] applyWallpaper:", path);
+        console.log("[npaper] applyWallpaper:", path);
         Quickshell.execDetached(["bash", Qt.resolvedUrl("./wallpaper.sh").toString().slice(7), "--apply", path]);
         Qt.quit();
       }

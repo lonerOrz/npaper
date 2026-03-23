@@ -53,7 +53,7 @@ Item {
                 });
                 root.cachedFileCount = files.length;
                 root.thumbCacheVersion++;
-                console.log("[CacheManager] Cache scanned:", files.length, "files");
+                console.log("[npaper] Cache scanned:", files.length, "files");
                 root.cacheScanned();
             }
         }
@@ -63,7 +63,7 @@ Item {
         id: cleanupCacheProcess
         command: ["rm", "-f"]
         onExited: function (exitCode, exitStatus) {
-            console.log("[CacheManager] Cleanup:", exitCode === 0 ? "OK" : "Failed");
+            console.log("[npaper] Cleanup:", exitCode === 0 ? "OK" : "Failed");
             root.cacheRefreshed();
         }
     }
@@ -123,7 +123,7 @@ Item {
                 root.thumbnailJobRunning--;
 
                 if (exitCode !== 0) {
-                    console.log("[CacheManager] Failed:", _targetPath, "exitCode:", exitCode, "worker:", _workerId);
+                    console.log("[npaper] Failed:", _targetPath, "exitCode:", exitCode, "worker:", _workerId);
                     busy = false;
                     const failedPath = _targetPath;
                     _targetPath = "";
@@ -177,15 +177,15 @@ Item {
 
                 if (_animPath) {
                     root.thumbHashToPath[hash + '_anim.gif'] = "file://" + _animPath;
-                    console.log("[CacheManager] Generated animated GIF:", _animPath);
+                    console.log("[npaper] Generated animated GIF:", _animPath);
                 }
                 if (_thumbPath) {
                     root.thumbHashToPath[hash] = "file://" + _thumbPath;
-                    console.log("[CacheManager] Generated thumbnail:", _thumbPath);
+                    console.log("[npaper] Generated thumbnail:", _thumbPath);
                 }
                 if (_bgPath) {
                     root.thumbHashToPath[hash + '_bg.png'] = "file://" + _bgPath;
-                    console.log("[CacheManager] Generated background:", _bgPath);
+                    console.log("[npaper] Generated background:", _bgPath);
                 }
                 root.thumbCacheVersion++;
                 root.cachedFileCount++;
@@ -216,7 +216,7 @@ Item {
             workers.push(thumbWorkerComponent.createObject(root, { _workerId: i }));
         }
         root.thumbnailWorkers = workers;
-        console.log("[CacheManager] Initialized", workers.length, "workers");
+        console.log("[npaper] Initialized", workers.length, "workers");
     }
 
     function scanCache() {
@@ -224,7 +224,7 @@ Item {
     }
 
     function refreshCache(wallpaperList) {
-        console.log("[CacheManager] Refreshing cache for", wallpaperList.length, "wallpapers");
+        console.log("[npaper] Refreshing cache for", wallpaperList.length, "wallpapers");
 
         const validHashes = {};
         wallpaperList.forEach(path => {
@@ -244,7 +244,7 @@ Item {
         });
 
         if (invalidFiles.length > 0) {
-            console.log("[CacheManager] Removing", invalidFiles.length, "invalid files");
+            console.log("[npaper] Removing", invalidFiles.length, "invalid files");
             invalidFiles.forEach(f => {
                 const fname = f.split('/').pop();
                 let hash;
@@ -264,7 +264,7 @@ Item {
             cleanupCacheProcess.command = ["rm", "-f", ...invalidFiles];
             cleanupCacheProcess.exec({});
         } else {
-            console.log("[CacheManager] All cached files are valid");
+            console.log("[npaper] All cached files are valid");
             root.cacheRefreshed();
         }
     }
