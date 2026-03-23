@@ -78,7 +78,7 @@ ShellRoot {
       // Debounce for background changes (prevent flicker during fast scroll)
       Timer {
         id: bgChangeDebounce
-        interval: 10
+        interval: 5
         onTriggered: {
           const c = centerIndex;
           if (c !== bgCurrent && c >= 0 && c < root.filteredWallpaperList.length) {
@@ -123,7 +123,7 @@ ShellRoot {
       readonly property int maxIndex: Math.min(count - 1, centerIndex + visibleRange + preloadRange)
       readonly property int loadedCount: count > 0 ? Math.max(0, maxIndex - baseIndex + 1) : 0
 
-      // Handle scroll changes (sync cached value + velocity + debounce + thumbnail queue)
+      // Handle scroll changes
       onScrollIndexChanged: {
         // Sync cached value for stable delegate bindings
         _cachedScrollIndex = scrollIndex;
@@ -140,7 +140,7 @@ ShellRoot {
         // Restart debounce timer instead of immediate background change
         bgChangeDebounce.restart();
 
-        // Queue thumbnails for visible range (deduplicated by cacheManager)
+        // Queue thumbnails for visible range
         for (let i = baseIndex; i <= maxIndex && i < root.filteredWallpaperList.length; i++) {
           const path = root.filteredWallpaperList[i];
           cacheManager.queueThumbnail(path, FileTypes.isVideoFile(path), FileTypes.isGifFile(path));
@@ -175,8 +175,6 @@ ShellRoot {
         stdout: StdioCollector {
           onStreamFinished: {
             root.hasImagemagick = text.trim() === "OK";
-            if (root.debugMode)
-            console.log("[npaper] ImageMagick check:", text.trim(), "hasImagemagick:", root.hasImagemagick);
           }
         }
         running: true
@@ -188,8 +186,6 @@ ShellRoot {
         stdout: StdioCollector {
           onStreamFinished: {
             root.hasFfmpeg = text.trim() === "OK";
-            if (root.debugMode)
-            console.log("[npaper] ffmpeg check:", text.trim(), "hasFfmpeg:", root.hasFfmpeg);
             cacheManager.scanCache();
           }
         }
@@ -210,18 +206,14 @@ ShellRoot {
             root.scrollIndex = 0;
             root.bgCurrent = 0;
             root.bgOpacity = 1.0;
-            if (root.debugMode)
-            console.log("[npaper] Wallpaper list loaded:", wallList.length, "wallpapers");
             if (wallList.length > 0) {
               extractDominantColor(wallList[0]);
             }
           }
         }
         onExited: function (exitCode, exitStatus) {
-          if (exitCode !== 0) {
-            if (root.debugMode)
-              console.log("[npaper] Wallpaper list failed, exitCode:", exitCode);
-          }
+          if (exitCode !== 0 && root.debugMode)
+            console.log("[npaper] Wallpaper list failed, exitCode:", exitCode);
         }
       }
 
