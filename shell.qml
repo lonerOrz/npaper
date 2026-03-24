@@ -100,7 +100,7 @@ ShellRoot {
         properties: "bgSlideProgress"
         from: 0
         to: 1.0
-        duration: 500
+        duration: 250
         easing.type: Easing.OutCubic
       }
 
@@ -273,6 +273,13 @@ ShellRoot {
           if (!text) {
             root.filteredWallpaperList = root.wallpaperList;
             root.filteredFilenames = root.wallpaperFilenames;
+            // Smooth scroll to start after clearing search
+            targetScrollIndex = 0;
+            bgCurrent = 0;
+            bgSlideProgress = 1.0;
+            if (root.filteredWallpaperList.length > 0) {
+              extractDominantColor(root.filteredWallpaperList[0]);
+            }
           } else {
             const lower = text.toLowerCase();
             root._searchResults = [];
@@ -287,10 +294,15 @@ ShellRoot {
             root.filteredFilenames = root._searchNames;
             if (root.debugMode)
             console.log("[npaper] Search results:", root._searchResults.length, "matches");
-          }
-          root.scrollIndex = 0;
-          if (root.filteredWallpaperList.length > 0) {
-            extractDominantColor(root.filteredWallpaperList[0]);
+
+            // Reset scroll and background to first search result (instant, no animation on filter change)
+            scrollIndex = 0;
+            _cachedScrollIndex = 0;
+            bgCurrent = 0;
+            bgSlideProgress = 1.0;
+            if (root.filteredWallpaperList.length > 0) {
+              extractDominantColor(root.filteredWallpaperList[0]);
+            }
           }
         }
       }
@@ -363,6 +375,12 @@ ShellRoot {
         extractColorTimeout.start();
         extractColorProcess.command = ["magick", sourcePath, "-resize", "1x1!", "-modulate", "100,180", "txt:"];
         extractColorProcess.exec({});
+      }
+
+      function randomWallpaper() {
+        if (root.count > 0) {
+          targetScrollIndex = Math.floor(Math.random() * root.count);
+        }
       }
 
       // UI
@@ -712,7 +730,7 @@ ShellRoot {
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottomMargin: 25
-            text: "←/→ Navigate  |  Enter Apply  |  F5 Refresh  |  Shift+←/→ Fast Scroll  |  Type to Search  |  Esc Quit"
+            text: "←/→ Navigate  |  Enter Apply  |  R Random  |  F5 Refresh  |  Shift+←/→ Fast Scroll  |  Type to Search  |  Esc Quit"
             color: "#888888"
             font.pixelSize: 11
             style: Text.Outline
@@ -729,6 +747,7 @@ ShellRoot {
           }
 
           Keys.onPressed: event => {
+            // 1. Backspace (search)
             if (event.key === Qt.Key_Backspace) {
               if (root.searchText) {
                 root.searchText = root.searchText.slice(0, -1);
@@ -739,6 +758,7 @@ ShellRoot {
               event.accepted = true;
               return;
             }
+            // 2. Exit keys
             if (event.key === Qt.Key_Tab || event.key === Qt.Key_Escape) {
               if (root.debugMode)
               console.log("[npaper] Exit triggered");
@@ -746,6 +766,7 @@ ShellRoot {
               event.accepted = true;
               return;
             }
+            // 3. Apply wallpaper
             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
               if (root.count > 0) {
                 const idx = Math.round(root.scrollIndex);
@@ -757,11 +778,19 @@ ShellRoot {
               event.accepted = true;
               return;
             }
+            // 4. Random wallpaper
+            if (event.key === Qt.Key_R && !event.modifiers) {
+              randomWallpaper();
+              event.accepted = true;
+              return;
+            }
+            // 5. Refresh cache
             if (event.key === Qt.Key_F5) {
               refreshCache();
               event.accepted = true;
               return;
             }
+            // 6. Navigation
             if (event.key === Qt.Key_Left) {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
               if (root.debugMode)
@@ -774,10 +803,13 @@ ShellRoot {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
               if (root.debugMode)
               console.log("[npaper] Right arrow - step", step);
-              targetScrollIndex = Math.min(root.count - 1, targetScrollIndex + step);
+              // Use filtered list count for navigation
+              const maxIdx = root.filteredWallpaperList.length > 0 ? root.filteredWallpaperList.length - 1 : 0;
+              targetScrollIndex = Math.min(maxIdx, targetScrollIndex + step);
               event.accepted = true;
               return;
             }
+            // 7. Search input
             if (event.text && event.text.length === 1 && !event.modifiers) {
               root.searchText += event.text;
               if (root.debugMode)
