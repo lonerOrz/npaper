@@ -58,16 +58,57 @@ ShellRoot {
       readonly property int visibleRange: 4
       readonly property int preloadRange: 2
 
+      // Keyboard scroll velocity for smooth repeated navigation
+      property real keyScrollVelocity: 0
+      property int keyScrollDirection: 0  // -1 = left, 0 = none, 1 = right
+      property int keyScrollStep: 1  // Step size for keyboard scroll
+      property bool isKeyScrolling: false  // Track if continuous scroll is active
+
       // Smooth scrolling with Behavior
       Behavior on targetScrollIndex {
         NumberAnimation {
-          duration: 350
+          id: scrollAnim
+          duration: 250
           easing.type: Easing.OutCubic
         }
       }
 
+      // Auto-continue scrolling while key is held
       onTargetScrollIndexChanged: {
         scrollIndex = targetScrollIndex;
+        // Continue scrolling if key is still held and we haven't reached the end
+        if (isKeyScrolling && keyScrollDirection !== 0) {
+          scrollContinueTimer.restart();
+        }
+      }
+
+      Timer {
+        id: scrollContinueTimer
+        interval: 200  // Wait for animation to mostly complete before next scroll
+        repeat: false
+        onTriggered: {
+          if (isKeyScrolling && keyScrollDirection !== 0 && root.count > 0) {
+            const step = (keyScrollStep || 1);
+            const maxIdx = root.filteredWallpaperList.length - 1;
+            const currentIdx = Math.round(targetScrollIndex);
+            let nextIdx = currentIdx;
+            
+            if (keyScrollDirection === -1) {
+              nextIdx = Math.max(0, currentIdx - step);
+            } else {
+              nextIdx = Math.min(maxIdx, currentIdx + step);
+            }
+            
+            // Only continue if we haven't reached the end
+            if (nextIdx !== currentIdx) {
+              targetScrollIndex = nextIdx;
+            } else {
+              isKeyScrolling = false;  // Stop at end
+            }
+          } else {
+            isKeyScrolling = false;  // Key released
+          }
+        }
       }
 
       Component.onCompleted: {
@@ -790,22 +831,32 @@ ShellRoot {
               event.accepted = true;
               return;
             }
-            // 6. Navigation
-            if (event.key === Qt.Key_Left) {
+            // 6. Navigation - smooth continuous scrolling
+            if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
+              const direction = (event.key === Qt.Key_Left) ? -1 : 1;
+              
               if (root.debugMode)
-              console.log("[npaper] Left arrow - step", step);
-              targetScrollIndex = Math.max(0, targetScrollIndex - step);
-              event.accepted = true;
-              return;
-            }
-            if (event.key === Qt.Key_Right) {
-              const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
-              if (root.debugMode)
-              console.log("[npaper] Right arrow - step", step);
-              // Use filtered list count for navigation
-              const maxIdx = root.filteredWallpaperList.length > 0 ? root.filteredWallpaperList.length - 1 : 0;
-              targetScrollIndex = Math.min(maxIdx, targetScrollIndex + step);
+                console.log("[npaper] Navigation - direction:", direction, "step:", step);
+              
+              // Start or update continuous scroll
+              if (keyScrollDirection !== direction) {
+                // New direction: start auto-continue
+                keyScrollDirection = direction;
+                keyScrollStep = step;
+                isKeyScrolling = true;
+                scrollContinueTimer.stop();
+                // Do one immediate step
+                const maxIdx = root.filteredWallpaperList.length - 1;
+                if (direction === -1) {
+                  targetScrollIndex = Math.max(0, targetScrollIndex - step);
+                } else {
+                  targetScrollIndex = Math.min(maxIdx, targetScrollIndex + step);
+                }
+              } else if (step !== keyScrollStep) {
+                // Same direction, different step (Shift pressed/released)
+                keyScrollStep = step;
+              }
               event.accepted = true;
               return;
             }
@@ -815,6 +866,18 @@ ShellRoot {
               if (root.debugMode)
               console.log("[npaper] Search input:", root.searchText);
               searchDebounce.restart();
+              event.accepted = true;
+            }
+          }
+
+          Keys.onReleased: event => {
+            if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+              const direction = (event.key === Qt.Key_Left) ? -1 : 1;
+              if (keyScrollDirection === direction) {
+                keyScrollDirection = 0;
+                isKeyScrolling = false;
+                scrollContinueTimer.stop();
+              }
               event.accepted = true;
             }
           }

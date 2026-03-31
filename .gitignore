@@ -18,6 +18,7 @@ result-*
 
 # AI agents
 AGENTS.md
+.sediment/
 
 # project
 config.sh
