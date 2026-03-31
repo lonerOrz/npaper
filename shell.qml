@@ -63,34 +63,31 @@ ShellRoot {
       property int keyScrollDirection: 0  // -1 = left, 0 = none, 1 = right
       property int keyScrollStep: 1  // Step size for keyboard scroll
       property bool isKeyScrolling: false  // Track if continuous scroll is active
+      property real scrollTarget: 0  // Target scroll position
 
-      // Smooth scrolling with Behavior
-      Behavior on targetScrollIndex {
+      // Smooth scrolling with Behavior on custom property
+      Behavior on scrollTarget {
         NumberAnimation {
           id: scrollAnim
-          duration: 250
+          duration: 280
           easing.type: Easing.OutCubic
         }
       }
 
-      // Auto-continue scrolling while key is held
-      onTargetScrollIndexChanged: {
-        scrollIndex = targetScrollIndex;
-        // Continue scrolling if key is still held and we haven't reached the end
-        if (isKeyScrolling && keyScrollDirection !== 0) {
-          scrollContinueTimer.restart();
-        }
+      onScrollTargetChanged: {
+        scrollIndex = scrollTarget;
       }
 
+      // Auto-continue scrolling while key is held
       Timer {
         id: scrollContinueTimer
-        interval: 200  // Wait for animation to mostly complete before next scroll
+        interval: 230  // Slightly less than animation duration for seamless flow
         repeat: false
         onTriggered: {
           if (isKeyScrolling && keyScrollDirection !== 0 && root.count > 0) {
             const step = (keyScrollStep || 1);
             const maxIdx = root.filteredWallpaperList.length - 1;
-            const currentIdx = Math.round(targetScrollIndex);
+            const currentIdx = Math.round(scrollTarget);
             let nextIdx = currentIdx;
             
             if (keyScrollDirection === -1) {
@@ -101,17 +98,18 @@ ShellRoot {
             
             // Only continue if we haven't reached the end
             if (nextIdx !== currentIdx) {
-              targetScrollIndex = nextIdx;
+              scrollTarget = nextIdx;
             } else {
-              isKeyScrolling = false;  // Stop at end
+              isKeyScrolling = false;
             }
           } else {
-            isKeyScrolling = false;  // Key released
+            isKeyScrolling = false;
           }
         }
       }
 
       Component.onCompleted: {
+        scrollTarget = 0;
         targetScrollIndex = 0;
         cacheManager.initialize();
       }
@@ -254,6 +252,7 @@ ShellRoot {
             root.wallpaperFilenames = wallList.map(p => p.split('/').pop());
             root.filteredWallpaperList = wallList;
             root.filteredFilenames = root.wallpaperFilenames;
+            root.scrollTarget = 0;
             root.scrollIndex = 0;
             root.bgCurrent = 0;
             root.bgSlideProgress = 1.0;  // Set to 1 for initial image (no animation)
@@ -282,6 +281,7 @@ ShellRoot {
         if (clamped !== root.targetScrollIndex) {
           if (root.debugMode)
             console.log("[npaper] setScrollIndex:", root.scrollIndex, "->", clamped);
+          root.scrollTarget = clamped;
           root.targetScrollIndex = clamped;
         }
       }
@@ -315,6 +315,7 @@ ShellRoot {
             root.filteredWallpaperList = root.wallpaperList;
             root.filteredFilenames = root.wallpaperFilenames;
             // Smooth scroll to start after clearing search
+            scrollTarget = 0;
             targetScrollIndex = 0;
             bgCurrent = 0;
             bgSlideProgress = 1.0;
@@ -337,6 +338,7 @@ ShellRoot {
             console.log("[npaper] Search results:", root._searchResults.length, "matches");
 
             // Reset scroll and background to first search result (instant, no animation on filter change)
+            scrollTarget = 0;
             scrollIndex = 0;
             _cachedScrollIndex = 0;
             bgCurrent = 0;
@@ -420,7 +422,9 @@ ShellRoot {
 
       function randomWallpaper() {
         if (root.count > 0) {
-          targetScrollIndex = Math.floor(Math.random() * root.count);
+          const randomIdx = Math.floor(Math.random() * root.count);
+          scrollTarget = randomIdx;
+          targetScrollIndex = randomIdx;
         }
       }
 
@@ -849,9 +853,9 @@ ShellRoot {
                 // Do one immediate step
                 const maxIdx = root.filteredWallpaperList.length - 1;
                 if (direction === -1) {
-                  targetScrollIndex = Math.max(0, targetScrollIndex - step);
+                  scrollTarget = Math.max(0, scrollTarget - step);
                 } else {
-                  targetScrollIndex = Math.min(maxIdx, targetScrollIndex + step);
+                  scrollTarget = Math.min(maxIdx, scrollTarget + step);
                 }
               } else if (step !== keyScrollStep) {
                 // Same direction, different step (Shift pressed/released)
