@@ -201,6 +201,15 @@ cmd_apply() {
     fi
 
     apply_wallpaper "$file"
+
+    # Execute config.sh with the wallpaper path if it exists in the same directory
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local config_script="$script_dir/config.sh"
+
+    if [[ -x "$config_script" ]]; then
+        "$config_script" "$file"
+    fi
 }
 
 show_help() {
