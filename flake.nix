@@ -40,7 +40,7 @@
           };
 
           runtimeDeps = with pkgs; [
-            swww
+            awww
             wlr-randr
             ffmpeg
             imagemagick

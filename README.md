@@ -9,7 +9,7 @@ A Quickshell-based wallpaper selector for Wayland compositors.
 ## Features
 
 - 🖼️ Image and video wallpaper support
-- 🎨 Smooth transition effects (via swww)
+- 🎨 Smooth transition effects (via awww)
 - 🔍 Search and filter wallpapers
 - 🎯 CoverFlow-style UI
 - ⚡ Concurrent thumbnail generation
@@ -18,7 +18,7 @@ A Quickshell-based wallpaper selector for Wayland compositors.
 
 ### Required
 
-- **swww** - Wallpaper daemon with transitions
+- **awww** - Wallpaper daemon with transitions
 - **wlr-randr** - Monitor detection
 - **Quickshell** - QML-based Wayland shell
 - **ffmpeg** - Thumbnail generation
@@ -32,7 +32,7 @@ A Quickshell-based wallpaper selector for Wayland compositors.
 ### Installation (Arch Linux)
 
 ```bash
-sudo pacman -S swww wlr-randr quickshell ffmpeg imagemagick mpvpaper
+sudo pacman -S awww wlr-randr quickshell ffmpeg imagemagick mpvpaper
 ```
 
 ### Installation (NixOS)
