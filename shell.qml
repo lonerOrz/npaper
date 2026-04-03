@@ -43,6 +43,11 @@ ShellRoot {
       property var filteredFilenames: []
       property string searchText: ""
 
+      // Folder data
+      property var folderList: []
+      property var folderWallpaperMap: ({})  // { "folder": [path1, path2, ...], ... }
+      property string activeFolder: ""
+
       // Cache Manager
       readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/wallpaper_thumbs"
       property bool hasFfmpeg: false
@@ -89,13 +94,13 @@ ShellRoot {
             const maxIdx = root.filteredWallpaperList.length - 1;
             const currentIdx = Math.round(scrollTarget);
             let nextIdx = currentIdx;
-            
+
             if (keyScrollDirection === -1) {
               nextIdx = Math.max(0, currentIdx - step);
             } else {
               nextIdx = Math.min(maxIdx, currentIdx + step);
             }
-            
+
             // Only continue if we haven't reached the end
             if (nextIdx !== currentIdx) {
               scrollTarget = nextIdx;
@@ -190,10 +195,14 @@ ShellRoot {
         bgChangeDebounce.restart();
 
         // Queue thumbnails for visible range
+        let queueCount = 0;
         for (let i = baseIndex; i <= maxIndex && i < root.filteredWallpaperList.length; i++) {
           const path = root.filteredWallpaperList[i];
           cacheManager.queueThumbnail(path, FileTypes.isVideoFile(path), FileTypes.isGifFile(path));
+          queueCount++;
         }
+        if (root.debugMode)
+        console.log("[npaper] scrollTick:", "idx=" + Math.round(scrollIndex), "queue=" + queueCount);
       }
 
       property string dominantColor: "#6a9eff"
@@ -242,23 +251,67 @@ ShellRoot {
       }
 
       Process {
-        id: listProcess
-        command: [Qt.resolvedUrl("./wallpaper.sh"), "--list"]
+        id: folderListProcess
+        command: [Qt.resolvedUrl("./wallpaper.sh"), "--list-folders"]
         stdout: StdioCollector {
           onStreamFinished: {
-            const wallList = text.trim().split('\n').filter(path => path.length > 0);
-            root.wallpaperList = wallList;
-            root.wallpaperListLower = wallList.map(p => p.toLowerCase());
-            root.wallpaperFilenames = wallList.map(p => p.split('/').pop());
-            root.filteredWallpaperList = wallList;
-            root.filteredFilenames = root.wallpaperFilenames;
-            root.scrollTarget = 0;
-            root.scrollIndex = 0;
-            root.bgCurrent = 0;
-            root.bgSlideProgress = 1.0;  // Set to 1 for initial image (no animation)
-            if (wallList.length > 0) {
-              extractDominantColor(wallList[0]);
+            const folders = text.trim().split('\n').filter(f => f.length > 0);
+            root.folderList = folders;
+            if (folders.length > 0) {
+              root.activeFolder = folders[0];
             }
+            if (root.debugMode)
+            console.log("[npaper] Folders:", folders);
+            // Create all cache subdirectories upfront
+            if (folders.length > 0) {
+              const cacheDirs = folders.map(f => root.cacheDir + "/" + f);
+              ensureCacheDirsProcess.command = ["mkdir", "-p", ...cacheDirs];
+              ensureCacheDirsProcess.exec({});
+            } else {
+              listProcess.exec({});
+            }
+          }
+        }
+        onExited: function (exitCode, exitStatus) {
+          if (exitCode !== 0) {
+            if (root.debugMode)
+              console.log("[npaper] folderListProcess failed, falling back");
+            root.folderList = ["__root__"];
+            root.activeFolder = "__root__";
+            listProcess.exec({});
+          }
+        }
+        running: true
+      }
+
+      Process {
+        id: ensureCacheDirsProcess
+        onExited: function () {
+          listProcess.exec({});
+        }
+      }
+
+      Process {
+        id: listProcess
+        command: [Qt.resolvedUrl("./wallpaper.sh"), "--list-with-folders"]
+        stdout: StdioCollector {
+          onStreamFinished: {
+            const lines = text.trim().split('\n').filter(line => line.length > 0);
+            const folderMap = {};
+            lines.forEach(line => {
+                            const sepIdx = line.indexOf('|');
+                            if (sepIdx > 0) {
+                              const folder = line.substring(0, sepIdx);
+                              const path = line.substring(sepIdx + 1);
+                              if (!folderMap[folder])
+                              folderMap[folder] = [];
+                              folderMap[folder].push(path);
+                            }
+                          });
+            root.folderWallpaperMap = folderMap;
+
+            // Build filtered list from active folder
+            applyFolderSelection();
           }
         }
         onExited: function (exitCode, exitStatus) {
@@ -267,10 +320,44 @@ ShellRoot {
         }
       }
 
+      function applyFolderSelection() {
+        const folder = root.activeFolder;
+        const paths = root.folderWallpaperMap[folder] || [];
+        root.wallpaperList = paths;
+        root.wallpaperListLower = paths.map(p => p.toLowerCase());
+        root.wallpaperFilenames = paths.map(p => p.split('/').pop());
+        root.filteredWallpaperList = paths;
+        root.filteredFilenames = root.wallpaperFilenames;
+        root.searchText = "";
+        root.scrollTarget = 0;
+        root.scrollIndex = 0;
+        root._cachedScrollIndex = 0;
+        root.bgPrevious = -1;
+        root.bgCurrent = -1;
+        root.bgSlideProgress = 1.0;
+        if (paths.length > 0) {
+          root.bgCurrent = 0;
+          extractDominantColor(paths[0]);
+        }
+        if (root.debugMode)
+          console.log("[npaper] Switched to folder:", folder, "count:", paths.length);
+      }
+
+      function switchFolder(folder) {
+        if (root.debugMode)
+          console.log("[npaper] Switching to folder:", folder);
+        root.activeFolder = folder;
+        applyFolderSelection();
+      }
+
       // Cache Refresh via cacheManager
       function refreshCache() {
         console.log("[npaper] Refreshing...");
-        cacheManager.refreshCache(root.wallpaperList);
+        const folder = root.activeFolder;
+        const paths = root.folderWallpaperMap[folder] || [];
+        if (paths.length === 0)
+          return;
+        cacheManager.refreshAndQueue(paths, folder);
       }
 
       // Scroll Helper
@@ -312,16 +399,7 @@ ShellRoot {
           if (root.debugMode)
           console.log("[npaper] performSearch:", text ? '"' + text + '"' : "(empty)");
           if (!text) {
-            root.filteredWallpaperList = root.wallpaperList;
-            root.filteredFilenames = root.wallpaperFilenames;
-            // Smooth scroll to start after clearing search
-            scrollTarget = 0;
-            targetScrollIndex = 0;
-            bgCurrent = 0;
-            bgSlideProgress = 1.0;
-            if (root.filteredWallpaperList.length > 0) {
-              extractDominantColor(root.filteredWallpaperList[0]);
-            }
+            applyFolderSelection();
           } else {
             const lower = text.toLowerCase();
             root._searchResults = [];
@@ -494,6 +572,51 @@ ShellRoot {
             color: "#0d0d0dcc"
           }
 
+          // Folder Tab Bar
+          Row {
+            id: folderTabBar
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.topMargin: 16
+            spacing: 4
+            z: 20
+
+            Repeater {
+              model: root.folderList
+
+              delegate: Item {
+                required property string modelData
+                property bool active: root.activeFolder === modelData
+                property real tabWidth: folderTabText.implicitWidth + (active ? 24 : 12)
+
+                width: tabWidth
+                height: 32
+
+                Rectangle {
+                  anchors.fill: parent
+                  radius: 6
+                  color: active ? "#ffffff" : "transparent"
+                  visible: active
+                }
+
+                Text {
+                  id: folderTabText
+                  anchors.centerIn: parent
+                  text: modelData
+                  color: active ? "#000000" : "#aaaaaa"
+                  font.pixelSize: 13
+                  font.weight: active ? Font.DemiBold : Font.Normal
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: switchFolder(modelData)
+                }
+              }
+            }
+          }
+
           Repeater {
             id: imageRepeater
             model: root.loadedCount
@@ -656,7 +779,11 @@ ShellRoot {
                     Image {
                       id: imageItem
                       anchors.fill: parent
-                      property string currentThumb: CacheUtils.getCachedThumb(cacheManager.thumbHashToPath, delegateItem.wallpaperPath)
+                      property var _cacheVer: cacheManager.thumbCacheVersion
+                      property string currentThumb: {
+                        const _v = _cacheVer;  // depend on version
+                        return CacheUtils.getCachedThumb(cacheManager.thumbHashToPath, delegateItem.wallpaperPath);
+                      }
                       source: {
                         const path = delegateItem.wallpaperPath;
                         if (!path || path.length === 0 || path.endsWith('/'))
@@ -680,8 +807,8 @@ ShellRoot {
                       scale: 1.0
 
                       Component.onCompleted: {
-                        if (delegateItem.wallpaperPath && !delegateItem.isVideo && !currentThumb) {
-                          cacheManager.queueThumbnail(delegateItem.wallpaperPath, false, false);
+                        if (delegateItem.wallpaperPath && !currentThumb) {
+                          cacheManager.queueThumbnail(delegateItem.wallpaperPath, delegateItem.isVideo, delegateItem.isGif);
                         }
                       }
                     }
@@ -775,7 +902,7 @@ ShellRoot {
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottomMargin: 25
-            text: "←/→ Navigate  |  Enter Apply  |  R Random  |  F5 Refresh  |  Shift+←/→ Fast Scroll  |  Type to Search  |  Esc Quit"
+            text: "←/→ Navigate  |  Tab/[ ] Switch Folder  |  Enter Apply  |  R Random  |  F5 Refresh  |  Shift+←/→ Fast Scroll  |  Type to Search  |  Esc Quit"
             color: "#888888"
             font.pixelSize: 11
             style: Text.Outline
@@ -786,7 +913,7 @@ ShellRoot {
             anchors.bottom: parent.bottom
             anchors.right: parent.right
             anchors.bottomMargin: 20
-            text: root.count + " wallpapers | cache: " + cacheManager.cachedFileCount
+            text: (root.activeFolder ? root.activeFolder + " · " : "") + root.count + " wallpapers | cache: " + cacheManager.cachedFileCount + " | queue: " + (cacheManager.queueLength + cacheManager.thumbnailJobRunning)
             color: "#666666"
             font.pixelSize: 11
           }
@@ -803,11 +930,51 @@ ShellRoot {
               event.accepted = true;
               return;
             }
-            // 2. Exit keys
-            if (event.key === Qt.Key_Tab || event.key === Qt.Key_Escape) {
+            // 2. Exit (Esc only)
+            if (event.key === Qt.Key_Escape) {
               if (root.debugMode)
               console.log("[npaper] Exit triggered");
               Qt.quit();
+              event.accepted = true;
+              return;
+            }
+            // 2b. Switch folder with Tab / Shift+Tab (Backtab)
+            if (event.key === Qt.Key_Tab) {
+              const idx = root.folderList.indexOf(root.activeFolder);
+              if (root.folderList.length > 0) {
+                const next = idx < root.folderList.length - 1 ? idx + 1 : 0;
+                switchFolder(root.folderList[next]);
+              }
+              event.accepted = true;
+              return;
+            }
+            if (event.key === Qt.Key_Backtab) {
+              const idx = root.folderList.indexOf(root.activeFolder);
+              if (root.folderList.length > 0) {
+                const next = idx > 0 ? idx - 1 : root.folderList.length - 1;
+                switchFolder(root.folderList[next]);
+              }
+              event.accepted = true;
+              return;
+            }
+            // 2c. Switch folder with [ ]
+            if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft) {
+              const idx = root.folderList.indexOf(root.activeFolder);
+              if (idx > 0) {
+                switchFolder(root.folderList[idx - 1]);
+              } else if (root.folderList.length > 0) {
+                switchFolder(root.folderList[root.folderList.length - 1]);
+              }
+              event.accepted = true;
+              return;
+            }
+            if (event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
+              const idx = root.folderList.indexOf(root.activeFolder);
+              if (idx >= 0 && idx < root.folderList.length - 1) {
+                switchFolder(root.folderList[idx + 1]);
+              } else if (root.folderList.length > 0) {
+                switchFolder(root.folderList[0]);
+              }
               event.accepted = true;
               return;
             }
@@ -839,10 +1006,10 @@ ShellRoot {
             if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
               const direction = (event.key === Qt.Key_Left) ? -1 : 1;
-              
+
               if (root.debugMode)
-                console.log("[npaper] Navigation - direction:", direction, "step:", step);
-              
+              console.log("[npaper] Navigation - direction:", direction, "step:", step);
+
               // Start or update continuous scroll
               if (keyScrollDirection !== direction) {
                 // New direction: start auto-continue

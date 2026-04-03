@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "CacheUtils.js" as CacheHelpers
+import "FileTypes.js" as FileTypes
 import "HashUtils.js" as HashUtils
 
 Item {
@@ -16,6 +17,7 @@ Item {
   property var thumbHashToPath: ({})
   property int cachedFileCount: 0
   property int thumbCacheVersion: 0
+  property int queueLength: 0
 
   signal cacheScanned
   signal cacheRefreshed
@@ -34,23 +36,15 @@ Item {
     command: ["mkdir", "-p", root.cacheDir]
   }
 
+  // Recursively scan subdirectories for cached files
   Process {
     id: scanCacheProcess
-    command: ["sh", "-c", `find "${root.cacheDir}" -maxdepth 1 \\( -name '*.png' -o -name '*_anim.gif' \\) -printf '%f\\n' 2>/dev/null`]
+    command: ["sh", "-c", `find "${root.cacheDir}" -mindepth 2 -maxdepth 2 \\( -name '*.png' -o -name '*_anim.gif' \\) -printf '%P\\n' 2>/dev/null`]
     stdout: StdioCollector {
       onStreamFinished: {
-        const files = text.trim().split('\n').filter(f => f.length > 0 && (f.endsWith('.png') || f.endsWith('_anim.gif')));
+        const files = text.trim().split('\n').filter(f => f.length > 0 && f.indexOf('/') > 0);
         files.forEach(f => {
-                        if (f.endsWith('_anim.gif')) {
-                          const hash = f.replace('_anim.gif', '');
-                          root.thumbHashToPath[hash + '_anim.gif'] = root.cacheDir + '/' + f;
-                        } else if (f.endsWith('_bg.png')) {
-                          const hash = f.replace('_bg.png', '');
-                          root.thumbHashToPath[hash + '_bg.png'] = root.cacheDir + '/' + f;
-                        } else {
-                          const hash = f.replace('.png', '');
-                          root.thumbHashToPath[hash] = root.cacheDir + '/' + f;
-                        }
+                        root.thumbHashToPath[f] = root.cacheDir + '/' + f;
                       });
         root.cachedFileCount = files.length;
         root.thumbCacheVersion++;
@@ -79,12 +73,14 @@ Item {
       property string _thumbPath: ""
       property string _bgPath: ""
       property string _animPath: ""
+      property string _folder: ""
       property var _ssArgs: []
       property int _step: 0
       property bool _needAnim: false
       property bool busy: false
 
       function runNext() {
+        const hash = HashUtils.getThumbnailHash(_targetPath);
         if (_step === 0) {
           if (_needAnim) {
             command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-vframes", "1", "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320", "-q:v", "5", _thumbPath];
@@ -112,6 +108,7 @@ Item {
           _thumbPath = "";
           _bgPath = "";
           _animPath = "";
+          _folder = "";
           _ssArgs = [];
           _step = 0;
           _needAnim = false;
@@ -141,20 +138,21 @@ Item {
 
         root.thumbnailGenerated(_targetPath, _thumbPath, _bgPath, _animPath);
 
-        if (_animPath) {
-          root.thumbHashToPath[hash + '_anim.gif'] = _animPath;
-          if (root.debugMode)
-            console.log("[npaper] Generated animated GIF:", _animPath);
-        }
+        // Store with folder-prefixed keys matching scan format
         if (_thumbPath) {
-          root.thumbHashToPath[hash] = _thumbPath;
+          root.thumbHashToPath[_folder + '/' + hash + '.png'] = _thumbPath;
           if (root.debugMode)
             console.log("[npaper] Generated thumbnail:", _thumbPath);
         }
         if (_bgPath) {
-          root.thumbHashToPath[hash + '_bg.png'] = _bgPath;
+          root.thumbHashToPath[_folder + '/' + hash + '_bg.png'] = _bgPath;
           if (root.debugMode)
             console.log("[npaper] Generated background:", _bgPath);
+        }
+        if (_animPath) {
+          root.thumbHashToPath[_folder + '/' + hash + '_anim.gif'] = _animPath;
+          if (root.debugMode)
+            console.log("[npaper] Generated animated GIF:", _animPath);
         }
         root.thumbCacheVersion++;
         root.cachedFileCount++;
@@ -165,6 +163,7 @@ Item {
         _thumbPath = "";
         _bgPath = "";
         _animPath = "";
+        _folder = "";
         _ssArgs = [];
         _step = 0;
         _needAnim = false;
@@ -203,23 +202,20 @@ Item {
     if (root.debugMode)
       console.log("[npaper] Refreshing cache for", wallpaperList.length, "wallpapers");
 
-    const validHashes = {};
+    // Build valid key set matching scan format (with suffix)
+    const validKeys = {};
     wallpaperList.forEach(path => {
-                            validHashes[HashUtils.getThumbnailHash(path)] = true;
+                            const folder = CacheHelpers.getFolderName(path);
+                            const hash = HashUtils.getThumbnailHash(path);
+                            validKeys[folder + '/' + hash + '.png'] = true;
+                            validKeys[folder + '/' + hash + '_bg.png'] = true;
+                            validKeys[folder + '/' + hash + '_anim.gif'] = true;
                           });
 
     const invalidFiles = [];
     Object.keys(root.thumbHashToPath).forEach(key => {
-                                                let hash;
-                                                if (key.endsWith('_anim.gif'))
-                                                hash = key.replace('_anim.gif', '');
-                                                else if (key.endsWith('_bg.png'))
-                                                hash = key.replace('_bg.png', '');
-                                                else
-                                                hash = key.replace('.png', '');
-
-                                                if (!validHashes[hash]) {
-                                                  invalidFiles.push(root.thumbHashToPath[key].replace(/^file:\/\//, ''));
+                                                if (!validKeys[key]) {
+                                                  invalidFiles.push(root.thumbHashToPath[key]);
                                                 }
                                               });
 
@@ -227,18 +223,10 @@ Item {
       if (root.debugMode)
         console.log("[npaper] Removing", invalidFiles.length, "invalid files");
       invalidFiles.forEach(f => {
-                             const fname = f.split('/').pop();
-                             let hash;
-                             if (fname.endsWith('_anim.gif')) {
-                               hash = fname.replace('_anim.gif', '');
-                               delete root.thumbHashToPath[hash + '_anim.gif'];
-                             } else if (fname.endsWith('_bg.png')) {
-                               hash = fname.replace('_bg.png', '');
-                               delete root.thumbHashToPath[hash + '_bg.png'];
-                             } else {
-                               hash = fname.replace('.png', '');
-                               delete root.thumbHashToPath[hash];
-                             }
+                             // Remove from map by relative key
+                             const prefix = root.cacheDir + '/';
+                             const relKey = f.startsWith(prefix) ? f.slice(prefix.length) : f;
+                             delete root.thumbHashToPath[relKey];
                            });
       root.cachedFileCount = Math.max(0, root.cachedFileCount - invalidFiles.length);
       root.thumbCacheVersion++;
@@ -249,6 +237,55 @@ Item {
         console.log("[npaper] All cached files are valid");
       root.cacheRefreshed();
     }
+  }
+
+  // Refresh cache for a specific folder + queue missing thumbnails
+  function refreshAndQueue(wallpaperList, folder) {
+    if (root.debugMode)
+      console.log("[npaper] Refreshing folder:", folder, "count:", wallpaperList.length);
+
+    // Build valid key set
+    const validKeys = {};
+    wallpaperList.forEach(path => {
+                            const hash = HashUtils.getThumbnailHash(path);
+                            validKeys[folder + '/' + hash + '.png'] = true;
+                            validKeys[folder + '/' + hash + '_bg.png'] = true;
+                            validKeys[folder + '/' + hash + '_anim.gif'] = true;
+                          });
+
+    // Delete invalid cache files in this folder only
+    const invalidFiles = [];
+    Object.keys(root.thumbHashToPath).forEach(key => {
+                                                if (key.startsWith(folder + '/')) {
+                                                  if (!validKeys[key]) {
+                                                    invalidFiles.push(root.thumbHashToPath[key]);
+                                                    delete root.thumbHashToPath[key];
+                                                  }
+                                                }
+                                              });
+
+    if (invalidFiles.length > 0) {
+      root.cachedFileCount = Math.max(0, root.cachedFileCount - invalidFiles.length);
+      root.thumbCacheVersion++;
+      cleanupCacheProcess.command = ["rm", "-f", ...invalidFiles];
+      cleanupCacheProcess.exec({});
+      if (root.debugMode)
+        console.log("[npaper] Removed", invalidFiles.length, "invalid files from", folder);
+    } else {
+      root.cacheRefreshed();
+    }
+
+    // Queue only missing thumbnails (pre-check, avoid 50 calls for 5 cached)
+    wallpaperList.forEach(path => {
+                            const isVideo = FileTypes.isVideoFile(path);
+                            const isGif = FileTypes.isGifFile(path);
+                            const cached = isVideo || isGif ? CacheHelpers.getCachedAnimatedGif(root.thumbHashToPath, path) : CacheHelpers.getCachedThumb(root.thumbHashToPath, path);
+                            if (!cached && !root.queuedSet[path]) {
+                              queueThumbnail(path, isVideo, isGif);
+                            }
+                          });
+    if (root.debugMode)
+      console.log("[npaper] Queue length:", root.queueLength);
   }
 
   function queueThumbnail(wallpaperPath, isVideo, isGif) {
@@ -282,6 +319,7 @@ Item {
                                isVideo: isVideo,
                                isGif: isGif
                              });
+    root.queueLength = root.thumbnailQueue.length;
 
     processQueue();
   }
@@ -294,10 +332,12 @@ Item {
 
     while (root.thumbnailJobRunning < root.thumbnailConcurrency && root.thumbnailQueue.length > 0) {
       const item = root.thumbnailQueue.shift();
+      root.queueLength = root.thumbnailQueue.length;
+      const folder = CacheHelpers.getFolderName(item.path);
       const thumbPath = CacheHelpers.getThumbnailPath(root.cacheDir, item.path);
       const hash = HashUtils.getThumbnailHash(item.path);
-      const bgPath = root.cacheDir + '/' + hash + '_bg.png';
-      const animPath = root.cacheDir + '/' + hash + '_anim.gif';
+      const bgPath = root.cacheDir + '/' + folder + '/' + hash + '_bg.png';
+      const animPath = root.cacheDir + '/' + folder + '/' + hash + '_anim.gif';
 
       for (let i = 0; i < root.thumbnailWorkers.length; i++) {
         const worker = root.thumbnailWorkers[i];
@@ -307,6 +347,7 @@ Item {
           worker._thumbPath = thumbPath;
           worker._bgPath = bgPath;
           worker._animPath = animPath;
+          worker._folder = folder;
           worker._ssArgs = item.isVideo ? ["-ss", "00:00:01"] : [];
           worker._needAnim = item.isVideo || item.isGif;
           worker._step = 0;

@@ -57,6 +57,7 @@ readonly AWWW_FILTER="Lanczos3"
 # =============================================================================
 
 declare -a WALLPAPER_FILES=()
+declare -a WALLPAPER_FOLDERS=()
 
 # =============================================================================
 # Collect Wallpapers
@@ -67,6 +68,7 @@ collect_wallpapers() {
     local dir
 
     WALLPAPER_FILES=()
+    WALLPAPER_FOLDERS=()
 
     for dir in "${WALLPAPER_DIRS[@]}"; do
         [[ -d "$dir" ]] || continue
@@ -85,6 +87,62 @@ collect_wallpapers() {
         # Deduplicate while preserving order (by directory sequence)
         mapfile -t WALLPAPER_FILES < <(printf '%s\n' "${tmp_files[@]}" | awk '!seen[$0]++')
     fi
+
+    # Collect unique folder names (subfolders + __root__ for files in root)
+    local -A folder_set=()
+    local file rel_path folder_name has_root
+    has_root=0
+    for file in "${WALLPAPER_FILES[@]}"; do
+        for dir in "${WALLPAPER_DIRS[@]}"; do
+            if [[ "$file" == "$dir"/* ]]; then
+                rel_path="${file#$dir/}"
+                folder_name="${rel_path%%/*}"
+                # If file is directly in root (no subdirectory), mark __root__
+                if [[ "$folder_name" == "$rel_path" ]]; then
+                    has_root=1
+                else
+                    folder_set["$folder_name"]=1
+                fi
+                break
+            fi
+        done
+    done
+
+    # Build sorted folder list, __root__ always first
+    local -a sorted=()
+    if (( has_root )); then
+        sorted+=("__root__")
+    fi
+    if (( ${#folder_set[@]} > 0 )); then
+        mapfile -t sub < <(printf '%s\n' "${!folder_set[@]}" | sort)
+        sorted+=("${sub[@]}")
+    fi
+    WALLPAPER_FOLDERS=("${sorted[@]}")
+}
+
+# =============================================================================
+# Collect Wallpapers with folder info
+# Output format: folder_name|full_path
+# =============================================================================
+
+collect_wallpapers_with_folder() {
+    collect_wallpapers
+
+    local file rel_path folder_name
+    for file in "${WALLPAPER_FILES[@]}"; do
+        for dir in "${WALLPAPER_DIRS[@]}"; do
+            if [[ "$file" == "$dir"/* ]]; then
+                rel_path="${file#$dir/}"
+                folder_name="${rel_path%%/*}"
+                # If file is directly in root (no subdirectory), use "__root__"
+                if [[ "$folder_name" == "$rel_path" ]]; then
+                    folder_name="__root__"
+                fi
+                echo "${folder_name}|${file}"
+                break
+            fi
+        done
+    done
 }
 
 # =============================================================================
@@ -187,6 +245,25 @@ cmd_list() {
     done
 }
 
+# Output wallpapers with folder info: folder_name|full_path
+cmd_list_with_folder() {
+    collect_wallpapers_with_folder
+}
+
+# Output folder names, one per line
+cmd_list_folders() {
+    collect_wallpapers
+
+    if (( ${#WALLPAPER_FOLDERS[@]} == 0 )); then
+        echo "__root__"
+    else
+        local folder
+        for folder in "${WALLPAPER_FOLDERS[@]}"; do
+            echo "$folder"
+        done
+    fi
+}
+
 cmd_apply() {
     local file="$1"
 
@@ -219,7 +296,9 @@ Usage: $(basename "$0") [OPTION...]
 Wallpaper selector for QML widget.
 
 Options:
-  --list                    List wallpapers
+  --list                    List wallpapers (flat)
+  --list-folders            List wallpaper folders
+  --list-with-folders       List wallpapers with folder info (folder|path)
   --apply <path>            Apply wallpaper
   --help                    Show this help
 
@@ -247,6 +326,14 @@ main() {
                 mode="list"
                 shift
                 ;;
+            --list-folders)
+                mode="list-folders"
+                shift
+                ;;
+            --list-with-folders)
+                mode="list-with-folders"
+                shift
+                ;;
             --apply)
                 mode="apply"
                 shift
@@ -266,6 +353,12 @@ main() {
     case "$mode" in
         list)
             cmd_list
+            ;;
+        list-folders)
+            cmd_list_folders
+            ;;
+        list-with-folders)
+            cmd_list_with_folder
             ;;
         apply)
             cmd_apply "$apply_path"
