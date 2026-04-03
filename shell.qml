@@ -1058,7 +1058,9 @@ ShellRoot {
       function applyWallpaper(path) {
         if (root.debugMode)
           console.log("[npaper] applyWallpaper:", path);
-        Quickshell.execDetached(["bash", Qt.resolvedUrl("./wallpaper.sh").toString().slice(7), "--apply", path]);
+        const scriptPath = Qt.resolvedUrl("./wallpaper.sh").toString().slice(7);
+        const cmd = ["bash", "-c", `"${scriptPath}" --apply "${path}" || notify-send -u critical "npaper" "Failed to apply wallpaper: ${path}"`];
+        Quickshell.execDetached(cmd);
         Qt.quit();
       }
     }

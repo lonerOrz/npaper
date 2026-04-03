@@ -65,17 +65,20 @@ declare -a WALLPAPER_FOLDERS=()
 
 collect_wallpapers() {
     local -a tmp_files=()
-    local dir
+    local dir canonical_dir
+    local -a canonical_dirs=()
 
     WALLPAPER_FILES=()
     WALLPAPER_FOLDERS=()
 
     for dir in "${WALLPAPER_DIRS[@]}"; do
         [[ -d "$dir" ]] || continue
+        canonical_dir=$(realpath "$dir")
+        canonical_dirs+=("$canonical_dir")
 
         while IFS= read -r -d '' file; do
             tmp_files+=("$file")
-        done < <(find -L "$dir" -type f \( \
+        done < <(find -L "$canonical_dir" -type f \( \
             -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o \
             -iname "*.gif" -o -iname "*.bmp" -o -iname "*.tiff" -o \
             -iname "*.webp" -o -iname "*.mp4" -o -iname "*.mkv" -o \
@@ -93,9 +96,9 @@ collect_wallpapers() {
     local file rel_path folder_name has_root
     has_root=0
     for file in "${WALLPAPER_FILES[@]}"; do
-        for dir in "${WALLPAPER_DIRS[@]}"; do
-            if [[ "$file" == "$dir"/* ]]; then
-                rel_path="${file#$dir/}"
+        for canonical_dir in "${canonical_dirs[@]}"; do
+            if [[ "$file" == "$canonical_dir"/* ]]; then
+                rel_path="${file#$canonical_dir/}"
                 folder_name="${rel_path%%/*}"
                 # If file is directly in root (no subdirectory), mark root folder
                 if [[ "$folder_name" == "$rel_path" ]]; then
@@ -128,11 +131,16 @@ collect_wallpapers() {
 collect_wallpapers_with_folder() {
     collect_wallpapers
 
-    local file rel_path folder_name
+    local -a canonical_dirs=()
+    for dir in "${WALLPAPER_DIRS[@]}"; do
+        [[ -d "$dir" ]] && canonical_dirs+=("$(realpath "$dir")")
+    done
+
+    local file rel_path folder_name canonical_dir
     for file in "${WALLPAPER_FILES[@]}"; do
-        for dir in "${WALLPAPER_DIRS[@]}"; do
-            if [[ "$file" == "$dir"/* ]]; then
-                rel_path="${file#$dir/}"
+        for canonical_dir in "${canonical_dirs[@]}"; do
+            if [[ "$file" == "$canonical_dir"/* ]]; then
+                rel_path="${file#$canonical_dir/}"
                 folder_name="${rel_path%%/*}"
                 # If file is directly in root (no subdirectory), use root folder name
                 if [[ "$folder_name" == "$rel_path" ]]; then
