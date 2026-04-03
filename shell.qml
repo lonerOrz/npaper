@@ -276,8 +276,8 @@ ShellRoot {
           if (exitCode !== 0) {
             if (root.debugMode)
               console.log("[npaper] folderListProcess failed, falling back");
-            root.folderList = ["__root__"];
-            root.activeFolder = "__root__";
+            root.folderList = ["wallpapers"];
+            root.activeFolder = "wallpapers";
             listProcess.exec({});
           }
         }

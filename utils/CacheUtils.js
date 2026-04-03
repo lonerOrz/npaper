@@ -3,15 +3,19 @@
 
 function getFolderName(wallpaperPath) {
     if (!wallpaperPath || wallpaperPath.length === 0)
-        return "other";
+        return "wallpapers";
+    // Find the wallpapers parent directory and use the next component
     const idx = wallpaperPath.lastIndexOf("/wallpapers/");
-    if (idx < 0)
-        return "other";
-    const rest = wallpaperPath.slice(idx + 12);
-    const slashIdx = rest.indexOf("/");
-    if (slashIdx < 0)
-        return "other";
-    return rest.slice(0, slashIdx);
+    if (idx >= 0) {
+        const rest = wallpaperPath.slice(idx + 12);
+        const slashIdx = rest.indexOf("/");
+        if (slashIdx >= 0)
+            return rest.slice(0, slashIdx);
+        // File directly in wallpapers/ root → no subfolder
+        return "wallpapers";
+    }
+    // Fallback: non-standard path
+    return "wallpapers";
 }
 
 function getThumbnailPath(cacheDir, wallpaperPath) {

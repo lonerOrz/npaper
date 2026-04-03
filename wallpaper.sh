@@ -88,7 +88,7 @@ collect_wallpapers() {
         mapfile -t WALLPAPER_FILES < <(printf '%s\n' "${tmp_files[@]}" | awk '!seen[$0]++')
     fi
 
-    # Collect unique folder names (subfolders + __root__ for files in root)
+    # Collect unique folder names (subfolders + root dir name for files in root)
     local -A folder_set=()
     local file rel_path folder_name has_root
     has_root=0
@@ -97,7 +97,7 @@ collect_wallpapers() {
             if [[ "$file" == "$dir"/* ]]; then
                 rel_path="${file#$dir/}"
                 folder_name="${rel_path%%/*}"
-                # If file is directly in root (no subdirectory), mark __root__
+                # If file is directly in root (no subdirectory), mark root folder
                 if [[ "$folder_name" == "$rel_path" ]]; then
                     has_root=1
                 else
@@ -108,10 +108,10 @@ collect_wallpapers() {
         done
     done
 
-    # Build sorted folder list, __root__ always first
+    # Build sorted folder list, root folder name first
     local -a sorted=()
     if (( has_root )); then
-        sorted+=("__root__")
+        sorted+=("wallpapers")
     fi
     if (( ${#folder_set[@]} > 0 )); then
         mapfile -t sub < <(printf '%s\n' "${!folder_set[@]}" | sort)
@@ -134,9 +134,9 @@ collect_wallpapers_with_folder() {
             if [[ "$file" == "$dir"/* ]]; then
                 rel_path="${file#$dir/}"
                 folder_name="${rel_path%%/*}"
-                # If file is directly in root (no subdirectory), use "__root__"
+                # If file is directly in root (no subdirectory), use root folder name
                 if [[ "$folder_name" == "$rel_path" ]]; then
-                    folder_name="__root__"
+                    folder_name="wallpapers"
                 fi
                 echo "${folder_name}|${file}"
                 break
@@ -255,7 +255,7 @@ cmd_list_folders() {
     collect_wallpapers
 
     if (( ${#WALLPAPER_FOLDERS[@]} == 0 )); then
-        echo "__root__"
+        echo "wallpapers"
     else
         local folder
         for folder in "${WALLPAPER_FOLDERS[@]}"; do

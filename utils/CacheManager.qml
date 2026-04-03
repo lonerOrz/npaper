@@ -275,14 +275,11 @@ Item {
       root.cacheRefreshed();
     }
 
-    // Queue only missing thumbnails (pre-check, avoid 50 calls for 5 cached)
+    // Queue missing thumbnails (queueThumbnail handles dedup internally)
     wallpaperList.forEach(path => {
                             const isVideo = FileTypes.isVideoFile(path);
                             const isGif = FileTypes.isGifFile(path);
-                            const cached = isVideo || isGif ? CacheHelpers.getCachedAnimatedGif(root.thumbHashToPath, path) : CacheHelpers.getCachedThumb(root.thumbHashToPath, path);
-                            if (!cached && !root.queuedSet[path]) {
-                              queueThumbnail(path, isVideo, isGif);
-                            }
+                            queueThumbnail(path, isVideo, isGif);
                           });
     if (root.debugMode)
       console.log("[npaper] Queue length:", root.queueLength);
