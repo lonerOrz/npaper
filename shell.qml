@@ -119,24 +119,6 @@ ShellRoot {
         cacheManager.initialize();
       }
 
-      // Debounce for background changes (prevent flicker during fast scroll)
-      Timer {
-        id: bgChangeDebounce
-        interval: 5
-        onTriggered: {
-          const c = centerIndex;
-          if (c !== bgCurrent && c >= 0 && c < root.filteredWallpaperList.length) {
-            bgPrevious = bgCurrent;
-            bgCurrent = c;
-            // Reset and trigger slide animation
-            bgSlideProgress = 0;
-            bgSlideAnim.restart();
-            // Extract dominant color for new wallpaper
-            extractDominantColor(root.filteredWallpaperList[c]);
-          }
-        }
-      }
-
       // Background slide animation (drives progress only)
       PropertyAnimation {
         id: bgSlideAnim
@@ -145,7 +127,7 @@ ShellRoot {
         from: 0
         to: 1.0
         duration: 250
-        easing.type: Easing.OutCubic
+        easing.type: Easing.OutQuad  // Smoother, faster tracking
       }
 
       // Background Crossfade
@@ -191,8 +173,17 @@ ShellRoot {
         lastScrollIndex = scrollIndex;
         scrollTimestamp = now;
 
-        // Restart debounce timer instead of immediate background change
-        bgChangeDebounce.restart();
+        // Immediate background change tracking
+        const c = centerIndex;
+        if (c !== bgCurrent && c >= 0 && c < root.filteredWallpaperList.length) {
+          bgPrevious = bgCurrent;
+          bgCurrent = c;
+          // Reset and trigger slide animation
+          bgSlideProgress = 0;
+          bgSlideAnim.restart();
+          // Extract dominant color for new wallpaper
+          extractDominantColor(root.filteredWallpaperList[c]);
+        }
 
         // Queue thumbnails for visible range
         let queueCount = 0;
@@ -493,6 +484,12 @@ ShellRoot {
       function runColorExtract(sourcePath) {
         if (root.debugMode)
           console.log("[npaper] Extracting color from:", sourcePath);
+
+        // Cancel previous extraction if it's still running
+        if (extractColorProcess.running) {
+          extractColorProcess.terminate();
+        }
+
         extractColorTimeout.start();
         extractColorProcess.command = ["magick", sourcePath, "-resize", "1x1!", "-modulate", "100,180", "txt:"];
         extractColorProcess.exec({});
@@ -520,7 +517,7 @@ ShellRoot {
         asynchronous: true
         smooth: true
         mipmap: true
-        sourceSize: Qt.size(1920, 1080)
+        sourceSize: Qt.size(1920 * screen.devicePixelRatio, 1080 * screen.devicePixelRatio)
         cache: true
       }
 
@@ -536,7 +533,7 @@ ShellRoot {
         asynchronous: true
         smooth: true
         mipmap: true
-        sourceSize: Qt.size(Math.min(1920, screen.width), Math.min(1080, screen.height))
+        sourceSize: Qt.size(Math.min(1920, screen.width) * screen.devicePixelRatio, Math.min(1080, screen.height) * screen.devicePixelRatio)
         cache: true
       }
 
@@ -698,6 +695,7 @@ ShellRoot {
                 id: borderGlow
                 anchors.fill: parent
                 z: 4
+                property bool useShaderBorder: true
                 visible: Math.abs(metrics.raw) < 0.5 && useShaderBorder
 
                 property real time: 0
@@ -705,14 +703,13 @@ ShellRoot {
                 property real innerWidth: width
                 property real innerHeight: height
                 property real innerRadius: 12  // Match outer transparent Rectangle's radius
-                property bool useShaderBorder: true
 
                 NumberAnimation on time {
                   from: 0
                   to: 1000
                   duration: 30000
                   loops: Animation.Infinite
-                  running: visible
+                  running: Math.abs(metrics.raw) < 0.1 && borderGlow.useShaderBorder
                 }
 
                 fragmentShader: Qt.resolvedUrl("shaders/borderGlow.frag.qsb")
@@ -773,7 +770,7 @@ ShellRoot {
                       mipmap: true
                       scale: 1.0
                       playing: visible
-                      sourceSize: Qt.size(450, 320)
+                      sourceSize: Qt.size(450 * screen.devicePixelRatio, 320 * screen.devicePixelRatio)
                     }
 
                     Image {
@@ -803,7 +800,7 @@ ShellRoot {
                       smooth: realIndex === root.centerIndex
                       mipmap: true
                       opacity: status === Image.Ready ? 1 : 0
-                      sourceSize: Qt.size(450, 320)
+                      sourceSize: Qt.size(450 * screen.devicePixelRatio, 320 * screen.devicePixelRatio)
                       scale: 1.0
 
                       Component.onCompleted: {
@@ -894,6 +891,12 @@ ShellRoot {
               blurEnabled: true
               blur: 0.12
               brightness: 1.3
+              // Enable smooth transition for dynamic color
+              Behavior on colorizationColor {
+                ColorAnimation {
+                  duration: 200
+                }
+              }
             }
           }
 
