@@ -91,36 +91,45 @@ collect_wallpapers() {
         mapfile -t WALLPAPER_FILES < <(printf '%s\n' "${tmp_files[@]}" | awk '!seen[$0]++')
     fi
 
-    # Collect unique folder names (subfolders + root dir name for files in root)
-    local -A folder_set=()
-    local file rel_path folder_name has_root
-    has_root=0
+    # Collect folder names in WALLPAPER_DIRS order
+    # For root files: use directory basename
+    # For subfolder files: use subfolder name
+    # Maintain order: root folders first (by config order), then subfolders (alphabetical)
+    local -A seen_folders=()
+    local -a root_folders=()
+    local -a sub_folders=()
+    local file rel_path folder_name
     for file in "${WALLPAPER_FILES[@]}"; do
         for canonical_dir in "${canonical_dirs[@]}"; do
             if [[ "$file" == "$canonical_dir"/* ]]; then
                 rel_path="${file#$canonical_dir/}"
                 folder_name="${rel_path%%/*}"
-                # If file is directly in root (no subdirectory), mark root folder
+                # If file is directly in root (no subdirectory), use directory basename as folder
                 if [[ "$folder_name" == "$rel_path" ]]; then
-                    has_root=1
-                else
-                    folder_set["$folder_name"]=1
+                    folder_name=$(basename "$canonical_dir")
+                fi
+                # Track root folders in config order
+                if [[ -z "${seen_folders[$folder_name]+x}" ]]; then
+                    seen_folders["$folder_name"]=1
+                    if [[ "$folder_name" == "$(basename "$canonical_dir")" ]]; then
+                        root_folders+=("$folder_name")
+                    else
+                        sub_folders+=("$folder_name")
+                    fi
                 fi
                 break
             fi
         done
     done
 
-    # Build sorted folder list, root folder name first
-    local -a sorted=()
-    if (( has_root )); then
-        sorted+=("wallpapers")
+    # Sort sub-folders alphabetically
+    local -a sorted_sub=()
+    if (( ${#sub_folders[@]} > 0 )); then
+        mapfile -t sorted_sub < <(printf '%s\n' "${sub_folders[@]}" | sort)
     fi
-    if (( ${#folder_set[@]} > 0 )); then
-        mapfile -t sub < <(printf '%s\n' "${!folder_set[@]}" | sort)
-        sorted+=("${sub[@]}")
-    fi
-    WALLPAPER_FOLDERS=("${sorted[@]}")
+
+    # Final order: root folders (by config order) + sorted sub-folders
+    WALLPAPER_FOLDERS=("${root_folders[@]}" "${sorted_sub[@]}")
 }
 
 # =============================================================================
@@ -142,9 +151,9 @@ collect_wallpapers_with_folder() {
             if [[ "$file" == "$canonical_dir"/* ]]; then
                 rel_path="${file#$canonical_dir/}"
                 folder_name="${rel_path%%/*}"
-                # If file is directly in root (no subdirectory), use root folder name
+                # If file is directly in root (no subdirectory), use directory basename as folder
                 if [[ "$folder_name" == "$rel_path" ]]; then
-                    folder_name="wallpapers"
+                    folder_name=$(basename "$canonical_dir")
                 fi
                 echo "${folder_name}|${file}"
                 break
