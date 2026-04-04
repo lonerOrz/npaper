@@ -487,7 +487,7 @@ ShellRoot {
 
         // Cancel previous extraction if it's still running
         if (extractColorProcess.running) {
-          extractColorProcess.terminate();
+          extractColorProcess.running = false;
         }
 
         extractColorTimeout.start();
