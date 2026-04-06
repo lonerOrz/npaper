@@ -44,57 +44,39 @@ PanelWindow {
     WlrLayershell.exclusiveZone: -1
 
     property string searchText: ""
-    property real scrollIndex: 0
-    property real _cachedScrollIndex: 0
-    property real scrollVelocity: 0
-    property real lastScrollIndex: 0
-    property int scrollTimestamp: 0
-    property real scrollTarget: 0
-    property int keyScrollDirection: 0
-    property int keyScrollStep: 1
-    property bool isKeyScrolling: false
 
     readonly property int count: wallpaperModel ? wallpaperModel.count : 0
-    readonly property int visibleRange: styleConstants.visibleRange
-    readonly property int preloadRange: styleConstants.preloadRange
-    readonly property int centerIndex: Math.round(scrollIndex)
-    readonly property int baseIndex: Math.max(0, centerIndex - visibleRange - preloadRange)
-    readonly property int maxIndex: Math.min(count - 1, centerIndex + visibleRange + preloadRange)
-    readonly property int loadedCount: count > 0 ? Math.max(0, maxIndex - baseIndex + 1) : 0
-
-    // Behavior animations using config
-    Behavior on scrollTarget {
-        NumberAnimation {
-            duration: viewModel ? viewModel.get("scrollDuration", 280) : 280
-            easing.type: styleConstants.easingOutCubic
-        }
-    }
-
-    Timer {
-        id: scrollContinueTimer
-        interval: viewModel ? viewModel.get("scrollContinueInterval", 230) : 230
-        repeat: false
-        onTriggered: {
-            if (isKeyScrolling && keyScrollDirection !== 0 && root.count > 0) {
-                const step = keyScrollStep || 1
-                const maxIdx = root.count - 1
-                const currentIdx = Math.round(scrollTarget)
-                let nextIdx = currentIdx
-                if (keyScrollDirection === -1) nextIdx = Math.max(0, currentIdx - step)
-                else nextIdx = Math.min(maxIdx, currentIdx + step)
-                if (nextIdx !== currentIdx) scrollTarget = nextIdx
-                else isKeyScrolling = false
-            } else isKeyScrolling = false
-        }
-    }
-
-    onScrollTargetChanged: {
-        scrollIndex = scrollTarget;
-    }
+    readonly property int centerIndex: scrollController.currentIndex
 
     Component.onCompleted: {
-        scrollTarget = 0
         if (wallpaperModel) wallpaperModel.dataLoaded.connect(applyFolderSelection)
+    }
+
+    // React to scroll position changes (background update & thumbnail queue)
+    Connections {
+        target: scrollController
+        function onCurrentIndexChanged() {
+            const c = scrollController.currentIndex;
+            if (c !== bgCurrent && c >= 0 && c < (wallpaperModel ? wallpaperModel.list.length : 0)) {
+                bgPrevious = bgCurrent;
+                bgCurrent = c;
+                bgSlideProgress = 0;
+                bgSlideAnim.restart();
+                extractDominantColor(wallpaperModel.list[c]);
+            }
+
+            // Queue thumbnails for visible range
+            let queueCount = 0;
+            if (wallpaperModel) {
+                const base = scrollController.baseIndex;
+                const max = scrollController.maxIndex;
+                for (let i = base; i <= max && i < wallpaperModel.list.length; i++) {
+                    cacheService.queueThumbnail(wallpaperModel.list[i], FileTypes.isVideoFile(wallpaperModel.list[i]), FileTypes.isGifFile(wallpaperModel.list[i]));
+                    queueCount++;
+                }
+            }
+            if (root.debugMode) console.log("[npaper] scrollTick:", "idx=" + c, "queue=" + queueCount);
+        }
     }
 
     // Background logic
@@ -127,29 +109,6 @@ PanelWindow {
         easing.type: styleConstants.easingOutQuad
     }
 
-    readonly property real bgBaseParallaxX: (scrollIndex - centerIndex) * (viewModel ? viewModel.get("bgParallaxFactor", 40) : 40)
-
-    onScrollIndexChanged: {
-        if (!cacheService || !wallpaperModel) return
-        _cachedScrollIndex = scrollIndex
-        const now = Date.now(); const dt = now - scrollTimestamp
-        if (dt > 0 && dt < 200) scrollVelocity = (scrollIndex - lastScrollIndex) / dt * 1000
-        lastScrollIndex = scrollIndex; scrollTimestamp = now
-
-        const c = centerIndex
-        if (c !== bgCurrent && c >= 0 && c < wallpaperModel.list.length) {
-            bgPrevious = bgCurrent; bgCurrent = c
-            bgSlideProgress = 0; bgSlideAnim.restart()
-            extractDominantColor(wallpaperModel.list[c])
-        }
-        let q = 0
-        for (let i = baseIndex; i <= maxIndex && i < wallpaperModel.list.length; i++) {
-            cacheService.queueThumbnail(wallpaperModel.list[i], FileTypes.isVideoFile(wallpaperModel.list[i]), FileTypes.isGifFile(wallpaperModel.list[i]))
-            q++
-        }
-        if (root.debugMode) console.log("[npaper] scrollTick:", "idx=" + Math.round(scrollIndex), "queue=" + q)
-    }
-
     property string dominantColor: "#6a9eff"
 
     function extractDominantColor(wp) {
@@ -165,9 +124,9 @@ PanelWindow {
         extractColorProcess.command = ["magick", src, "-resize", "1x1!", "-modulate", "100,180", "txt:"]
         extractColorProcess.exec({})
     }
-    function randomWallpaper() { if (root.count > 0) scrollTarget = Math.floor(Math.random() * root.count) }
+    function randomWallpaper() { scrollController.random() }
     function applyFolderSelection() {
-        scrollTarget = 0; scrollIndex = 0; _cachedScrollIndex = 0
+        scrollController.reset();
         bgPrevious = -1; bgCurrent = -1; bgSlideProgress = 1.0
         if (wallpaperModel.list.length > 0) { bgCurrent = 0; extractDominantColor(wallpaperModel.list[0]) }
     }
@@ -176,11 +135,6 @@ PanelWindow {
         const f = wallpaperModel.currentFolder; const ps = wallpaperModel.wallpaperMap[f] || []
         if (ps.length === 0) return
         cacheService.refreshAndQueue(ps, f)
-    }
-    function setScrollIndex(v) {
-        if (root.count === 0) return
-        const c = Math.max(0, Math.min(v, root.count - 1))
-        if (c !== scrollTarget) scrollTarget = c
     }
     function applyWallpaper(path) { if (wallpaperApplier) wallpaperApplier.apply(path); Qt.quit() }
 
@@ -199,19 +153,32 @@ PanelWindow {
     Timer { id: searchDebounce; interval: styleConstants.searchDebounceMs; onTriggered: {
         wallpaperModel.setSearch(root.searchText)
         if (root.searchText) {
-            scrollTarget = 0; scrollIndex = 0; _cachedScrollIndex = 0; bgCurrent = 0; bgSlideProgress = 1.0
+            scrollController.scrollTo(0);
+            bgCurrent = 0; bgSlideProgress = 1.0
             if (wallpaperModel.list.length > 0) extractDominantColor(wallpaperModel.list[0])
         } else wallpaperModel.resetSearch()
     }}
 
     // ===== UI =====
-    // Background Manager (New Component)
+    
+    // Scroll Controller (New Component)
+    ScrollController {
+        id: scrollController
+        count: root.count
+        visibleRange: styleConstants.visibleRange
+        preloadRange: styleConstants.preloadRange
+        animationDuration: viewModel ? viewModel.get("scrollDuration", 280) : 280
+        scrollContinueInterval: viewModel ? viewModel.get("scrollContinueInterval", 230) : 230
+        parallaxFactor: viewModel ? viewModel.get("bgParallaxFactor", 40) : 40
+    }
+
+    // Background Manager
     BackgroundManager {
         anchors.fill: parent
         sourceA: _bgSourceA
         sourceB: _bgSourceB
         crossfadeProgress: bgSlideProgress
-        parallaxX: bgBaseParallaxX
+        parallaxX: (scrollController.scrollTarget - scrollController.currentIndex) * scrollController.parallaxFactor
         dominantColor: root.dominantColor
         overlayOpacity: viewModel ? viewModel.get("bgOverlayOpacity", 0.4) : 0.4
         showPreview: viewModel ? viewModel.get("showBgPreview", true) : true
@@ -237,10 +204,10 @@ PanelWindow {
             Rectangle { anchors.fill: parent; color: "#0d0d0dcc" }
 
             Repeater {
-                model: root.loadedCount
+                model: scrollController.loadedCount
                 delegate: WallpaperCard {
                     required property int index
-                    property int realIndex: root.baseIndex + index
+                    property int realIndex: scrollController.baseIndex + index
                     wallpaperPath: realIndex < wallpaperModel.list.length ? wallpaperModel.list[realIndex] : ""
                     filename: realIndex < (wallpaperModel ? wallpaperModel.filenames.length : 0) ? (wallpaperModel ? wallpaperModel.filenames[realIndex] : "") : ""
                     isVideo: FileTypes.isVideoFile(wallpaperPath)
@@ -251,7 +218,7 @@ PanelWindow {
                     showShadow: viewModel ? viewModel.get("showShadow", true) : true
 
                     readonly property var metrics: {
-                        const raw = realIndex - root._cachedScrollIndex
+                        const raw = realIndex - scrollController.scrollTarget
                         const abs = Math.abs(raw)
                         return { raw, abs, cos: Math.cos(Math.min(abs, 3) * 0.523599), perspectiveScale: 1.0 / (1.0 + abs * root.carouselPerspective) }
                     }
@@ -269,7 +236,7 @@ PanelWindow {
                     visualYOffset: visual.yOffset; visualShadowOpacity: visual.shadowOpacity
                     x: pathViewContainer.centerX - width / 2 + metrics.raw * (width + pathViewContainer.spacing) * visual.spacingFactor
                     y: pathViewContainer.centerY - height / 2 + visual.yOffset
-                    onClicked: function(path) { setScrollIndex(realIndex); Qt.callLater(() => applyWallpaper(path)) }
+                    onClicked: function(path) { scrollController.scrollTo(realIndex); Qt.callLater(() => applyWallpaper(path)) }
                 }
             }
 
@@ -310,28 +277,26 @@ PanelWindow {
                     event.accepted = true; return
                 }
                 if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    if (root.count > 0) { const idx = Math.round(root.scrollIndex); applyWallpaper(wallpaperModel.list[((idx % root.count) + root.count) % root.count]) }
+                    if (root.count > 0) { const idx = scrollController.currentIndex; applyWallpaper(wallpaperModel.list[idx]) }
                     event.accepted = true; return
                 }
-                if (event.key === Qt.Key_R && !event.modifiers) { randomWallpaper(); event.accepted = true; return }
+                if (event.key === Qt.Key_R && !event.modifiers) { scrollController.random(); event.accepted = true; return }
                 if (event.key === Qt.Key_F5) { refreshCache(); event.accepted = true; return }
                 if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
-                    const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1
                     const dir = (event.key === Qt.Key_Left) ? -1 : 1
-                    if (keyScrollDirection !== dir) {
-                        keyScrollDirection = dir; keyScrollStep = step; isKeyScrolling = true
-                        scrollContinueTimer.stop()
-                        const maxIdx = root.count - 1
-                        if (dir === -1) scrollTarget = Math.max(0, scrollTarget - step)
-                        else scrollTarget = Math.min(maxIdx, scrollTarget + step)
-                    } else if (step !== keyScrollStep) { keyScrollStep = step }
+                    if (event.modifiers & Qt.ShiftModifier) {
+                        dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight()
+                    } else {
+                        dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight()
+                    }
                     event.accepted = true; return
                 }
                 if (event.text && event.text.length === 1 && !event.modifiers) { root.searchText += event.text; searchDebounce.restart(); event.accepted = true }
             }
             Keys.onReleased: event => {
                 if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
-                    if (keyScrollDirection === ((event.key === Qt.Key_Left) ? -1 : 1)) { keyScrollDirection = 0; isKeyScrolling = false; scrollContinueTimer.stop() }
+                    const dir = (event.key === Qt.Key_Left) ? -1 : 1
+                    scrollController.handleKeyRelease(dir)
                     event.accepted = true
                 }
             }
