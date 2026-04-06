@@ -41,9 +41,9 @@ set -euo pipefail
 # Configuration
 # =============================================================================
 
-readonly WALLPAPER_DIRS=(
-    "$HOME/Pictures/wallpapers"
-)
+# Wallpaper directories: pipe-delimited list from env, or default
+readonly _WP_DIRS_RAW="${NPAPER_WALLPAPER_DIRS:-$HOME/Pictures/wallpapers}"
+mapfile -t WALLPAPER_DIRS < <(echo "$_WP_DIRS_RAW" | tr '|' '\n')
 
 # awww transition settings
 readonly AWWW_TRANSITION_TYPE="fade"

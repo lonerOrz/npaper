@@ -1,11 +1,9 @@
-pragma ComponentBehavior: Bound
-
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "CacheUtils.js" as CacheHelpers
-import "FileTypes.js" as FileTypes
-import "HashUtils.js" as HashUtils
+import "../utils/CacheUtils.js" as CacheHelpers
+import "../utils/FileTypes.js" as FileTypes
+import "../utils/HashUtils.js" as HashUtils
 
 Item {
   id: root
@@ -22,19 +20,19 @@ Item {
   property var thumbHashToPath: ({})
   property int cachedFileCount: 0
   property int thumbCacheVersion: 0
-  property int queueLength: 0
-
-  signal cacheScanned
-  signal cacheRefreshed
-  signal thumbnailGenerated(string path, string thumbPath, string bgPath, string animPath)
 
   property var thumbnailQueue: []
   property var queuedSet: ({})
+  property int queueLength: 0
   property int thumbnailJobRunning: 0
 
   readonly property int thumbnailQueueMax: 50
   readonly property int thumbnailConcurrency: 2
   property var thumbnailWorkers: []
+
+  signal cacheScanned
+  signal cacheRefreshed
+  signal thumbnailGenerated(string path, string thumbPath, string bgPath, string animPath)
 
   Process {
     id: createCacheDirProcess
@@ -48,12 +46,12 @@ Item {
       onStreamFinished: {
         const files = text.trim().split('\n').filter(f => f.length > 0 && f.indexOf('/') > 0);
         files.forEach(f => {
-                        root.thumbHashToPath[f] = root.cacheDir + '/' + f;
-                      });
+          root.thumbHashToPath[f] = root.cacheDir + '/' + f;
+        });
         root.cachedFileCount = files.length;
         root.thumbCacheVersion++;
         if (root.debugMode)
-        console.log("[npaper] Cache scanned:", files.length, "files");
+          console.log("[npaper] Cache scanned:", files.length, "files");
         root.cacheScanned();
       }
     }
@@ -84,20 +82,25 @@ Item {
       property bool busy: false
 
       function runNext() {
-        const hash = HashUtils.getThumbnailHash(_targetPath);
         const tw = root.thumbWidth;
         const th = root.thumbHeight;
         const bw = root.bgWidth;
         const bh = root.bgHeight;
         if (_step === 0) {
           if (_needAnim) {
-            command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-vframes", "1", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-q:v", "5", _thumbPath];
+            command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-vframes", "1",
+              "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`,
+              "-q:v", "5", _thumbPath];
           } else {
-            command = ["ffmpeg", "-y", "-i", _targetPath, "-vframes", "1", "-filter_complex", `[0:v]split=2[a][b];[a]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}[thumb];[b]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}[bg]`, "-map", "[thumb]", "-q:v", "5", "-update", "1", _thumbPath, "-map", "[bg]", "-q:v", "2",
-                       _bgPath];
+            command = ["ffmpeg", "-y", "-i", _targetPath, "-vframes", "1",
+              "-filter_complex", `[0:v]split=2[a][b];[a]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}[thumb];[b]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}[bg]`,
+              "-map", "[thumb]", "-q:v", "5", "-update", "1", _thumbPath,
+              "-map", "[bg]", "-q:v", "2", _bgPath];
           }
         } else if (_step === 1 && _needAnim) {
-          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-r", "30", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-t", "10", _animPath];
+          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-r", "30",
+            "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`,
+            "-t", "10", _animPath];
         }
         if (command.length > 0) {
           exec({});
@@ -109,7 +112,7 @@ Item {
 
         if (exitCode !== 0) {
           if (root.debugMode)
-            console.log("[npaper] Failed:", _targetPath, "exitCode:", exitCode, "worker:", _workerId);
+            console.log("[npaper] Failed:", _targetPath, "exitCode:", exitCode);
           busy = false;
           const failedPath = _targetPath;
           _targetPath = "";
@@ -125,7 +128,6 @@ Item {
           return;
         }
 
-        const hash = HashUtils.getThumbnailHash(_targetPath);
         _step++;
 
         if (_step === 1 && _needAnim) {
@@ -133,7 +135,9 @@ Item {
           root.thumbnailJobRunning++;
           const bw = root.bgWidth;
           const bh = root.bgHeight;
-          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-vframes", "1", "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`, "-q:v", "2", _bgPath];
+          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-vframes", "1",
+            "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`,
+            "-q:v", "2", _bgPath];
           exec({});
           return;
         }
@@ -143,28 +147,23 @@ Item {
           root.thumbnailJobRunning++;
           const tw = root.thumbWidth;
           const th = root.thumbHeight;
-          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-r", "30", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-t", "10", _animPath];
+          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-r", "30",
+            "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`,
+            "-t", "10", _animPath];
           exec({});
           return;
         }
 
         root.thumbnailGenerated(_targetPath, _thumbPath, _bgPath, _animPath);
 
-        // Store with folder-prefixed keys matching scan format
         if (_thumbPath) {
-          root.thumbHashToPath[_folder + '/' + hash + '.png'] = _thumbPath;
-          if (root.debugMode)
-            console.log("[npaper] Generated thumbnail:", _thumbPath);
+          root.thumbHashToPath[_folder + '/' + HashUtils.getThumbnailHash(_targetPath) + '.png'] = _thumbPath;
         }
         if (_bgPath) {
-          root.thumbHashToPath[_folder + '/' + hash + '_bg.png'] = _bgPath;
-          if (root.debugMode)
-            console.log("[npaper] Generated background:", _bgPath);
+          root.thumbHashToPath[_folder + '/' + HashUtils.getThumbnailHash(_targetPath) + '_bg.png'] = _bgPath;
         }
         if (_animPath) {
-          root.thumbHashToPath[_folder + '/' + hash + '_anim.gif'] = _animPath;
-          if (root.debugMode)
-            console.log("[npaper] Generated animated GIF:", _animPath);
+          root.thumbHashToPath[_folder + '/' + HashUtils.getThumbnailHash(_targetPath) + '_anim.gif'] = _animPath;
         }
         root.thumbCacheVersion++;
         root.cachedFileCount++;
@@ -187,7 +186,7 @@ Item {
 
   function initialize() {
     if (root.thumbnailWorkers && root.thumbnailWorkers.length > 0) {
-      console.log("[npaper] CacheManager already initialized");
+      console.log("[npaper] CacheService already initialized");
       return;
     }
     createCacheDirProcess.exec({});
@@ -197,9 +196,7 @@ Item {
   function initWorkers() {
     var workers = [];
     for (let i = 0; i < root.thumbnailConcurrency; i++) {
-      workers.push(thumbWorkerComponent.createObject(root, {
-                                                       _workerId: i
-                                                     }));
+      workers.push(thumbWorkerComponent.createObject(root, { _workerId: i }));
     }
     root.thumbnailWorkers = workers;
     if (root.debugMode)
@@ -210,71 +207,25 @@ Item {
     scanCacheProcess.exec({});
   }
 
-  function refreshCache(wallpaperList) {
-    if (root.debugMode)
-      console.log("[npaper] Refreshing cache for", wallpaperList.length, "wallpapers");
-
-    // Build valid key set matching scan format (with suffix)
-    const validKeys = {};
-    wallpaperList.forEach(path => {
-                            const folder = CacheHelpers.getFolderName(path);
-                            const hash = HashUtils.getThumbnailHash(path);
-                            validKeys[folder + '/' + hash + '.png'] = true;
-                            validKeys[folder + '/' + hash + '_bg.png'] = true;
-                            validKeys[folder + '/' + hash + '_anim.gif'] = true;
-                          });
-
-    const invalidFiles = [];
-    Object.keys(root.thumbHashToPath).forEach(key => {
-                                                if (!validKeys[key]) {
-                                                  invalidFiles.push(root.thumbHashToPath[key]);
-                                                }
-                                              });
-
-    if (invalidFiles.length > 0) {
-      if (root.debugMode)
-        console.log("[npaper] Removing", invalidFiles.length, "invalid files");
-      invalidFiles.forEach(f => {
-                             // Remove from map by relative key
-                             const prefix = root.cacheDir + '/';
-                             const relKey = f.startsWith(prefix) ? f.slice(prefix.length) : f;
-                             delete root.thumbHashToPath[relKey];
-                           });
-      root.cachedFileCount = Math.max(0, root.cachedFileCount - invalidFiles.length);
-      root.thumbCacheVersion++;
-      cleanupCacheProcess.command = ["rm", "-f", ...invalidFiles];
-      cleanupCacheProcess.exec({});
-    } else {
-      if (root.debugMode)
-        console.log("[npaper] All cached files are valid");
-      root.cacheRefreshed();
-    }
-  }
-
-  // Refresh cache for a specific folder + queue missing thumbnails
   function refreshAndQueue(wallpaperList, folder) {
     if (root.debugMode)
       console.log("[npaper] Refreshing folder:", folder, "count:", wallpaperList.length);
 
-    // Build valid key set
     const validKeys = {};
     wallpaperList.forEach(path => {
-                            const hash = HashUtils.getThumbnailHash(path);
-                            validKeys[folder + '/' + hash + '.png'] = true;
-                            validKeys[folder + '/' + hash + '_bg.png'] = true;
-                            validKeys[folder + '/' + hash + '_anim.gif'] = true;
-                          });
+      const hash = HashUtils.getThumbnailHash(path);
+      validKeys[folder + '/' + hash + '.png'] = true;
+      validKeys[folder + '/' + hash + '_bg.png'] = true;
+      validKeys[folder + '/' + hash + '_anim.gif'] = true;
+    });
 
-    // Delete invalid cache files in this folder only
     const invalidFiles = [];
     Object.keys(root.thumbHashToPath).forEach(key => {
-                                                if (key.startsWith(folder + '/')) {
-                                                  if (!validKeys[key]) {
-                                                    invalidFiles.push(root.thumbHashToPath[key]);
-                                                    delete root.thumbHashToPath[key];
-                                                  }
-                                                }
-                                              });
+      if (key.startsWith(folder + '/') && !validKeys[key]) {
+        invalidFiles.push(root.thumbHashToPath[key]);
+        delete root.thumbHashToPath[key];
+      }
+    });
 
     if (invalidFiles.length > 0) {
       root.cachedFileCount = Math.max(0, root.cachedFileCount - invalidFiles.length);
@@ -287,12 +238,9 @@ Item {
       root.cacheRefreshed();
     }
 
-    // Queue missing thumbnails (queueThumbnail handles dedup internally)
     wallpaperList.forEach(path => {
-                            const isVideo = FileTypes.isVideoFile(path);
-                            const isGif = FileTypes.isGifFile(path);
-                            queueThumbnail(path, isVideo, isGif);
-                          });
+      queueThumbnail(path, FileTypes.isVideoFile(path), FileTypes.isGifFile(path));
+    });
     if (root.debugMode)
       console.log("[npaper] Queue length:", root.queueLength);
   }
@@ -303,18 +251,14 @@ Item {
 
     const isAnim = isVideo || isGif;
     if (isAnim) {
-      const cached = CacheHelpers.getCachedAnimatedGif(root.thumbHashToPath, wallpaperPath);
-      if (cached)
-        return;
-      if (root.queuedSet[wallpaperPath])
+      if (CacheHelpers.getCachedAnimatedGif(root.thumbHashToPath, wallpaperPath))
         return;
     } else {
-      const cached = CacheHelpers.getCachedThumb(root.thumbHashToPath, wallpaperPath);
-      if (cached)
-        return;
-      if (root.queuedSet[wallpaperPath])
+      if (CacheHelpers.getCachedThumb(root.thumbHashToPath, wallpaperPath))
         return;
     }
+    if (root.queuedSet[wallpaperPath])
+      return;
 
     if (root.thumbnailQueue.length >= root.thumbnailQueueMax) {
       const removed = root.thumbnailQueue.shift();
@@ -323,11 +267,11 @@ Item {
 
     root.queuedSet[wallpaperPath] = true;
     root.thumbnailQueue.push({
-                               path: wallpaperPath,
-                               hash: HashUtils.getThumbnailHash(wallpaperPath),
-                               isVideo: isVideo,
-                               isGif: isGif
-                             });
+      path: wallpaperPath,
+      hash: HashUtils.getThumbnailHash(wallpaperPath),
+      isVideo: isVideo,
+      isGif: isGif
+    });
     root.queueLength = root.thumbnailQueue.length;
 
     processQueue();
@@ -366,17 +310,5 @@ Item {
         }
       }
     }
-  }
-
-  function hasCachedThumb(wallpaperPath) {
-    return CacheHelpers.getCachedThumb(root.thumbHashToPath, wallpaperPath) !== "";
-  }
-
-  function hasCachedAnim(wallpaperPath) {
-    return CacheHelpers.getCachedAnimatedGif(root.thumbHashToPath, wallpaperPath) !== "";
-  }
-
-  function hasCachedBgPreview(wallpaperPath) {
-    return CacheHelpers.getCachedBgPreview(root.thumbHashToPath, wallpaperPath) !== "";
   }
 }
