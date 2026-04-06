@@ -50,6 +50,8 @@ Item {
     root.searchText = "";
   }
 
+  signal dataLoaded
+
   Process {
     id: folderListProcess
     stdout: StdioCollector {
@@ -93,7 +95,8 @@ Item {
         });
         root.wallpaperMap = folderMap;
         if (root.debugMode)
-          console.log("[npaper] Loaded", lines.length, "wallpapers");
+          console.log("[npaper] Model: loaded", lines.length, "wallpapers");
+        root.dataLoaded();
       }
     }
     onExited: function (exitCode, exitStatus) {

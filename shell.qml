@@ -117,6 +117,7 @@ ShellRoot {
 
       Component.onCompleted: {
         scrollTarget = 0;
+        wallpaperModel.dataLoaded.connect(applyFolderSelection);
       }
 
       // Background crossfade
