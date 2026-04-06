@@ -25,13 +25,13 @@ Item {
 
     MouseArea {
       Layout.alignment: Qt.AlignRight
-      width: 44
-      height: 24
-      onClicked: root.toggled(!toggle.checked)
+      width: 40
+      height: 22
+      onClicked: root.toggled(!root.checked)
 
       Rectangle {
         anchors.fill: parent
-        radius: 12
+        radius: 11
         color: root.checked ? Color.mPrimary : Color.mSurfaceContainerHighest
         Behavior on color {
           ColorAnimation {
@@ -42,11 +42,11 @@ Item {
 
       Rectangle {
         id: toggle
-        x: root.checked ? 22 : 2
+        x: root.checked ? 20 : 2
         y: 2
-        width: 20
-        height: 20
-        radius: 10
+        width: 18
+        height: 18
+        radius: 9
         color: Color.mInverseSurface
         Behavior on x {
           NumberAnimation {

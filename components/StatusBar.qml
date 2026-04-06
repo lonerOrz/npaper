@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Layouts
 import qs.utils
 
 Item {
@@ -122,7 +122,11 @@ Item {
           color: parent.isActive ? Color.mPrimary : Color.mOutlineVariant
           font.pixelSize: 12
           font.weight: parent.isActive ? Font.Bold : Font.Normal
-          Behavior on color { ColorAnimation { duration: 150 } }
+          Behavior on color {
+            ColorAnimation {
+              duration: 150
+            }
+          }
         }
         onClicked: root.folderClicked(modelData)
       }
@@ -158,7 +162,11 @@ Item {
         anchors.fill: parent
         radius: 8
         color: parent.hover ? Color.mSurfaceContainerHigh : "transparent"
-        Behavior on color { ColorAnimation { duration: 150 } }
+        Behavior on color {
+          ColorAnimation {
+            duration: 150
+          }
+        }
       }
 
       Image {
@@ -175,7 +183,11 @@ Item {
         layer.effect: MultiEffect {
           colorization: 1.0
           colorizationColor: root.settingsOpen ? Color.mPrimary : Color.mOutlineVariant
-          Behavior on colorizationColor { ColorAnimation { duration: 150 } }
+          Behavior on colorizationColor {
+            ColorAnimation {
+              duration: 150
+            }
+          }
         }
       }
     }

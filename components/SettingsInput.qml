@@ -46,13 +46,6 @@ Item {
         }
         text = root.value.toFixed(root.step < 1 ? 2 : 0);
       }
-
-      Rectangle {
-        anchors.fill: parent
-        anchors.margins: -4
-        radius: 4
-        color: input.focus ? Color.mSurfaceContainerHighest : "transparent"
-      }
     }
 
     Slider {

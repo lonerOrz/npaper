@@ -63,7 +63,7 @@ Item {
 
   function save(data) {
     var jsonStr = JSON.stringify(data, null, 2);
-    saveProcess.command = ["sh", "-c", 'mkdir -p "$1" && printf "%s" > "$1/style.json"', "npaper-save", root.configDir, jsonStr];
+    saveProcess.command = ["sh", "-c", 'mkdir -p "$1" && printf "%s" "$2" | jq "." > "$1/style.json"', "_save", root.configDir, jsonStr];
     saveProcess.exec({});
     root.isSaving = true;
   }
@@ -82,12 +82,11 @@ Item {
   // IO: Check file
   Process {
     id: checkUserConfig
-    command: ["sh", "-c", '[ -f "$HOME/.config/npaper/style.json" ] && echo exists || echo missing']
+    command: ["test", "-f", root.stylePath]
     onExited: function (code, status) {
-      if (code === 0 && stdout && stdout.trim() === "exists") {
+      if (code === 0) {
         userView.path = root.stylePath;
       } else {
-        // No user config file - use defaults and emit loaded signal
         root.loaded(JSON.parse(JSON.stringify(_defaults)));
       }
     }
@@ -102,7 +101,6 @@ Item {
 
     onFileChanged: {
       if (root.isSaving) {
-        root.isSaving = false;
         return;
       }
       reload();
@@ -110,14 +108,13 @@ Item {
 
     onLoaded: {
       try {
-        var userCfg = JSON.parse(text());
-        // Merge user config into current model data
-        var updated = JSON.parse(JSON.stringify(model.data)); // Clone
-        for (var k in userCfg) {
-          updated[k] = userCfg[k];
+        var textContent = text();
+        if (!textContent || textContent.trim().length === 0) {
+          root.loaded(JSON.parse(JSON.stringify(_defaults)));
+          return;
         }
-        // Emit loaded signal with merged config - ViewModel will handle updating model
-        root.loaded(updated);
+        var userCfg = JSON.parse(textContent);
+        root.loaded(userCfg);
       } catch (e) {
         root.error("Config error: " + e);
       }
@@ -127,8 +124,7 @@ Item {
   Process {
     id: saveProcess
     onExited: function (code, status) {
-      if (code === 0)
-        root.isSaving = false;
+      root.isSaving = false;
     }
   }
 }

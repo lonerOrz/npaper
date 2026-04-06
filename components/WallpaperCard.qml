@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Effects
-import qs.utils
 import "../utils/CacheUtils.js" as CacheUtils
+import qs.utils
 
 Item {
   id: root

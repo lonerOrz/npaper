@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Shapes
-import qs.utils
+import QtQuick.Layouts
 import "SettingsInput.qml"
+import qs.utils
 
 Item {
   id: settingsPanel
@@ -51,15 +51,6 @@ Item {
     anchors.fill: parent
     radius: 12
     color: Color.mSurfaceContainerLow
-    border.color: Color.mSurfaceContainerHighest
-    border.width: 1
-
-    Rectangle {
-      anchors.fill: parent
-      radius: 12
-      color: Color.mScrim
-      opacity: 0.2
-    }
   }
 
   Column {
@@ -71,9 +62,7 @@ Item {
     // Tabs Row
     Row {
       id: tabRow
-      spacing: -10
-
-      property real _tabSkew: 12
+      spacing: 8
 
       Repeater {
         model: [
@@ -90,34 +79,39 @@ Item {
             label: "Appearance"
           }
         ]
-        delegate: Item {
+        delegate: MouseArea {
           required property var modelData
           property bool isActive: settingsPanel.activeTab === modelData.key
-          property real tabWidth: tabText.implicitWidth + 24
-          property real tabHeight: 32
+          width: tabText.implicitWidth + 24
+          height: 32
+          cursorShape: Qt.PointingHandCursor
 
-          width: tabWidth
-          height: tabHeight
-
-          SkewButton {
+          Rectangle {
             anchors.fill: parent
-            skew: tabRow._tabSkew
-            isActive: parent.isActive
-          }
-
-          MouseArea {
-            anchors.fill: parent
-            onClicked: settingsPanel.activeTab = modelData.key
+            radius: 16
+            color: parent.isActive ? Color.mPrimary : "transparent"
+            Behavior on color {
+              ColorAnimation {
+                duration: 150
+              }
+            }
           }
 
           Text {
             id: tabText
             anchors.centerIn: parent
             text: modelData.label
-            color: isActive ? Color.mInverseSurface : Color.mOutline
+            color: parent.isActive ? Color.mSurfaceContainerLowest : Color.mOutlineVariant
             font.pixelSize: 13
-            font.weight: isActive ? Font.Bold : Font.Normal
+            font.weight: parent.isActive ? Font.Bold : Font.Normal
+            Behavior on color {
+              ColorAnimation {
+                duration: 150
+              }
+            }
           }
+
+          onClicked: settingsPanel.activeTab = modelData.key
         }
       }
     }
@@ -208,6 +202,15 @@ Item {
           max: 800
           onCommit: function (n) {
             set("scrollDuration", n);
+          }
+        }
+        SettingsInput {
+          label: "Hold Delay"
+          value: get("scrollContinueInterval")
+          min: 50
+          max: 500
+          onCommit: function (n) {
+            set("scrollContinueInterval", n);
           }
         }
         SettingsInput {
