@@ -42,14 +42,16 @@ Item {
   // ========== Helpers ==========
 
   function _resolvePath(pathStr) {
-    if (!pathStr) return "";
+    if (!pathStr)
+      return "";
     if (pathStr.indexOf("$HOME") === 0)
       return Quickshell.env("HOME") + pathStr.slice(5);
     return pathStr;
   }
 
   function _resolvePaths(dirs) {
-    if (!Array.isArray(dirs)) return [];
+    if (!Array.isArray(dirs))
+      return [];
     var result = [];
     for (var i = 0; i < dirs.length; i++)
       result.push(_resolvePath(dirs[i]));
@@ -57,61 +59,80 @@ Item {
   }
 
   function _apply(obj) {
-    if (!obj) return;
+    if (!obj)
+      return;
     // Paths
-    if (obj.wallpaperDirs !== undefined) root.wallpaperDirs = _resolvePaths(obj.wallpaperDirs);
-    if (obj.cacheDir !== undefined) root.cacheDir = _resolvePath(obj.cacheDir);
-    if (obj.debugMode !== undefined) root.debugMode = obj.debugMode;
+    if (obj.wallpaperDirs !== undefined)
+      root.wallpaperDirs = _resolvePaths(obj.wallpaperDirs);
+    if (obj.cacheDir !== undefined)
+      root.cacheDir = _resolvePath(obj.cacheDir);
+    if (obj.debugMode !== undefined)
+      root.debugMode = obj.debugMode;
 
     // Toggles
-    if (obj.showBgPreview !== undefined) root.showBgPreview = obj.showBgPreview;
-    if (obj.previewStyle !== undefined) root.previewStyle = obj.previewStyle;
+    if (obj.showBgPreview !== undefined)
+      root.showBgPreview = obj.showBgPreview;
+    if (obj.previewStyle !== undefined)
+      root.previewStyle = obj.previewStyle;
 
     // Carousel
     if (obj.carousel) {
       var c = obj.carousel;
-      if (c.itemWidth !== undefined) root.carouselItemWidth = c.itemWidth;
-      if (c.itemHeight !== undefined) root.carouselItemHeight = c.itemHeight;
-      if (c.spacing !== undefined) root.carouselSpacing = c.spacing;
-      if (c.rotation !== undefined) root.carouselRotation = c.rotation;
-      if (c.perspective !== undefined) root.carouselPerspective = c.perspective;
+      if (c.itemWidth !== undefined)
+        root.carouselItemWidth = c.itemWidth;
+      if (c.itemHeight !== undefined)
+        root.carouselItemHeight = c.itemHeight;
+      if (c.spacing !== undefined)
+        root.carouselSpacing = c.spacing;
+      if (c.rotation !== undefined)
+        root.carouselRotation = c.rotation;
+      if (c.perspective !== undefined)
+        root.carouselPerspective = c.perspective;
     }
 
     // Animation
     if (obj.animation) {
       var a = obj.animation;
-      if (a.scrollDuration !== undefined) root.scrollDuration = a.scrollDuration;
-      if (a.scrollContinueInterval !== undefined) root.scrollContinueInterval = a.scrollContinueInterval;
-      if (a.bgSlideDuration !== undefined) root.bgSlideDuration = a.bgSlideDuration;
-      if (a.bgParallaxFactor !== undefined) root.bgParallaxFactor = a.bgParallaxFactor;
+      if (a.scrollDuration !== undefined)
+        root.scrollDuration = a.scrollDuration;
+      if (a.scrollContinueInterval !== undefined)
+        root.scrollContinueInterval = a.scrollContinueInterval;
+      if (a.bgSlideDuration !== undefined)
+        root.bgSlideDuration = a.bgSlideDuration;
+      if (a.bgParallaxFactor !== undefined)
+        root.bgParallaxFactor = a.bgParallaxFactor;
     }
 
     // Appearance
     if (obj.appearance) {
       var app = obj.appearance;
-      if (app.showBorderGlow !== undefined) root.showBorderGlow = app.showBorderGlow;
-      if (app.showShadow !== undefined) root.showShadow = app.showShadow;
-      if (app.bgOverlayOpacity !== undefined) root.bgOverlayOpacity = app.bgOverlayOpacity;
+      if (app.showBorderGlow !== undefined)
+        root.showBorderGlow = app.showBorderGlow;
+      if (app.showShadow !== undefined)
+        root.showShadow = app.showShadow;
+      if (app.bgOverlayOpacity !== undefined)
+        root.bgOverlayOpacity = app.bgOverlayOpacity;
     }
   }
 
   // ========== Config Loading ==========
 
   function startCheck() {
-    if (!defaultConfig.ready) return;
-    
+    if (!defaultConfig.ready)
+      return;
+
     // Apply defaults first
     _apply(defaultConfig.config);
 
-    checkProcess.command = ["sh", "-c",
-      '[ -f "$HOME/.config/npaper/config.json" ] && echo exists || echo missing'];
+    checkProcess.command = ["sh", "-c", '[ -f "$HOME/.config/npaper/config.json" ] && echo exists || echo missing'];
     checkProcess.running = true;
   }
 
   Connections {
     target: defaultConfig
     function onReadyChanged() {
-      if (defaultConfig.ready) root.startCheck();
+      if (defaultConfig.ready)
+        root.startCheck();
     }
   }
 
@@ -127,7 +148,8 @@ Item {
       }
     }
     onExited: function (code, status) {
-      if (code !== 0) root.ready = true;
+      if (code !== 0)
+        root.ready = true;
     }
   }
 
@@ -162,7 +184,8 @@ Item {
   Process {
     id: saveProcess
     onExited: function (code, status) {
-      if (code === 0) root.isSaving = false;
+      if (code === 0)
+        root.isSaving = false;
     }
   }
 
@@ -197,15 +220,15 @@ Item {
         }
       };
       var str = JSON.stringify(json, null, 2);
-      saveProcess.command = ["sh", "-c",
-        'mkdir -p "$1" && printf "%s" "$2" > "$1/config.json"',
-        "npaper-save", root.configDir, str];
+      saveProcess.command = ["sh", "-c", 'mkdir -p "$1" && printf "%s" "$2" > "$1/config.json"', "npaper-save", root.configDir, str];
       saveProcess.exec({});
       root.isSaving = true;
     }
   }
 
-  function saveConfig() { saveTimer.restart(); }
+  function saveConfig() {
+    saveTimer.restart();
+  }
 
   function set(key, value) {
     root[key] = value;
@@ -213,6 +236,7 @@ Item {
   }
 
   Component.onCompleted: {
-    if (defaultConfig.ready) root.startCheck();
+    if (defaultConfig.ready)
+      root.startCheck();
   }
 }

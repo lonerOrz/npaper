@@ -35,7 +35,11 @@ Item {
   transformOrigin: Item.Center
 
   transform: Rotation {
-    axis { x: 0; y: 1; z: 0 }
+    axis {
+      x: 0
+      y: 1
+      z: 0
+    }
     angle: visualRotationY
     origin.x: width / 2
     origin.y: height / 2
@@ -61,7 +65,10 @@ Item {
     property real innerRadius: itemRadius
 
     NumberAnimation on time {
-      from: 0; to: 1000; duration: 30000; loops: Animation.Infinite
+      from: 0
+      to: 1000
+      duration: 30000
+      loops: Animation.Infinite
       running: root.isCenter && root.showBorderGlow
     }
 

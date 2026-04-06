@@ -17,14 +17,16 @@ Item {
   signal allChecked
 
   function _onProcessDone(procId, result, nextAction) {
-    if (nextAction) nextAction();
+    if (nextAction)
+      nextAction();
   }
 
   function _onProcessTimeout(proc, defaultValue, nextAction) {
     if (proc.running) {
       proc.running = false;
     }
-    if (nextAction) nextAction();
+    if (nextAction)
+      nextAction();
   }
 
   Timer {
@@ -55,9 +57,9 @@ Item {
     id: mpvTimeout
     interval: root.checkTimeout
     onTriggered: root._onProcessTimeout(mpvProcess, false, () => {
-      root.allChecked();
-      root.ready = true;
-    })
+                                          root.allChecked();
+                                          root.ready = true;
+                                        })
   }
 
   Process {

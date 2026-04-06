@@ -12,7 +12,7 @@ Item {
   property real from: 0
   property real to: 100
   property real stepSize: 1
-  
+
   signal userValueChanged(real val)
 
   RowLayout {
@@ -37,13 +37,17 @@ Item {
 
     Slider {
       id: slider
-      width: 120; Layout.alignment: Qt.AlignRight
-      from: root.from; to: root.to; stepSize: root.stepSize
+      width: 120
+      Layout.alignment: Qt.AlignRight
+      from: root.from
+      to: root.to
+      stepSize: root.stepSize
       value: root.value
       onMoved: root.userValueChanged(value)
-      
+
       background: Rectangle {
-        implicitWidth: 120; implicitHeight: 4
+        implicitWidth: 120
+        implicitHeight: 4
         color: "#222222"
         radius: 2
         Rectangle {
@@ -56,13 +60,18 @@ Item {
       handle: Rectangle {
         x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
         y: slider.topPadding + slider.availableHeight / 2 - height / 2
-        implicitWidth: 16; implicitHeight: 16
+        implicitWidth: 16
+        implicitHeight: 16
         radius: 8
         color: slider.pressed ? "#88b8ff" : "#6a9eff"
         border.color: "#ffffff"
         border.width: 2
         scale: slider.pressed ? 1.1 : 1.0
-        Behavior on scale { NumberAnimation { duration: 100 } }
+        Behavior on scale {
+          NumberAnimation {
+            duration: 100
+          }
+        }
       }
     }
   }

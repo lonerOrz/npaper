@@ -27,10 +27,16 @@ Item {
     width: root._pillW
 
     Behavior on x {
-      NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
+      NumberAnimation {
+        duration: 280
+        easing.type: Easing.OutCubic
+      }
     }
     Behavior on width {
-      NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
+      NumberAnimation {
+        duration: 280
+        easing.type: Easing.OutCubic
+      }
     }
   }
 
@@ -64,12 +70,15 @@ Item {
           font.pixelSize: 13
           font.weight: parent.active ? Font.Medium : Font.Normal
           Behavior on color {
-            ColorAnimation { duration: 200 }
+            ColorAnimation {
+              duration: 200
+            }
           }
         }
 
         Component.onCompleted: {
-          if (active) tabsRow.updatePill();
+          if (active)
+            tabsRow.updatePill();
         }
       }
     }

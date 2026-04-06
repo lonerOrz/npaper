@@ -20,8 +20,10 @@ Item {
 
   function _filterList() {
     const folder = root.wallpaperMap[root.currentFolder];
-    if (!folder) return [];
-    if (!root.searchText) return folder;
+    if (!folder)
+      return [];
+    if (!root.searchText)
+      return folder;
 
     const lower = root.searchText.toLowerCase();
     return folder.filter(p => p.toLowerCase().includes(lower));
@@ -84,15 +86,15 @@ Item {
         const lines = text.trim().split('\n').filter(l => l.length > 0);
         const folderMap = {};
         lines.forEach(line => {
-          const sepIdx = line.indexOf('|');
-          if (sepIdx > 0) {
-            const folder = line.substring(0, sepIdx);
-            const path = line.substring(sepIdx + 1);
-            if (!folderMap[folder])
-              folderMap[folder] = [];
-            folderMap[folder].push(path);
-          }
-        });
+                        const sepIdx = line.indexOf('|');
+                        if (sepIdx > 0) {
+                          const folder = line.substring(0, sepIdx);
+                          const path = line.substring(sepIdx + 1);
+                          if (!folderMap[folder])
+                          folderMap[folder] = [];
+                          folderMap[folder].push(path);
+                        }
+                      });
         root.wallpaperMap = folderMap;
         if (root.debugMode)
           console.log("[npaper] Model: loaded", lines.length, "wallpapers");
@@ -111,12 +113,8 @@ Item {
         console.log("[npaper] Model: Skipping load due to missing dirs or scriptPath");
       return;
     }
-    folderListProcess.command = ["bash", "-c",
-      'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-folders',
-      "npaper-fl", root.dirs.join("|"), root.scriptPath];
-    listProcess.command = ["bash", "-c",
-      'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-with-folders',
-      "npaper-lwf", root.dirs.join("|"), root.scriptPath];
+    folderListProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-folders', "npaper-fl", root.dirs.join("|"), root.scriptPath];
+    listProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-with-folders', "npaper-lwf", root.dirs.join("|"), root.scriptPath];
     folderListProcess.exec({});
   }
 }
