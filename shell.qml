@@ -13,6 +13,10 @@ import "utils/HashUtils.js" as HashUtils
 import "utils"
 
 ShellRoot {
+  ConfigManager {
+    id: appConfig
+  }
+
   Variants {
     model: Quickshell.screens
 
@@ -21,21 +25,18 @@ ShellRoot {
       property var modelData
       screen: modelData
 
-      // Debug mode: set to true for verbose logging
-      readonly property bool debugMode: false
+      readonly property bool debugMode: appConfig.debugMode
 
       visible: true
       color: "transparent"
 
-      // Fullscreen size
       implicitWidth: screen.width
       implicitHeight: screen.height
 
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-      WlrLayershell.exclusiveZone: -1  // Cover entire screen, ignore waybar's reserved zone
+      WlrLayershell.exclusiveZone: -1
 
-      // Data
       property var wallpaperList: []
       property var wallpaperListLower: []
       property var wallpaperFilenames: []
@@ -43,38 +44,33 @@ ShellRoot {
       property var filteredFilenames: []
       property string searchText: ""
 
-      // Folder data
       property var folderList: []
-      property var folderWallpaperMap: ({})  // { "folder": [path1, path2, ...], ... }
+      property var folderWallpaperMap: ({})
       property string activeFolder: ""
 
-      // Cache Manager
       readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/wallpaper_thumbs"
       property bool hasFfmpeg: false
 
-      // Scroll & Virtualization
       property real scrollIndex: 0
-      property real _cachedScrollIndex: 0  // Cached for delegate binding stability
+      property real _cachedScrollIndex: 0
       property real scrollVelocity: 0
       property real lastScrollIndex: 0
       property int scrollTimestamp: 0
-      property real targetScrollIndex: 0  // Target for smooth scrolling
+      property real targetScrollIndex: 0
       readonly property int count: filteredWallpaperList.length
-      readonly property int visibleRange: 4
-      readonly property int preloadRange: 2
+      readonly property int visibleRange: appConfig.visibleRange
+      readonly property int preloadRange: appConfig.preloadRange
 
-      // Keyboard scroll velocity for smooth repeated navigation
       property real keyScrollVelocity: 0
-      property int keyScrollDirection: 0  // -1 = left, 0 = none, 1 = right
-      property int keyScrollStep: 1  // Step size for keyboard scroll
-      property bool isKeyScrolling: false  // Track if continuous scroll is active
-      property real scrollTarget: 0  // Target scroll position
+      property int keyScrollDirection: 0
+      property int keyScrollStep: 1
+      property bool isKeyScrolling: false
+      property real scrollTarget: 0
 
-      // Smooth scrolling with Behavior on custom property
       Behavior on scrollTarget {
         NumberAnimation {
           id: scrollAnim
-          duration: 280
+          duration: appConfig.scrollAnimDuration
           easing.type: Easing.OutCubic
         }
       }
@@ -83,10 +79,9 @@ ShellRoot {
         scrollIndex = scrollTarget;
       }
 
-      // Auto-continue scrolling while key is held
       Timer {
         id: scrollContinueTimer
-        interval: 230  // Slightly less than animation duration for seamless flow
+        interval: appConfig.scrollContinueInterval
         repeat: false
         onTriggered: {
           if (isKeyScrolling && keyScrollDirection !== 0 && root.count > 0) {
@@ -101,7 +96,6 @@ ShellRoot {
               nextIdx = Math.min(maxIdx, currentIdx + step);
             }
 
-            // Only continue if we haven't reached the end
             if (nextIdx !== currentIdx) {
               scrollTarget = nextIdx;
             } else {
@@ -119,26 +113,23 @@ ShellRoot {
         cacheManager.initialize();
       }
 
-      // Background slide animation (drives progress only)
       PropertyAnimation {
         id: bgSlideAnim
         target: root
         properties: "bgSlideProgress"
         from: 0
         to: 1.0
-        duration: 250
-        easing.type: Easing.OutQuad  // Smoother, faster tracking
+        duration: appConfig.bgSlideDuration
+        easing.type: Easing.OutQuad
       }
 
-      // Background Crossfade
       property int bgCurrent: -1
       property int bgPrevious: -1
-      property real bgSlideProgress: 0.0  // 0 = start, 1 = complete
+      property real bgSlideProgress: 0.0
       property string _bgSourceA: ""
       property string _bgSourceB: ""
 
       onBgCurrentChanged: {
-        // Update background source immediately
         if (bgCurrent >= 0 && bgCurrent < root.filteredWallpaperList.length) {
           const path = root.filteredWallpaperList[bgCurrent];
           const bgPreview = CacheUtils.getCachedBgPreview(cacheManager.thumbHashToPath, path);
@@ -159,12 +150,9 @@ ShellRoot {
       readonly property int maxIndex: Math.min(count - 1, centerIndex + visibleRange + preloadRange)
       readonly property int loadedCount: count > 0 ? Math.max(0, maxIndex - baseIndex + 1) : 0
 
-      // Handle scroll changes
       onScrollIndexChanged: {
-        // Sync cached value for stable delegate bindings
         _cachedScrollIndex = scrollIndex;
 
-        // Calculate velocity for inertia
         const now = Date.now();
         const dt = now - scrollTimestamp;
         if (dt > 0 && dt < 200) {
@@ -173,19 +161,15 @@ ShellRoot {
         lastScrollIndex = scrollIndex;
         scrollTimestamp = now;
 
-        // Immediate background change tracking
         const c = centerIndex;
         if (c !== bgCurrent && c >= 0 && c < root.filteredWallpaperList.length) {
           bgPrevious = bgCurrent;
           bgCurrent = c;
-          // Reset and trigger slide animation
           bgSlideProgress = 0;
           bgSlideAnim.restart();
-          // Extract dominant color for new wallpaper
           extractDominantColor(root.filteredWallpaperList[c]);
         }
 
-        // Queue thumbnails for visible range
         let queueCount = 0;
         for (let i = baseIndex; i <= maxIndex && i < root.filteredWallpaperList.length; i++) {
           const path = root.filteredWallpaperList[i];
@@ -205,6 +189,8 @@ ShellRoot {
         cacheDir: root.cacheDir
         hasFfmpeg: root.hasFfmpeg
         debugMode: root.debugMode
+        thumbWidth: appConfig.carouselItemWidth
+        thumbHeight: appConfig.carouselItemHeight
 
         onCacheScanned: {
           listProcess.exec({});
@@ -216,8 +202,6 @@ ShellRoot {
 
         onThumbnailGenerated: {}
       }
-
-      // Init Processes
       Process {
         id: checkImagemagick
         command: ["sh", "-c", "command -v magick >/dev/null 2>&1 && echo OK"]
@@ -253,7 +237,6 @@ ShellRoot {
             }
             if (root.debugMode)
             console.log("[npaper] Folders:", folders);
-            // Create all cache subdirectories upfront
             if (folders.length > 0) {
               const cacheDirs = folders.map(f => root.cacheDir + "/" + f);
               ensureCacheDirsProcess.command = ["mkdir", "-p", ...cacheDirs];
@@ -300,8 +283,6 @@ ShellRoot {
                             }
                           });
             root.folderWallpaperMap = folderMap;
-
-            // Build filtered list from active folder
             applyFolderSelection();
           }
         }
@@ -341,7 +322,6 @@ ShellRoot {
         applyFolderSelection();
       }
 
-      // Cache Refresh via cacheManager
       function refreshCache() {
         console.log("[npaper] Refreshing...");
         const folder = root.activeFolder;
@@ -351,7 +331,6 @@ ShellRoot {
         cacheManager.refreshAndQueue(paths, folder);
       }
 
-      // Scroll Helper
       function setScrollIndex(v) {
         if (root.count === 0)
           return;
@@ -364,27 +343,24 @@ ShellRoot {
         }
       }
 
-      // Smooth background crossfade (for initial load)
       PropertyAnimation {
         id: bgFadeIn
         target: root
         properties: "bgOpacity"
         from: 0
         to: 1.0
-        duration: 400
+        duration: appConfig.bgFadeDuration
         easing.type: Easing.InOutCubic
       }
 
-      // Background parallax offset (separate from slide)
-      readonly property real bgBaseParallaxX: (scrollIndex - centerIndex) * 40
+      readonly property real bgBaseParallaxX: (scrollIndex - centerIndex) * appConfig.bgParallaxFactor
 
-      // Search
       property var _searchResults: []
       property var _searchNames: []
 
       Timer {
         id: searchDebounce
-        interval: 150
+        interval: appConfig.searchDebounceMs
         onTriggered: {
           const text = root.searchText;
           if (root.debugMode)
@@ -406,7 +382,6 @@ ShellRoot {
             if (root.debugMode)
             console.log("[npaper] Search results:", root._searchResults.length, "matches");
 
-            // Reset scroll and background to first search result (instant, no animation on filter change)
             scrollTarget = 0;
             scrollIndex = 0;
             _cachedScrollIndex = 0;
@@ -419,7 +394,6 @@ ShellRoot {
         }
       }
 
-      // Dominant Color Extraction
       Timer {
         id: extractColorTimeout
         interval: 5000
@@ -485,7 +459,6 @@ ShellRoot {
         if (root.debugMode)
           console.log("[npaper] Extracting color from:", sourcePath);
 
-        // Cancel previous extraction if it's still running
         if (extractColorProcess.running) {
           extractColorProcess.running = false;
         }
@@ -503,8 +476,6 @@ ShellRoot {
         }
       }
 
-      // UI
-      // Background Crossfade (dual buffer with slide effect)
       Image {
         id: bgImageA
         anchors.fill: parent
@@ -537,11 +508,10 @@ ShellRoot {
         cache: true
       }
 
-      // Dark overlay to dim background
       Rectangle {
         anchors.fill: parent
         color: "#000000"
-        opacity: 0.4
+        opacity: appConfig.bgOverlayOpacity
         z: -1
       }
 
@@ -549,7 +519,7 @@ ShellRoot {
         anchors.fill: parent
         anchors.margins: 12
         spacing: 12
-        z: 0              // Ensure UI is above background
+        z: 0
 
         Item {
           id: pathViewContainer
@@ -558,9 +528,9 @@ ShellRoot {
           focus: true
           clip: true
 
-          property int itemWidth: 450
-          property int itemHeight: 320
-          property real spacing: 25
+          property int itemWidth: appConfig.carouselItemWidth
+          property int itemHeight: appConfig.carouselItemHeight
+          property real spacing: appConfig.carouselSpacing
           property real centerX: width / 2
           property real centerY: height / 2
 
@@ -569,7 +539,6 @@ ShellRoot {
             color: "#0d0d0dcc"
           }
 
-          // Folder Tab Bar
           Row {
             id: folderTabBar
             anchors.top: parent.top
@@ -621,19 +590,17 @@ ShellRoot {
             delegate: Item {
               id: delegateItem
               required property int index
-              // Fix: use baseIndex for virtualization
               property int realIndex: root.baseIndex + index
               property string wallpaperPath: realIndex < root.filteredWallpaperList.length ? root.filteredWallpaperList[realIndex] : ""
               property string filename: realIndex < root.filteredFilenames.length ? root.filteredFilenames[realIndex] : ""
               property bool isVideo: FileTypes.isVideoFile(wallpaperPath)
               property bool isGif: FileTypes.isGifFile(wallpaperPath)
 
-              // Precompute all metrics in one JS block (reduces binding churn)
               readonly property var metrics: {
                 const raw = realIndex - root._cachedScrollIndex;
                 const abs = Math.abs(raw);
-                const cos = Math.cos(Math.min(abs, 3) * 0.523599);  // PI/6 ≈ 0.523599
-                const perspectiveScale = 1.0 / (1.0 + abs * 0.3);
+                const cos = Math.cos(Math.min(abs, 3) * 0.523599);
+                const perspectiveScale = 1.0 / (1.0 + abs * appConfig.carouselPerspective);
                 return {
                   raw,
                   abs,
@@ -642,14 +609,13 @@ ShellRoot {
                 };
               }
 
-              // Unified visual properties (computed once, used everywhere)
               readonly property var visual: {
                 const abs = metrics.abs;
                 const isCenter = abs < 0.5;
                 return {
                   scale: metrics.perspectiveScale * (0.85 + metrics.cos * 0.15) + (isCenter ? 0.06 : 0),
                   opacity: abs > 6 ? 0 : Math.pow(Math.max(0, 1 - abs * 0.12), 2.5),
-                  rotationY: metrics.raw * -40,
+                  rotationY: metrics.raw * -appConfig.carouselRotation,
                   z: 100 - abs * 50,
                   spacingFactor: 0.45 + metrics.cos * 0.35,
                   yOffset: abs * 8,
@@ -679,30 +645,27 @@ ShellRoot {
                 }
               ]
 
-              // Center card shadow (float effect)
               Rectangle {
                 anchors.fill: parent
                 anchors.margins: 10
                 anchors.topMargin: 12
                 radius: 12
                 color: "#000000"
-                opacity: visual.shadowOpacity
+                opacity: visual.shadowOpacity && appConfig.showShadow ? visual.shadowOpacity : 0
                 z: -1
               }
 
-              // Fire border effect (behind the card, slightly larger)
               ShaderEffect {
                 id: borderGlow
                 anchors.fill: parent
                 z: 4
-                property bool useShaderBorder: true
+                property bool useShaderBorder: appConfig.showBorderGlow
                 visible: Math.abs(metrics.raw) < 0.5 && useShaderBorder
 
                 property real time: 0
-                // Use ShaderEffect's actual width and height
                 property real innerWidth: width
                 property real innerHeight: height
-                property real innerRadius: 12  // Match outer transparent Rectangle's radius
+                property real innerRadius: 12
 
                 NumberAnimation on time {
                   from: 0
@@ -720,7 +683,6 @@ ShellRoot {
                 anchors.margins: 10
                 color: "transparent"
                 radius: 12
-                // Center card glow effect - show QML border when shader border is disabled
                 border.color: (Math.abs(metrics.raw) < 0.5 && !borderGlow.useShaderBorder) ? "#6a9eff" : "transparent"
                 border.width: 2
 
@@ -731,7 +693,6 @@ ShellRoot {
                   radius: 8
                   color: "#111111aa"
                   clip: true
-                  // Cache as texture for GPU-efficient transform
                   layer.enabled: true
                   layer.smooth: true
                   layer.mipmap: true
@@ -740,18 +701,15 @@ ShellRoot {
                     anchors.fill: parent
                     anchors.margins: Math.abs(metrics.raw) < 0.5 ? Math.ceil(imageFrame.radius * 0.3) : 0
 
-                    // Fallback background for when no media is loaded
                     Rectangle {
                       anchors.fill: parent
                       color: "#1a1a1a"
                       visible: !delegateItem.isVideo && !delegateItem.isGif && imageItem.status !== Image.Ready
                     }
 
-                    // AnimatedImage for center card only (uses optimized 30fps preview for GIF and video)
                     AnimatedImage {
                       id: animatedGif
                       anchors.fill: parent
-                      // Only exact center card for GIF/video (single active decoder)
                       visible: (delegateItem.isGif || delegateItem.isVideo) && realIndex === root.centerIndex
                       source: {
                         if (!delegateItem.isGif && !delegateItem.isVideo)
@@ -770,7 +728,7 @@ ShellRoot {
                       mipmap: true
                       scale: 1.0
                       playing: visible
-                      sourceSize: Qt.size(450 * screen.devicePixelRatio, 320 * screen.devicePixelRatio)
+                      sourceSize: Qt.size(appConfig.carouselItemWidth * screen.devicePixelRatio, appConfig.carouselItemHeight * screen.devicePixelRatio)
                     }
 
                     Image {
@@ -778,17 +736,15 @@ ShellRoot {
                       anchors.fill: parent
                       property var _cacheVer: cacheManager.thumbCacheVersion
                       property string currentThumb: {
-                        const _v = _cacheVer;  // depend on version
+                        const _v = _cacheVer;
                         return CacheUtils.getCachedThumb(cacheManager.thumbHashToPath, delegateItem.wallpaperPath);
                       }
                       source: {
                         const path = delegateItem.wallpaperPath;
                         if (!path || path.length === 0 || path.endsWith('/'))
                         return "";
-                        // GIF/video: hide static image when animated version is ready and visible
                         if ((delegateItem.isGif || delegateItem.isVideo) && realIndex === root.centerIndex && animatedGif.status === AnimatedImage.Ready && animatedGif.visible)
                         return "";
-                        // Use cached thumbnail if available
                         if (currentThumb)
                         return "file://" + currentThumb;
                         if (delegateItem.isVideo)
@@ -800,7 +756,7 @@ ShellRoot {
                       smooth: realIndex === root.centerIndex
                       mipmap: true
                       opacity: status === Image.Ready ? 1 : 0
-                      sourceSize: Qt.size(450 * screen.devicePixelRatio, 320 * screen.devicePixelRatio)
+                      sourceSize: Qt.size(appConfig.carouselItemWidth * screen.devicePixelRatio, appConfig.carouselItemHeight * screen.devicePixelRatio)
                       scale: 1.0
 
                       Component.onCompleted: {
@@ -810,12 +766,10 @@ ShellRoot {
                       }
                     }
 
-                    // Show default icon for video/GIF when no thumbnail/animation cached
                     Text {
                       anchors.centerIn: parent
                       text: "🎬"
                       font.pixelSize: 48
-                      // Hide when animated preview is ready and visible, or when static thumbnail is ready
                       visible: (delegateItem.isVideo || delegateItem.isGif) && realIndex !== root.centerIndex && imageItem.status !== Image.Ready
                     }
 
@@ -839,7 +793,6 @@ ShellRoot {
                     height: 24
                     color: "#00000055"
                     radius: 6
-                    // Fade filename based on distance
                     opacity: Math.max(0, 1 - metrics.abs)
                     visible: opacity > 0.1
                     Text {
@@ -870,7 +823,6 @@ ShellRoot {
             styleColor: "black"
           }
 
-          // NixOS Logo Watermark - SVG with dynamic color + glow
           Image {
             id: nixosLogo
             anchors.horizontalCenter: parent.horizontalCenter
@@ -891,7 +843,6 @@ ShellRoot {
               blurEnabled: true
               blur: 0.12
               brightness: 1.3
-              // Enable smooth transition for dynamic color
               Behavior on colorizationColor {
                 ColorAnimation {
                   duration: 200
@@ -900,7 +851,6 @@ ShellRoot {
             }
           }
 
-          // Keyboard shortcuts hint
           Text {
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
@@ -922,7 +872,6 @@ ShellRoot {
           }
 
           Keys.onPressed: event => {
-            // 1. Backspace (search)
             if (event.key === Qt.Key_Backspace) {
               if (root.searchText) {
                 root.searchText = root.searchText.slice(0, -1);
@@ -933,7 +882,7 @@ ShellRoot {
               event.accepted = true;
               return;
             }
-            // 2. Exit (Esc only)
+
             if (event.key === Qt.Key_Escape) {
               if (root.debugMode)
               console.log("[npaper] Exit triggered");
@@ -941,7 +890,7 @@ ShellRoot {
               event.accepted = true;
               return;
             }
-            // 2b. Switch folder with Tab / Shift+Tab (Backtab)
+
             if (event.key === Qt.Key_Tab) {
               const idx = root.folderList.indexOf(root.activeFolder);
               if (root.folderList.length > 0) {
@@ -960,7 +909,7 @@ ShellRoot {
               event.accepted = true;
               return;
             }
-            // 2c. Switch folder with [ ]
+
             if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft) {
               const idx = root.folderList.indexOf(root.activeFolder);
               if (idx > 0) {
@@ -981,7 +930,7 @@ ShellRoot {
               event.accepted = true;
               return;
             }
-            // 3. Apply wallpaper
+
             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
               if (root.count > 0) {
                 const idx = Math.round(root.scrollIndex);
@@ -993,19 +942,19 @@ ShellRoot {
               event.accepted = true;
               return;
             }
-            // 4. Random wallpaper
+
             if (event.key === Qt.Key_R && !event.modifiers) {
               randomWallpaper();
               event.accepted = true;
               return;
             }
-            // 5. Refresh cache
+
             if (event.key === Qt.Key_F5) {
               refreshCache();
               event.accepted = true;
               return;
             }
-            // 6. Navigation - smooth continuous scrolling
+
             if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
               const step = (event.modifiers & Qt.ShiftModifier) ? 5 : 1;
               const direction = (event.key === Qt.Key_Left) ? -1 : 1;
@@ -1013,14 +962,11 @@ ShellRoot {
               if (root.debugMode)
               console.log("[npaper] Navigation - direction:", direction, "step:", step);
 
-              // Start or update continuous scroll
               if (keyScrollDirection !== direction) {
-                // New direction: start auto-continue
                 keyScrollDirection = direction;
                 keyScrollStep = step;
                 isKeyScrolling = true;
                 scrollContinueTimer.stop();
-                // Do one immediate step
                 const maxIdx = root.filteredWallpaperList.length - 1;
                 if (direction === -1) {
                   scrollTarget = Math.max(0, scrollTarget - step);
@@ -1028,13 +974,12 @@ ShellRoot {
                   scrollTarget = Math.min(maxIdx, scrollTarget + step);
                 }
               } else if (step !== keyScrollStep) {
-                // Same direction, different step (Shift pressed/released)
                 keyScrollStep = step;
               }
               event.accepted = true;
               return;
             }
-            // 7. Search input
+
             if (event.text && event.text.length === 1 && !event.modifiers) {
               root.searchText += event.text;
               if (root.debugMode)

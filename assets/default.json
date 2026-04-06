@@ -1,0 +1,43 @@
+{
+  "previewStyle": "carousel",
+
+  "carousel": {
+    "itemWidth": 450,
+    "itemHeight": 320,
+    "spacing": 25,
+    "rotation": 40,
+    "perspective": 0.3
+  },
+
+  "grid": {
+    "columns": 4,
+    "itemWidth": 320,
+    "itemHeight": 220,
+    "spacing": 12
+  },
+
+  "animation": {
+    "scrollDuration": 280,
+    "scrollContinueInterval": 230,
+    "bgSlideDuration": 250,
+    "bgFadeDuration": 400,
+    "bgParallaxFactor": 40
+  },
+
+  "appearance": {
+    "showBorderGlow": true,
+    "showShadow": true,
+    "bgOverlayOpacity": 0.4
+  },
+
+  "performance": {
+    "visibleRange": 4,
+    "preloadRange": 2
+  },
+
+  "search": {
+    "debounceMs": 150
+  },
+
+  "debugMode": false
+}

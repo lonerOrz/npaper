@@ -14,6 +14,11 @@ Item {
   property bool hasFfmpeg: false
   property bool debugMode: false
 
+  property int thumbWidth: 450
+  property int thumbHeight: 320
+  property int bgWidth: 1920
+  property int bgHeight: 1080
+
   property var thumbHashToPath: ({})
   property int cachedFileCount: 0
   property int thumbCacheVersion: 0
@@ -36,7 +41,6 @@ Item {
     command: ["mkdir", "-p", root.cacheDir]
   }
 
-  // Recursively scan subdirectories for cached files
   Process {
     id: scanCacheProcess
     command: ["sh", "-c", `find "${root.cacheDir}" -mindepth 2 -maxdepth 2 \\( -name '*.png' -o -name '*_anim.gif' \\) -printf '%P\\n' 2>/dev/null`]
@@ -81,15 +85,19 @@ Item {
 
       function runNext() {
         const hash = HashUtils.getThumbnailHash(_targetPath);
+        const tw = root.thumbWidth;
+        const th = root.thumbHeight;
+        const bw = root.bgWidth;
+        const bh = root.bgHeight;
         if (_step === 0) {
           if (_needAnim) {
-            command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-vframes", "1", "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320", "-q:v", "5", _thumbPath];
+            command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-vframes", "1", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-q:v", "5", _thumbPath];
           } else {
-            command = ["ffmpeg", "-y", "-i", _targetPath, "-vframes", "1", "-filter_complex", "[0:v]split=2[a][b];[a]scale=450:320:force_original_aspect_ratio=increase,crop=450:320[thumb];[b]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080[bg]", "-map", "[thumb]", "-q:v", "5", "-update", "1", _thumbPath, "-map", "[bg]", "-q:v", "2",
+            command = ["ffmpeg", "-y", "-i", _targetPath, "-vframes", "1", "-filter_complex", `[0:v]split=2[a][b];[a]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}[thumb];[b]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}[bg]`, "-map", "[thumb]", "-q:v", "5", "-update", "1", _thumbPath, "-map", "[bg]", "-q:v", "2",
                        _bgPath];
           }
         } else if (_step === 1 && _needAnim) {
-          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-r", "30", "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320", "-t", "10", _animPath];
+          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-r", "30", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-t", "10", _animPath];
         }
         if (command.length > 0) {
           exec({});
@@ -123,7 +131,9 @@ Item {
         if (_step === 1 && _needAnim) {
           busy = true;
           root.thumbnailJobRunning++;
-          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-vframes", "1", "-vf", "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080", "-q:v", "2", _bgPath];
+          const bw = root.bgWidth;
+          const bh = root.bgHeight;
+          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-vframes", "1", "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`, "-q:v", "2", _bgPath];
           exec({});
           return;
         }
@@ -131,7 +141,9 @@ Item {
         if (_step === 2 && _needAnim) {
           busy = true;
           root.thumbnailJobRunning++;
-          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-r", "30", "-vf", "scale=450:320:force_original_aspect_ratio=increase,crop=450:320", "-t", "10", _animPath];
+          const tw = root.thumbWidth;
+          const th = root.thumbHeight;
+          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-r", "30", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-t", "10", _animPath];
           exec({});
           return;
         }
