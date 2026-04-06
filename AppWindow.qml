@@ -204,26 +204,19 @@ PanelWindow {
         } else wallpaperModel.resetSearch()
     }}
 
-    // Background Images
-    Image {
-        id: bgImageA; anchors.fill: parent; z: -2
-        x: root.bgBaseParallaxX + (root.bgSlideProgress * root.width)
-        visible: viewModel ? viewModel.get("showBgPreview", true) : true && root.bgCurrent >= 0 && root.bgCurrent < (wallpaperModel ? wallpaperModel.list.length : 0)
-        opacity: visible ? root.bgSlideProgress : 0
-        source: _bgSourceA; fillMode: Image.PreserveAspectCrop; asynchronous: true; smooth: true; mipmap: true; cache: true
-        sourceSize: Qt.size(1920 * screen.devicePixelRatio, 1080 * screen.devicePixelRatio)
-    }
-    Image {
-        id: bgImageB; anchors.fill: parent; z: -2
-        x: root.bgBaseParallaxX + ((root.bgSlideProgress - 1) * root.width)
-        visible: viewModel ? viewModel.get("showBgPreview", true) : true && root.bgPrevious >= 0 && root.bgPrevious < (wallpaperModel ? wallpaperModel.list.length : 0)
-        opacity: visible ? (1.0 - root.bgSlideProgress) : 0
-        source: _bgSourceB; fillMode: Image.PreserveAspectCrop; asynchronous: true; smooth: true; mipmap: true; cache: true
-        sourceSize: Qt.size(Math.min(1920, screen.width) * screen.devicePixelRatio, Math.min(1080, screen.height) * screen.devicePixelRatio)
-    }
-    Rectangle { anchors.fill: parent; color: "#000000"; opacity: viewModel ? viewModel.get("bgOverlayOpacity", 0.4) : 0.4; z: -1 }
-
     // ===== UI =====
+    // Background Manager (New Component)
+    BackgroundManager {
+        anchors.fill: parent
+        sourceA: _bgSourceA
+        sourceB: _bgSourceB
+        crossfadeProgress: bgSlideProgress
+        parallaxX: bgBaseParallaxX
+        dominantColor: root.dominantColor
+        overlayOpacity: viewModel ? viewModel.get("bgOverlayOpacity", 0.4) : 0.4
+        showPreview: viewModel ? viewModel.get("showBgPreview", true) : true
+    }
+
     // Main Content Layout
     ColumnLayout {
         anchors.fill: parent
@@ -284,18 +277,6 @@ PanelWindow {
                 anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottomMargin: 25
                 text: "←/→ Navigate  |  Tab/[ ] Switch Folder  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  Esc Quit"
                 color: "#888888"; font.pixelSize: 11; style: Text.Outline; styleColor: "#000000"
-            }
-
-            Image {
-                id: nixosLogo; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom; anchors.bottomMargin: 160
-                width: 160; height: 160; source: Qt.resolvedUrl("assets/nixos-logo.svg")
-                fillMode: Image.PreserveAspectFit; smooth: true; visible: root.count > 0; z: 10
-                layer.enabled: true
-                layer.effect: MultiEffect {
-                    colorization: 1.0; colorizationColor: Qt.color(root.dominantColor)
-                    blurEnabled: true; blur: 0.12; brightness: 1.3
-                    Behavior on colorizationColor { ColorAnimation { duration: 200 } }
-                }
             }
 
             Keys.onPressed: event => {
