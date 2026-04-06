@@ -108,7 +108,7 @@ Item {
   function load() {
     if (root.dirs.length === 0 || !root.scriptPath) {
       if (root.debugMode)
-        console.log("[npaper] Model: dirs or scriptPath not set, skipping load");
+        console.log("[npaper] Model: Skipping load due to missing dirs or scriptPath");
       return;
     }
     folderListProcess.command = ["bash", "-c",

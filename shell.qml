@@ -2,75 +2,95 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Quickshell.Wayland
 import "services"
 import "models"
+import "viewmodels"
 import "components"
 
 ShellRoot {
-  ConfigService {
-    id: defaultConfigService
-    Component.onCompleted: defaultConfigService.loadPath(Qt.resolvedUrl("assets/default.json").toString().slice(7))
-  }
+    // 1. Model (State)
+    ConfigModel { id: configModel }
 
-  UserConfigService {
-    id: userConfigService
-    defaultConfig: defaultConfigService
-  }
-
-  CacheService {
-    id: cacheService
-    cacheDir: userConfigService.cacheDir
-    debugMode: userConfigService.debugMode
-    onCacheScanned: {
-      wallpaperModel.load();
+    // 2. Service (IO)
+    ConfigService {
+        id: configService
+        model: configModel
+        Component.onCompleted: load()
+        onLoaded: function(configData) {
+            // Update model with loaded config data
+            model.data = configData
+            model.ready = true
+        }
+        onError: function(message) {
+            console.error("[npaper] ConfigService error:", message)
+            // Still set model with defaults on error
+            model.data = JSON.parse(JSON.stringify(configService._defaults))
+            model.ready = true
+        }
     }
-  }
 
-  WallpaperModel {
-    id: wallpaperModel
-    dirs: userConfigService.wallpaperDirs
-    scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
-    debugMode: userConfigService.debugMode
-  }
-
-  WallpaperApplier {
-    id: wallpaperApplier
-    dirs: userConfigService.wallpaperDirs
-    scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
-  }
-
-  CheckService {
-    id: checkService
-    onAllChecked: {
-      cacheService.hasFfmpeg = hasFfmpeg;
-      if (hasFfmpeg) {
-        cacheService.initialize();
-        cacheService.scanCache();
-      }
+    // 3. ViewModel (Logic)
+    SettingsViewModel {
+        id: settingsVM
+        model: configModel
+        configService: configService
     }
-  }
 
-  Variants {
-    model: Quickshell.screens
-
-    AppWindow {
-      screen: modelData
-      userConfigService: userConfigService
-      checkService: checkService
-      cacheService: cacheService
-      wallpaperModel: wallpaperModel
-      wallpaperApplier: wallpaperApplier
+    // 4. Business Services
+    CacheService {
+        id: cacheService
+        cacheDir: configService.get("cacheDir")
+        debugMode: configService.get("debugMode")
+        onCacheScanned: { wallpaperModel.load(); }
     }
-  }
 
-  Connections {
-    target: userConfigService
-    function onReadyChanged() {
-      if (userConfigService.ready) {
-        checkService.run();
-      }
+    WallpaperModel {
+        id: wallpaperModel
+        dirs: configService.get("wallpaperDirs")
+        scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
+        debugMode: configService.get("debugMode")
     }
-  }
+
+    WallpaperApplier {
+        id: wallpaperApplier
+        dirs: configService.get("wallpaperDirs")
+        scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
+    }
+
+    CheckService {
+        id: checkService
+        onAllChecked: {
+            cacheService.hasFfmpeg = hasFfmpeg;
+            if (hasFfmpeg) {
+                cacheService.initialize();
+                cacheService.scanCache();
+            }
+        }
+    }
+
+    // 5. Kick off checks when config is ready
+    Connections {
+        target: configModel
+        function onReadyChanged() {
+            console.log("[npaper] ConfigModel ready changed:", configModel.ready);
+            if (configModel.ready) {
+                console.log("[npaper] Triggering checkService.run()");
+                checkService.run()
+            }
+        }
+    }
+
+    // 6. UI
+    Variants {
+        model: Quickshell.screens
+        delegate: AppWindow {
+            screen: modelData
+            viewModel: settingsVM
+            wallpaperModel: wallpaperModel
+            cacheService: cacheService
+            wallpaperApplier: wallpaperApplier
+            checkService: checkService
+        }
+    }
 }

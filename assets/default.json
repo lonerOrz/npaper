@@ -5,24 +5,18 @@
   "previewStyle": "carousel",
   "debugMode": false,
 
-  "carousel": {
-    "itemWidth": 450,
-    "itemHeight": 320,
-    "spacing": 25,
-    "rotation": 40,
-    "perspective": 0.3
-  },
+  "carouselItemWidth": 450,
+  "carouselItemHeight": 320,
+  "carouselSpacing": 25,
+  "carouselRotation": 40,
+  "carouselPerspective": 0.3,
 
-  "animation": {
-    "scrollDuration": 280,
-    "scrollContinueInterval": 230,
-    "bgSlideDuration": 250,
-    "bgParallaxFactor": 40
-  },
+  "scrollDuration": 280,
+  "scrollContinueInterval": 230,
+  "bgSlideDuration": 250,
+  "bgParallaxFactor": 40,
 
-  "appearance": {
-    "showBorderGlow": true,
-    "showShadow": true,
-    "bgOverlayOpacity": 0.4
-  }
+  "showBorderGlow": true,
+  "showShadow": true,
+  "bgOverlayOpacity": 0.4
 }
