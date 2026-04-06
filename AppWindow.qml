@@ -326,7 +326,7 @@ PanelWindow {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 25
-        text: "←/→ Navigate  |  Tab/[ ] Switch Folder  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  Esc Quit"
+        text: "/ Search  |  ←/→ Navigate  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  Esc Quit"
         color: Color.mOutline
         font.pixelSize: 11
         style: Text.Outline
@@ -336,6 +336,16 @@ PanelWindow {
       Keys.onPressed: event => {
                         if (event.key === Qt.Key_S && !event.modifiers) {
                           root.settingsOpen = true;
+                          event.accepted = true;
+                          return;
+                        }
+                        if (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier)) {
+                          statusBar.focusSearch();
+                          event.accepted = true;
+                          return;
+                        }
+                        if (event.key === Qt.Key_Slash) {
+                          statusBar.focusSearch();
                           event.accepted = true;
                           return;
                         }
@@ -450,6 +460,21 @@ PanelWindow {
       root.searchText = "";
       if (wallpaperModel)
         wallpaperModel.resetSearch();
+      pathViewContainer.forceActiveFocus();
+    }
+    onSearchSubmitted: {
+      if (wallpaperModel)
+        wallpaperModel.setSearch(root.searchText);
+      if (root.searchText) {
+        scrollController.scrollTo(0);
+        bgCurrent = 0;
+        bgSlideProgress = 1.0;
+        if (wallpaperModel.list.length > 0)
+          colorExtractor.run(wallpaperModel.list[0]);
+      } else {
+        wallpaperModel.resetSearch();
+      }
+      searchDebounce.stop();
       pathViewContainer.forceActiveFocus();
     }
   }

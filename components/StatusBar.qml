@@ -20,6 +20,12 @@ Item {
   property string searchText: ""
   signal searchInputChanged(string text)
   signal searchCleared
+  signal searchSubmitted
+
+  // Expose TextInput for external focus requests
+  function focusSearch() {
+    searchInput.forceActiveFocus();
+  }
 
   // Width is determined by content + margins
   // This prevents the bar from being too wide and having empty background space
@@ -85,6 +91,11 @@ Item {
         Keys.onPressed: event => {
                           if (event.key === Qt.Key_Escape) {
                             root.searchCleared();
+                            event.accepted = true;
+                          }
+                          if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            root.searchSubmitted();
+                            searchInput.focus = false;
                             event.accepted = true;
                           }
                         }
