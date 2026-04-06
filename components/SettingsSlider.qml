@@ -4,7 +4,7 @@ import QtQuick.Layouts
 
 Item {
   id: root
-  height: 40
+  height: 48
   width: parent ? parent.width : 300
 
   property alias text: label.text
@@ -17,10 +17,23 @@ Item {
 
   RowLayout {
     anchors.fill: parent
-    spacing: 10
+    spacing: 16
 
-    Text { id: label; Layout.fillWidth: true; color: "#cccccc"; font.pixelSize: 13; elide: Text.ElideRight }
-    Text { id: valueDisplay; text: value.toFixed(stepSize < 1 ? 2 : 0); color: "#6a9eff"; font.pixelSize: 12; font.family: "monospace" }
+    Text {
+      id: label
+      Layout.fillWidth: true
+      color: "#cccccc"
+      font.pixelSize: 13
+      elide: Text.ElideRight
+    }
+
+    Text {
+      id: valueDisplay
+      text: value.toFixed(stepSize < 1 ? 1 : 0)
+      color: "#6a9eff"
+      font.pixelSize: 13
+      font.family: "monospace"
+    }
 
     Slider {
       id: slider
@@ -30,8 +43,8 @@ Item {
       onMoved: root.userValueChanged(value)
       
       background: Rectangle {
-        implicitWidth: 100; implicitHeight: 4
-        color: "#444444"
+        implicitWidth: 120; implicitHeight: 4
+        color: "#222222"
         radius: 2
         Rectangle {
           width: slider.visualPosition * parent.width
@@ -43,11 +56,13 @@ Item {
       handle: Rectangle {
         x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
         y: slider.topPadding + slider.availableHeight / 2 - height / 2
-        implicitWidth: 14; implicitHeight: 14
-        radius: 7
+        implicitWidth: 16; implicitHeight: 16
+        radius: 8
         color: slider.pressed ? "#88b8ff" : "#6a9eff"
         border.color: "#ffffff"
         border.width: 2
+        scale: slider.pressed ? 1.1 : 1.0
+        Behavior on scale { NumberAnimation { duration: 100 } }
       }
     }
   }

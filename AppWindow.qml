@@ -220,11 +220,36 @@ PanelWindow {
 
             Rectangle { anchors.fill: parent; color: "#0d0d0dcc" }
 
-            FolderTabs {
-                anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter; anchors.topMargin: 16
-                model: wallpaperModel ? wallpaperModel.folders : []
+            // Top Status Bar (Folders + Settings)
+            StatusBar {
+                id: statusBar
+                anchors.top: parent.top
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.topMargin: 20
+                z: 100
+
+                folders: wallpaperModel ? wallpaperModel.folders : []
                 activeFolder: wallpaperModel ? wallpaperModel.currentFolder : ""
                 onFolderClicked: switchFolder(folder)
+
+                wallpaperCount: root.count
+                cachedCount: cacheService ? cacheService.cachedFileCount : 0
+                queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
+                
+                settingsOpen: root.settingsOpen
+                onSettingsToggled: root.settingsOpen = !root.settingsOpen
+            }
+
+            // Settings Panel (Opens downward from Top Bar)
+            SettingsPanel {
+                anchors.horizontalCenter: statusBar.horizontalCenter
+                y: statusBar.y + statusBar.height + 8
+                z: 999
+                openDownward: true
+
+                viewModel: root.viewModel
+                settingsOpen: root.settingsOpen
+                onCloseRequested: root.settingsOpen = false
             }
 
             Repeater {
@@ -265,22 +290,9 @@ PanelWindow {
             }
 
             Text {
-                anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottomMargin: 150
-                text: root.searchText ? "search: " + root.searchText : ""
-                color: "#4a9eff"; font.pixelSize: 18; font.bold: true
-                style: Text.Outline; styleColor: "black"
-            }
-            Text {
                 anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottomMargin: 25
-                text: "←/→ Navigate  |  Tab/[ ] Switch Folder  |  Enter Apply  |  R Random  |  F5 Refresh  |  Shift+←/→ Fast Scroll  |  Type to Search  |  Esc Quit"
+                text: "←/→ Navigate  |  Tab/[ ] Switch Folder  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  Esc Quit"
                 color: "#888888"; font.pixelSize: 11; style: Text.Outline; styleColor: "#000000"
-            }
-            StatusBar {
-                anchors.bottom: parent.bottom; anchors.right: parent.right; anchors.bottomMargin: 20
-                wallpaperCount: root.count
-                cachedCount: cacheService ? cacheService.cachedFileCount : 0
-                queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
-                activeFolder: wallpaperModel ? wallpaperModel.currentFolder : ""
             }
 
             Image {
@@ -301,7 +313,10 @@ PanelWindow {
                     if (root.searchText) { root.searchText = root.searchText.slice(0, -1); searchDebounce.restart() }
                     event.accepted = true; return
                 }
-                if (event.key === Qt.Key_Escape) { Qt.quit(); event.accepted = true; return }
+                if (event.key === Qt.Key_Escape) {
+                    if (root.settingsOpen) { root.settingsOpen = false; event.accepted = true; return }
+                    Qt.quit(); event.accepted = true; return
+                }
                 if (event.key === Qt.Key_Tab) {
                     const fs = wallpaperModel ? wallpaperModel.folders : []
                     if (fs.length > 0) { const idx = fs.indexOf(wallpaperModel ? wallpaperModel.currentFolder : ""); switchFolder(fs[idx < fs.length - 1 ? idx + 1 : 0]) }
@@ -369,11 +384,4 @@ PanelWindow {
         sourceSize: Qt.size(Math.min(1920, screen.width) * screen.devicePixelRatio, Math.min(1080, screen.height) * screen.devicePixelRatio)
     }
     Rectangle { anchors.fill: parent; color: "#000000"; opacity: viewModel ? viewModel.get("bgOverlayOpacity", 0.4) : 0.4; z: -1 }
-
-    SettingsPanel {
-        anchors.fill: parent
-        viewModel: root.viewModel
-        isOpen: root.settingsOpen
-        onClosed: pathViewContainer.focus = true
-    }
 }

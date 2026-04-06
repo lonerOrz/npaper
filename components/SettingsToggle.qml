@@ -3,33 +3,46 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 Item {
-  id: root
-  height: 40
-  width: parent ? parent.width : 300
+    id: root
+    height: 40
+    width: parent ? parent.width : 300
 
-  property alias text: label.text
-  property bool checked: false
-  signal toggled(bool val)
+    property alias text: label.text
+    property bool checked: false
+    signal toggled(bool val)
 
-  RowLayout {
-    anchors.fill: parent
-    spacing: 10
+    RowLayout {
+        anchors.fill: parent
+        spacing: 12
 
-    Text {
-      id: label
-      Layout.fillWidth: true
-      color: "#cccccc"
-      font.pixelSize: 13
-      elide: Text.ElideRight
+        Text {
+            id: label
+            Layout.fillWidth: true
+            color: "#cccccc"
+            font.pixelSize: 13
+        }
+
+        MouseArea {
+            Layout.alignment: Qt.AlignRight
+            width: 44; height: 24
+            onClicked: root.toggled(!toggle.checked)
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 12
+                color: root.checked ? "#6a9eff" : "#333333"
+                Behavior on color { ColorAnimation { duration: 200 } }
+            }
+            
+            Rectangle {
+                id: toggle
+                x: root.checked ? 22 : 2
+                y: 2
+                width: 20; height: 20
+                radius: 10
+                color: "#ffffff"
+                Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutBack; easing.overshoot: 2.0 } }
+            }
+        }
     }
-
-    Switch {
-      id: toggle
-      Layout.alignment: Qt.AlignRight
-      checked: root.checked
-      palette.midlight: "#4a9eff"
-      // Use onToggled (Qt6) or onCheckStateChanged
-      onToggled: root.toggled(checked)
-    }
-  }
 }
