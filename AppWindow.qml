@@ -344,14 +344,6 @@ PanelWindow {
                           event.accepted = true;
                           return;
                         }
-                        if (event.key === Qt.Key_Backspace) {
-                          if (root.searchText) {
-                            root.searchText = root.searchText.slice(0, -1);
-                            searchDebounce.restart();
-                          }
-                          event.accepted = true;
-                          return;
-                        }
                         if (event.key === Qt.Key_Escape) {
                           if (root.settingsOpen) {
                             root.settingsOpen = false;
@@ -426,11 +418,6 @@ PanelWindow {
                           event.accepted = true;
                           return;
                         }
-                        if (event.text && event.text.length === 1 && !event.modifiers) {
-                          root.searchText += event.text;
-                          searchDebounce.restart();
-                          event.accepted = true;
-                        }
                       }
       Keys.onReleased: event => {
                          if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
@@ -459,6 +446,17 @@ PanelWindow {
     queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
     settingsOpen: root.settingsOpen
     onSettingsToggled: root.settingsOpen = !root.settingsOpen
+    searchText: root.searchText
+    onSearchInputChanged: function (text) {
+      root.searchText = text;
+      searchDebounce.restart();
+    }
+    onSearchCleared: {
+      root.searchText = "";
+      if (wallpaperModel)
+        wallpaperModel.resetSearch();
+      pathViewContainer.forceActiveFocus();
+    }
   }
 
   SettingsPanel {

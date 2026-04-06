@@ -16,6 +16,10 @@ Item {
   property bool settingsOpen: false
   signal settingsToggled
 
+  property string searchText: ""
+  signal searchInputChanged(string text)
+  signal searchCleared
+
   // Width is determined by content + margins
   // This prevents the bar from being too wide and having empty background space
   width: contentRow.implicitWidth + 24
@@ -50,6 +54,61 @@ Item {
     anchors.rightMargin: 12
     spacing: 8
 
+    // Search Input
+    Rectangle {
+      Layout.alignment: Qt.AlignVCenter
+      Layout.minimumWidth: 140
+      Layout.preferredWidth: Math.max(140, searchInput.baseWidth + 16)
+      Layout.preferredHeight: 28
+      radius: 14
+      color: "#27272a"
+      border.color: searchInput.activeFocus ? "#3b82f6" : "#3f3f46"
+      border.width: 1
+
+      TextInput {
+        id: searchInput
+        anchors.left: parent.left
+        anchors.leftMargin: 10
+        anchors.right: parent.right
+        anchors.rightMargin: 10
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.searchText
+        onTextChanged: root.searchInputChanged(text)
+        color: "#e4e4e7"
+        font.pixelSize: 12
+        cursorVisible: activeFocus
+        selectByMouse: true
+
+        property real baseWidth: 120
+
+        Keys.onPressed: event => {
+                          if (event.key === Qt.Key_Escape) {
+                            root.searchCleared();
+                            event.accepted = true;
+                          }
+                        }
+      }
+
+      Text {
+        anchors.centerIn: parent
+        text: "Type to search..."
+        color: "#52525b"
+        font.pixelSize: 12
+        visible: !searchInput.text && !searchInput.activeFocus
+      }
+
+      TapHandler {
+        onTapped: searchInput.forceActiveFocus()
+      }
+    }
+
+    // Divider
+    Rectangle {
+      Layout.preferredWidth: 1
+      Layout.preferredHeight: 20
+      color: "#3f3f46"
+    }
+
     // Folder Tabs
     Repeater {
       model: root.folders
@@ -83,8 +142,6 @@ Item {
       Layout.preferredWidth: 1
       Layout.preferredHeight: 20
       color: "#3f3f46"
-      Layout.leftMargin: 4
-      Layout.rightMargin: 4
       visible: root.folders.length > 0
     }
 

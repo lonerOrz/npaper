@@ -45,6 +45,14 @@ Item {
     root.searchText = "";
   }
 
+  function setSearch(text) {
+    root.searchText = text;
+  }
+
+  function resetSearch() {
+    root.searchText = "";
+  }
+
   function refresh(folder, cacheService) {
     if (!cacheService)
       return;
