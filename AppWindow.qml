@@ -326,7 +326,7 @@ PanelWindow {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 25
-        text: "/ Search  |  ←/→ Navigate  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  Esc Quit"
+        text: "/ Search  |  ←/→ Navigate  |  Tab/[] Folder  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  Esc Quit"
         color: Color.mOutline
         font.pixelSize: 11
         style: Text.Outline
@@ -334,21 +334,7 @@ PanelWindow {
       }
 
       Keys.onPressed: event => {
-                        if (event.key === Qt.Key_S && !event.modifiers) {
-                          root.settingsOpen = true;
-                          event.accepted = true;
-                          return;
-                        }
-                        if (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier)) {
-                          statusBar.focusSearch();
-                          event.accepted = true;
-                          return;
-                        }
-                        if (event.key === Qt.Key_Slash) {
-                          statusBar.focusSearch();
-                          event.accepted = true;
-                          return;
-                        }
+                        // ===== Escape: context-sensitive =====
                         if (event.key === Qt.Key_Escape) {
                           if (root.settingsOpen) {
                             root.settingsOpen = false;
@@ -359,20 +345,29 @@ PanelWindow {
                           event.accepted = true;
                           return;
                         }
-                        if (event.key === Qt.Key_Tab) {
-                          const fs = wallpaperModel ? wallpaperModel.folders : [];
-                          if (fs.length > 0) {
-                            const idx = fs.indexOf(wallpaperModel ? wallpaperModel.currentFolder : "");
-                            switchFolder(fs[idx < fs.length - 1 ? idx + 1 : 0]);
-                          }
+
+                        // ===== Settings (S) =====
+                        if (event.key === Qt.Key_S && !event.modifiers) {
+                          root.settingsOpen = true;
                           event.accepted = true;
                           return;
                         }
-                        if (event.key === Qt.Key_Backtab) {
+
+                        // ===== Search (/, Ctrl+F) =====
+                        if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
+                          statusBar.focusSearch();
+                          event.accepted = true;
+                          return;
+                        }
+
+                        // ===== Folder switching (Tab/Shift+Tab or [ / ]) =====
+                        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
                           const fs = wallpaperModel ? wallpaperModel.folders : [];
                           if (fs.length > 0) {
                             const idx = fs.indexOf(wallpaperModel ? wallpaperModel.currentFolder : "");
-                            switchFolder(fs[idx > 0 ? idx - 1 : fs.length - 1]);
+                            switchFolder(event.key === Qt.Key_Tab
+                              ? (idx < fs.length - 1 ? idx + 1 : 0)
+                              : (idx > 0 ? idx - 1 : fs.length - 1));
                           }
                           event.accepted = true;
                           return;
@@ -395,6 +390,8 @@ PanelWindow {
                           event.accepted = true;
                           return;
                         }
+
+                        // ===== Apply wallpaper (Enter) =====
                         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                           if (root.count > 0) {
                             const idx = scrollController.currentIndex;
@@ -403,16 +400,8 @@ PanelWindow {
                           event.accepted = true;
                           return;
                         }
-                        if (event.key === Qt.Key_R && !event.modifiers) {
-                          scrollController.random();
-                          event.accepted = true;
-                          return;
-                        }
-                        if (event.key === Qt.Key_F5) {
-                          refreshCache();
-                          event.accepted = true;
-                          return;
-                        }
+
+                        // ===== Navigation (Left/Right) =====
                         if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
                           const dir = (event.key === Qt.Key_Left) ? -1 : 1;
                           if (event.modifiers & Qt.ShiftModifier) {
@@ -420,6 +409,20 @@ PanelWindow {
                           } else {
                             dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight();
                           }
+                          event.accepted = true;
+                          return;
+                        }
+
+                        // ===== Random (R) =====
+                        if (event.key === Qt.Key_R && !event.modifiers) {
+                          scrollController.random();
+                          event.accepted = true;
+                          return;
+                        }
+
+                        // ===== Refresh (F5) =====
+                        if (event.key === Qt.Key_F5) {
+                          refreshCache();
                           event.accepted = true;
                           return;
                         }
@@ -450,7 +453,10 @@ PanelWindow {
     cachedCount: cacheService ? cacheService.cachedFileCount : 0
     queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
     settingsOpen: root.settingsOpen
-    onSettingsToggled: root.settingsOpen = !root.settingsOpen
+    onSettingsToggled: {
+      root.settingsOpen = !root.settingsOpen;
+      if (!root.settingsOpen) pathViewContainer.forceActiveFocus();
+    }
     searchText: root.searchText
     onSearchInputChanged: function (text) {
       root.searchText = text;
