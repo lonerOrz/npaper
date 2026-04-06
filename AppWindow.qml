@@ -208,6 +208,39 @@ PanelWindow {
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 12; spacing: 12; z: 0
 
+        // Top Bar (Folders + Settings)
+        StatusBar {
+            id: statusBar
+            Layout.alignment: Qt.AlignHCenter
+            
+            folders: wallpaperModel ? wallpaperModel.folders : []
+            activeFolder: wallpaperModel ? wallpaperModel.currentFolder : ""
+            onFolderClicked: function(folder) { switchFolder(folder) }
+
+            wallpaperCount: root.count
+            cachedCount: cacheService ? cacheService.cachedFileCount : 0
+            queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
+            
+            settingsOpen: root.settingsOpen
+            onSettingsToggled: root.settingsOpen = !root.settingsOpen
+        }
+
+        // Settings Panel (Opens downward from Top Bar)
+        SettingsPanel {
+            Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
+            Layout.topMargin: 8
+            z: 999
+            openDownward: true
+
+            viewModel: root.viewModel
+            settingsOpen: root.settingsOpen
+            onCloseRequested: {
+                root.settingsOpen = false;
+                // Return focus to main view so keyboard shortcuts work again
+                pathViewContainer.forceActiveFocus();
+            }
+        }
+
         Item {
             id: pathViewContainer
             Layout.fillWidth: true; Layout.fillHeight: true; focus: true; clip: true
@@ -219,38 +252,6 @@ PanelWindow {
             property real centerY: height / 2
 
             Rectangle { anchors.fill: parent; color: "#0d0d0dcc" }
-
-            // Top Status Bar (Folders + Settings)
-            StatusBar {
-                id: statusBar
-                anchors.top: parent.top
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.topMargin: 20
-                z: 100
-
-                folders: wallpaperModel ? wallpaperModel.folders : []
-                activeFolder: wallpaperModel ? wallpaperModel.currentFolder : ""
-                onFolderClicked: switchFolder(folder)
-
-                wallpaperCount: root.count
-                cachedCount: cacheService ? cacheService.cachedFileCount : 0
-                queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
-                
-                settingsOpen: root.settingsOpen
-                onSettingsToggled: root.settingsOpen = !root.settingsOpen
-            }
-
-            // Settings Panel (Opens downward from Top Bar)
-            SettingsPanel {
-                anchors.horizontalCenter: statusBar.horizontalCenter
-                y: statusBar.y + statusBar.height + 8
-                z: 999
-                openDownward: true
-
-                viewModel: root.viewModel
-                settingsOpen: root.settingsOpen
-                onCloseRequested: root.settingsOpen = false
-            }
 
             Repeater {
                 model: root.loadedCount
