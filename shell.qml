@@ -6,41 +6,35 @@ import Quickshell.Wayland
 import qs.components
 import qs.models
 import qs.services
-import qs.viewmodels
 import qs.utils
+import qs.viewmodels
 
 ShellRoot {
-  // 1. Model (State)
   ConfigModel {
     id: configModel
   }
 
-  // 2. Service (IO)
   ConfigService {
     id: configService
     model: configModel
     Component.onCompleted: load()
     onLoaded: function (configData) {
-      // Update model with loaded config data
       model.data = configData;
       model.ready = true;
     }
     onError: function (message) {
       Logger.e("ConfigService error:", message);
-      // Still set model with defaults on error
       model.data = JSON.parse(JSON.stringify(configService._defaults));
       model.ready = true;
     }
   }
 
-  // 3. ViewModel (Logic)
   SettingsViewModel {
     id: settingsVM
     model: configModel
     configService: configService
   }
 
-  // 4. Business Services
   CacheService {
     id: cacheService
     cacheDir: configService.get("cacheDir")
@@ -74,7 +68,6 @@ ShellRoot {
     }
   }
 
-  // 5. Kick off checks when config is ready
   Connections {
     target: configModel
     function onReadyChanged() {
@@ -86,7 +79,6 @@ ShellRoot {
     }
   }
 
-  // 6. UI
   Variants {
     model: Quickshell.screens
     delegate: AppWindow {

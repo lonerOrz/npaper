@@ -5,10 +5,10 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import qs.components
-import qs.utils
 import "utils/CacheUtils.js" as CacheUtils
 import "utils/FileTypes.js" as FileTypes
+import qs.components
+import qs.utils
 
 PanelWindow {
   id: root
@@ -23,18 +23,6 @@ PanelWindow {
   property bool settingsOpen: false
   screen: modelData
 
-  Style {
-    id: styleConstants
-  }
-
-  // ViewModel Bindings (No direct Model access)
-  property real carouselItemWidth: viewModel ? viewModel.get("carouselItemWidth", 450) : 450
-  property real carouselItemHeight: viewModel ? viewModel.get("carouselItemHeight", 320) : 320
-  property real carouselSpacing: viewModel ? viewModel.get("carouselSpacing", 25) : 25
-  property real carouselRotation: viewModel ? viewModel.get("carouselRotation", 40) : 40
-  property real carouselPerspective: viewModel ? viewModel.get("carouselPerspective", 0.3) : 0.3
-  readonly property bool debugMode: viewModel ? viewModel.get("debugMode", false) : false
-
   visible: true
   color: "transparent"
   implicitWidth: screen.width
@@ -44,10 +32,30 @@ PanelWindow {
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
   WlrLayershell.exclusiveZone: -1
 
-  property string searchText: ""
-
   readonly property int count: wallpaperModel ? wallpaperModel.count : 0
   readonly property int centerIndex: scrollController.currentIndex
+  property string dominantColor: "#6a9eff"
+
+  property real carouselItemWidth: viewModel ? viewModel.get("carouselItemWidth", 450) : 450
+  property real carouselItemHeight: viewModel ? viewModel.get("carouselItemHeight", 320) : 320
+  property real carouselSpacing: viewModel ? viewModel.get("carouselSpacing", 25) : 25
+  property real carouselRotation: viewModel ? viewModel.get("carouselRotation", 40) : 40
+  property real carouselPerspective: viewModel ? viewModel.get("carouselPerspective", 0.3) : 0.3
+  property real bgOverlayOpacity: viewModel ? viewModel.get("bgOverlayOpacity", 0.4) : 0.4
+  property bool showBgPreview: viewModel ? viewModel.get("showBgPreview", true) : true
+  property bool showBorderGlow: viewModel ? viewModel.get("showBorderGlow", true) : true
+  property bool showShadow: viewModel ? viewModel.get("showShadow", true) : true
+  readonly property bool debugMode: viewModel ? viewModel.get("debugMode", false) : false
+
+  property string searchText: ""
+
+  property int bgCurrent: -1
+  property int bgPrevious: -1
+  property real bgSlideProgress: 0.0
+  property string _bgSourceA: ""
+  property string _bgSourceB: ""
+
+  // ========== Logic ==========
 
   Component.onCompleted: {
     Logger.init(root.debugMode);
@@ -55,57 +63,100 @@ PanelWindow {
       wallpaperModel.dataLoaded.connect(applyFolderSelection);
   }
 
-  // React to scroll position changes (background update & thumbnail queue)
   Connections {
     target: scrollController
     function onCurrentIndexChanged() {
-      const c = scrollController.currentIndex;
-      if (c !== bgCurrent && c >= 0 && c < (wallpaperModel ? wallpaperModel.list.length : 0)) {
-        bgPrevious = bgCurrent;
-        bgCurrent = c;
-        bgSlideProgress = 0;
-        bgSlideAnim.restart();
-        extractDominantColor(wallpaperModel.list[c]);
-      }
-
-      // Queue thumbnails for visible range
-      let queueCount = 0;
-      if (wallpaperModel) {
-        const base = scrollController.baseIndex;
-        const max = scrollController.maxIndex;
-        for (let i = base; i <= max && i < wallpaperModel.list.length; i++) {
-          cacheService.queueThumbnail(wallpaperModel.list[i], FileTypes.isVideoFile(wallpaperModel.list[i]), FileTypes.isGifFile(wallpaperModel.list[i]));
-          queueCount++;
-        }
-      }
-      Logger.d("scrollTick: idx=" + c + " queue=" + queueCount);
+      updateBackground(scrollController.currentIndex);
+      if (wallpaperModel)
+        queueThumbnails(scrollController.baseIndex, scrollController.maxIndex);
     }
   }
 
-  // Background logic
-  property int bgCurrent: -1
-  property int bgPrevious: -1
-  property real bgSlideProgress: 0.0
-  property string _bgSourceA: ""
-  property string _bgSourceB: ""
-
   onBgCurrentChanged: {
-    if (!cacheService || !wallpaperModel)
-      return;
-    if (bgCurrent >= 0 && bgCurrent < wallpaperModel.list.length) {
+    updateSourceA();
+  }
+
+  onBgPreviousChanged: {
+    updateSourceB();
+  }
+
+  function updateSourceA() {
+    if (bgCurrent >= 0 && bgCurrent < (wallpaperModel ? wallpaperModel.list.length : 0)) {
       const path = wallpaperModel.list[bgCurrent];
       const p = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, path);
       _bgSourceA = p ? ("file://" + p) : ("file://" + path);
     }
   }
-  onBgPreviousChanged: {
-    if (!cacheService || !wallpaperModel)
-      return;
-    if (bgPrevious >= 0 && bgPrevious < wallpaperModel.list.length) {
+
+  function updateSourceB() {
+    if (bgPrevious >= 0 && bgPrevious < (wallpaperModel ? wallpaperModel.list.length : 0)) {
       const path = wallpaperModel.list[bgPrevious];
       const p = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, path);
       _bgSourceB = p ? ("file://" + p) : ("file://" + path);
     }
+  }
+
+  function updateBackground(index) {
+    if (index !== bgCurrent && index >= 0 && index < (wallpaperModel ? wallpaperModel.list.length : 0)) {
+      bgPrevious = bgCurrent;
+      bgCurrent = index;
+      bgSlideProgress = 0;
+      bgSlideAnim.restart();
+      colorExtractor.run(wallpaperModel.list[index]);
+    }
+  }
+
+  function queueThumbnails(base, max) {
+    if (!wallpaperModel)
+      return;
+    for (let i = base; i <= max && i < wallpaperModel.list.length; i++) {
+      cacheService.queueThumbnail(wallpaperModel.list[i], FileTypes.isVideoFile(wallpaperModel.list[i]), FileTypes.isGifFile(wallpaperModel.list[i]));
+    }
+  }
+
+  function applyFolderSelection() {
+    scrollController.reset();
+    bgPrevious = -1;
+    bgCurrent = -1;
+    bgSlideProgress = 1.0;
+    if (wallpaperModel.list.length > 0) {
+      bgCurrent = 0;
+      colorExtractor.run(wallpaperModel.list[0]);
+    }
+  }
+
+  function switchFolder(folder) {
+    if (wallpaperModel) {
+      wallpaperModel.switchFolder(folder);
+      applyFolderSelection();
+    }
+  }
+
+  function refreshCache() {
+    if (wallpaperModel)
+      wallpaperModel.refresh(wallpaperModel.currentFolder, cacheService);
+  }
+
+  function applyWallpaper(path) {
+    if (wallpaperApplier)
+      wallpaperApplier.apply(path);
+    Qt.quit();
+  }
+
+  // ========== Components ==========
+
+  Style {
+    id: styleConstants
+  }
+
+  ScrollController {
+    id: scrollController
+    count: root.count
+    visibleRange: styleConstants.visibleRange
+    preloadRange: styleConstants.preloadRange
+    animationDuration: viewModel ? viewModel.get("scrollDuration", 280) : 280
+    scrollContinueInterval: viewModel ? viewModel.get("scrollContinueInterval", 230) : 230
+    parallaxFactor: viewModel ? viewModel.get("bgParallaxFactor", 40) : 40
   }
 
   PropertyAnimation {
@@ -118,59 +169,34 @@ PanelWindow {
     easing.type: styleConstants.easingOutQuad
   }
 
-  property string dominantColor: "#6a9eff"
+  QtObject {
+    id: colorExtractor
+    property string dominantColor: "#6a9eff"
 
-  function extractDominantColor(wp) {
-    if (!checkService || !checkService.hasImagemagick || !wp || wp.length === 0) {
-      root.dominantColor = "#6a9eff";
-      return;
+    function run(wp) {
+      if (!checkService || !checkService.hasImagemagick || !wp || wp.length === 0) {
+        root.dominantColor = "#6a9eff";
+        return;
+      }
+      const t = CacheUtils.getCachedThumb(cacheService.thumbHashToPath, wp);
+      if (t) {
+        _runColorExtract(t);
+        return;
+      }
+      if (FileTypes.isVideoFile(wp)) {
+        root.dominantColor = "#6a9eff";
+        return;
+      }
+      _runColorExtract(wp.toLowerCase().endsWith('.gif') ? wp + '[0]' : wp);
     }
-    const t = CacheUtils.getCachedThumb(cacheService.thumbHashToPath, wp);
-    if (t) {
-      runColorExtract(t);
-      return;
+
+    function _runColorExtract(src) {
+      if (extractColorProcess.running)
+        extractColorProcess.running = false;
+      extractColorTimeout.start();
+      extractColorProcess.command = ["magick", src, "-resize", "1x1!", "-modulate", "100,180", "txt:"];
+      extractColorProcess.exec({});
     }
-    if (FileTypes.isVideoFile(wp)) {
-      root.dominantColor = "#6a9eff";
-      return;
-    }
-    runColorExtract(wp.toLowerCase().endsWith('.gif') ? wp + '[0]' : wp);
-  }
-  function runColorExtract(src) {
-    if (extractColorProcess.running)
-      extractColorProcess.running = false;
-    extractColorTimeout.start();
-    extractColorProcess.command = ["magick", src, "-resize", "1x1!", "-modulate", "100,180", "txt:"];
-    extractColorProcess.exec({});
-  }
-  function randomWallpaper() {
-    scrollController.random();
-  }
-  function applyFolderSelection() {
-    scrollController.reset();
-    bgPrevious = -1;
-    bgCurrent = -1;
-    bgSlideProgress = 1.0;
-    if (wallpaperModel.list.length > 0) {
-      bgCurrent = 0;
-      extractDominantColor(wallpaperModel.list[0]);
-    }
-  }
-  function switchFolder(f) {
-    wallpaperModel.switchFolder(f);
-    applyFolderSelection();
-  }
-  function refreshCache() {
-    const f = wallpaperModel.currentFolder;
-    const ps = wallpaperModel.wallpaperMap[f] || [];
-    if (ps.length === 0)
-      return;
-    cacheService.refreshAndQueue(ps, f);
-  }
-  function applyWallpaper(path) {
-    if (wallpaperApplier)
-      wallpaperApplier.apply(path);
-    Qt.quit();
   }
 
   Timer {
@@ -178,6 +204,7 @@ PanelWindow {
     interval: 5000
     onTriggered: root.dominantColor = "#6a9eff"
   }
+
   Process {
     id: extractColorProcess
     stdout: StdioCollector {
@@ -193,36 +220,27 @@ PanelWindow {
         root.dominantColor = "#6a9eff";
     }
   }
+
   Timer {
     id: searchDebounce
     interval: styleConstants.searchDebounceMs
     onTriggered: {
-      wallpaperModel.setSearch(root.searchText);
+      if (wallpaperModel)
+        wallpaperModel.setSearch(root.searchText);
       if (root.searchText) {
         scrollController.scrollTo(0);
         bgCurrent = 0;
         bgSlideProgress = 1.0;
         if (wallpaperModel.list.length > 0)
-          extractDominantColor(wallpaperModel.list[0]);
-      } else
+          colorExtractor.run(wallpaperModel.list[0]);
+      } else {
         wallpaperModel.resetSearch();
+      }
     }
   }
 
-  // ===== UI =====
+  // ========== UI ==========
 
-  // Scroll Controller (New Component)
-  ScrollController {
-    id: scrollController
-    count: root.count
-    visibleRange: styleConstants.visibleRange
-    preloadRange: styleConstants.preloadRange
-    animationDuration: viewModel ? viewModel.get("scrollDuration", 280) : 280
-    scrollContinueInterval: viewModel ? viewModel.get("scrollContinueInterval", 230) : 230
-    parallaxFactor: viewModel ? viewModel.get("bgParallaxFactor", 40) : 40
-  }
-
-  // Background Manager
   BackgroundManager {
     anchors.fill: parent
     sourceA: _bgSourceA
@@ -230,15 +248,14 @@ PanelWindow {
     crossfadeProgress: bgSlideProgress
     parallaxX: (scrollController.scrollTarget - scrollController.currentIndex) * scrollController.parallaxFactor
     dominantColor: root.dominantColor
-    overlayOpacity: viewModel ? viewModel.get("bgOverlayOpacity", 0.4) : 0.4
-    showPreview: viewModel ? viewModel.get("showBgPreview", true) : true
+    overlayOpacity: root.bgOverlayOpacity
+    showPreview: root.showBgPreview
   }
 
-  // Main Content Layout
   ColumnLayout {
     anchors.fill: parent
     anchors.margins: 12
-    anchors.topMargin: 80 // Space for StatusBar (y=16 + h=44 + padding)
+    anchors.topMargin: 80
     z: 0
 
     Item {
@@ -270,8 +287,8 @@ PanelWindow {
           isGif: FileTypes.isGifFile(wallpaperPath)
           thumbHashToPath: cacheService ? cacheService.thumbHashToPath : {}
           isCenter: realIndex === root.centerIndex
-          showBorderGlow: viewModel ? viewModel.get("showBorderGlow", true) : true
-          showShadow: viewModel ? viewModel.get("showShadow", true) : true
+          showBorderGlow: root.showBorderGlow
+          showShadow: root.showShadow
 
           readonly property var metrics: {
             const raw = realIndex - scrollController.scrollTarget;
@@ -425,7 +442,6 @@ PanelWindow {
     }
   }
 
-  // Top Status Bar (Floating, above layout)
   StatusBar {
     id: statusBar
     anchors.top: parent.top
@@ -438,16 +454,13 @@ PanelWindow {
     onFolderClicked: function (folder) {
       switchFolder(folder);
     }
-
     wallpaperCount: root.count
     cachedCount: cacheService ? cacheService.cachedFileCount : 0
     queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
-
     settingsOpen: root.settingsOpen
     onSettingsToggled: root.settingsOpen = !root.settingsOpen
   }
 
-  // Settings Panel (Anchored to StatusBar)
   SettingsPanel {
     id: settingsPanel
     anchors.top: statusBar.bottom
@@ -455,12 +468,10 @@ PanelWindow {
     anchors.horizontalCenter: statusBar.horizontalCenter
     z: 999
     openDownward: true
-
     viewModel: root.viewModel
     settingsOpen: root.settingsOpen
     onCloseRequested: {
       root.settingsOpen = false;
-      // Return focus to main view
       pathViewContainer.forceActiveFocus();
     }
   }

@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.utils
 import "../utils/FileTypes.js" as FileTypes
+import qs.utils
 
 Item {
   id: root
@@ -16,8 +16,13 @@ Item {
   property var wallpaperMap: ({})
 
   property string searchText: ""
+  signal dataLoaded
 
   readonly property var list: _filterList()
+  readonly property var filenames: _extractFilenames(list)
+  readonly property int count: list.length
+
+  // ========== Logic ==========
 
   function _filterList() {
     const folder = root.wallpaperMap[root.currentFolder];
@@ -25,18 +30,13 @@ Item {
       return [];
     if (!root.searchText)
       return folder;
-
     const lower = root.searchText.toLowerCase();
     return folder.filter(p => p.toLowerCase().includes(lower));
   }
 
-  readonly property var filenames: _extractFilenames(list)
-
   function _extractFilenames(paths) {
     return paths.map(p => p.split('/').pop());
   }
-
-  readonly property int count: list.length
 
   function switchFolder(folder) {
     if (root.debugMode)
@@ -45,22 +45,35 @@ Item {
     root.searchText = "";
   }
 
-  function setSearch(text) {
-    root.searchText = text;
+  function refresh(folder, cacheService) {
+    if (!cacheService)
+      return;
+    if (root.debugMode)
+      Logger.d("Refresh folder:", folder);
+    const paths = root.wallpaperMap[folder] || [];
+    if (paths.length === 0)
+      return;
+    cacheService.refreshAndQueue(paths, folder);
   }
 
-  function resetSearch() {
-    root.searchText = "";
+  function load() {
+    if (root.dirs.length === 0 || !root.scriptPath) {
+      if (root.debugMode)
+        Logger.d("Model: Skipping load due to missing dirs or scriptPath");
+      return;
+    }
+    folderListProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-folders', "npaper-fl", root.dirs.join("|"), root.scriptPath];
+    listProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-with-folders', "npaper-lwf", root.dirs.join("|"), root.scriptPath];
+    folderListProcess.exec({});
   }
 
-  signal dataLoaded
+  // ========== Processes ==========
 
   Process {
     id: folderListProcess
     stdout: StdioCollector {
       onStreamFinished: {
-        const folderText = text.trim();
-        const f = folderText.split('\n').filter(s => s.length > 0);
+        const f = text.trim().split('\n').filter(s => s.length > 0);
         root.folders = f;
         if (f.length > 0)
           root.currentFolder = f[0];
@@ -106,16 +119,5 @@ Item {
       if (exitCode !== 0 && root.debugMode)
         Logger.d("listProcess failed, exitCode:", exitCode);
     }
-  }
-
-  function load() {
-    if (root.dirs.length === 0 || !root.scriptPath) {
-      if (root.debugMode)
-        Logger.d("Model: Skipping load due to missing dirs or scriptPath");
-      return;
-    }
-    folderListProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-folders', "npaper-fl", root.dirs.join("|"), root.scriptPath];
-    listProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-with-folders', "npaper-lwf", root.dirs.join("|"), root.scriptPath];
-    folderListProcess.exec({});
   }
 }

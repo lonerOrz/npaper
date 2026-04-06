@@ -1,10 +1,10 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.utils
 import "../utils/CacheUtils.js" as CacheHelpers
 import "../utils/FileTypes.js" as FileTypes
 import "../utils/HashUtils.js" as HashUtils
+import qs.utils
 
 Item {
   id: root
