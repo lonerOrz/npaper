@@ -23,13 +23,10 @@ Item {
   signal searchCleared
   signal searchSubmitted
 
-  // Expose TextInput for external focus requests
   function focusSearch() {
     searchInput.forceActiveFocus();
   }
 
-  // Width is determined by content + margins
-  // This prevents the bar from being too wide and having empty background space
   width: contentRow.implicitWidth + 24
   height: 44
 
@@ -38,18 +35,6 @@ Item {
     anchors.fill: parent
     radius: 22
     color: Color.mSurfaceContainerLowest
-    border.color: Color.mOutlineVariant
-    border.width: 1
-
-    // Inner highlight
-    Rectangle {
-      anchors.fill: parent
-      radius: 22
-      color: "transparent"
-      border.color: Color.mInverseSurface
-      border.width: 1
-      opacity: 0.05
-    }
   }
 
   // Content Row
@@ -69,15 +54,12 @@ Item {
       Layout.preferredWidth: Math.max(140, searchInput.baseWidth + 16)
       Layout.preferredHeight: 28
       radius: 14
-      color: Color.mSurfaceContainerHigh
-      border.color: searchInput.activeFocus ? Color.mPrimaryContainer : Color.mOutlineVariant
-      border.width: 1
+      color: Color.mSurfaceContainer
 
       TextInput {
         id: searchInput
-        anchors.left: parent.left
+        anchors.fill: parent
         anchors.leftMargin: 10
-        anchors.right: parent.right
         anchors.rightMargin: 10
         anchors.verticalCenter: parent.verticalCenter
         text: root.searchText
@@ -110,15 +92,17 @@ Item {
         visible: !searchInput.text && !searchInput.activeFocus
       }
 
-      TapHandler {
-        onTapped: searchInput.forceActiveFocus()
+      MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.IBeamCursor
+        onClicked: searchInput.forceActiveFocus()
       }
     }
 
     // Divider
     Rectangle {
       Layout.preferredWidth: 1
-      Layout.preferredHeight: 20
+      Layout.preferredHeight: 18
       color: Color.mOutlineVariant
     }
 
@@ -131,20 +115,14 @@ Item {
         width: tabLabel.implicitWidth + 16
         height: 28
 
-        Rectangle {
-          anchors.fill: parent
-          radius: 14
-          color: isActive ? Color.mPrimaryContainer : "transparent"
-          opacity: isActive ? 0.2 : 1.0
-        }
-
         Text {
           id: tabLabel
           anchors.centerIn: parent
           text: modelData
-          color: isActive ? Color.mOnPrimaryContainer : Color.mOutlineVariant
+          color: parent.isActive ? Color.mPrimary : Color.mOutlineVariant
           font.pixelSize: 12
-          font.weight: isActive ? Font.Bold : Font.Medium
+          font.weight: parent.isActive ? Font.Bold : Font.Normal
+          Behavior on color { ColorAnimation { duration: 150 } }
         }
         onClicked: root.folderClicked(modelData)
       }
@@ -153,18 +131,17 @@ Item {
     // Divider
     Rectangle {
       Layout.preferredWidth: 1
-      Layout.preferredHeight: 20
+      Layout.preferredHeight: 18
       color: Color.mOutlineVariant
       visible: root.folders.length > 0
     }
 
-    // Info Text (Follows Divider immediately)
+    // Info Text
     Text {
       Layout.alignment: Qt.AlignVCenter
-      text: "Wallpapers: " + root.wallpaperCount + "  |  Cache: " + root.cachedCount
+      text: root.wallpaperCount + " / " + root.cachedCount
       color: Color.mOutlineVariant
       font.pixelSize: 11
-      // font.family: "monospace"
     }
 
     // Settings Button
@@ -179,7 +156,7 @@ Item {
 
       Rectangle {
         anchors.fill: parent
-        radius: 6
+        radius: 8
         color: parent.hover ? Color.mSurfaceContainerHigh : "transparent"
         Behavior on color { ColorAnimation { duration: 150 } }
       }
@@ -197,7 +174,7 @@ Item {
         layer.enabled: true
         layer.effect: MultiEffect {
           colorization: 1.0
-          colorizationColor: root.settingsOpen ? Color.mPrimaryContainer : Color.mOutlineVariant
+          colorizationColor: root.settingsOpen ? Color.mPrimary : Color.mOutlineVariant
           Behavior on colorizationColor { ColorAnimation { duration: 150 } }
         }
       }
