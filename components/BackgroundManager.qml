@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Effects
+import qs.utils
 
 Item {
   id: root
@@ -8,7 +9,7 @@ Item {
   property string sourceB: ""
   property real crossfadeProgress: 0.0 // 0.0 to 1.0
   property real parallaxX: 0
-  property color dominantColor: "#6a9eff"
+  property color dominantColor: Color.mPrimary
   property real overlayOpacity: 0.4
   property bool showPreview: true
 
@@ -49,7 +50,7 @@ Item {
   // Dark Overlay
   Rectangle {
     anchors.fill: parent
-    color: "#000000"
+    color: Color.mScrim
     opacity: root.overlayOpacity
     z: -1
   }

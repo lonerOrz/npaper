@@ -1,4 +1,5 @@
 import QtQuick
+import qs.utils
 
 Item {
   id: root
@@ -19,8 +20,8 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     height: root.tabHeight - 4
     radius: height / 2
-    color: "#1a1a1a"
-    border.color: "#2a2a2a"
+    color: Color.mSurfaceContainerLow
+    border.color: Color.mOutlineVariant
     border.width: 1
 
     x: root._pillX
@@ -66,7 +67,7 @@ Item {
           id: tabText
           anchors.centerIn: parent
           text: modelData
-          color: parent.active ? "#ffffff" : "#666666"
+          color: parent.active ? Color.mInverseSurface : Color.mOutlineVariant
           font.pixelSize: 13
           font.weight: parent.active ? Font.Medium : Font.Normal
           Behavior on color {

@@ -34,7 +34,7 @@ PanelWindow {
 
   readonly property int count: wallpaperModel ? wallpaperModel.count : 0
   readonly property int centerIndex: scrollController.currentIndex
-  property string dominantColor: "#6a9eff"
+  property string dominantColor: Color.mPrimary
 
   property real carouselItemWidth: viewModel ? viewModel.get("carouselItemWidth", 450) : 450
   property real carouselItemHeight: viewModel ? viewModel.get("carouselItemHeight", 320) : 320
@@ -171,11 +171,11 @@ PanelWindow {
 
   QtObject {
     id: colorExtractor
-    property string dominantColor: "#6a9eff"
+    property string dominantColor: Color.mPrimary
 
     function run(wp) {
       if (!checkService || !checkService.hasImagemagick || !wp || wp.length === 0) {
-        root.dominantColor = "#6a9eff";
+        root.dominantColor = Color.mPrimary;
         return;
       }
       const t = CacheUtils.getCachedThumb(cacheService.thumbHashToPath, wp);
@@ -184,7 +184,7 @@ PanelWindow {
         return;
       }
       if (FileTypes.isVideoFile(wp)) {
-        root.dominantColor = "#6a9eff";
+        root.dominantColor = Color.mPrimary;
         return;
       }
       _runColorExtract(wp.toLowerCase().endsWith('.gif') ? wp + '[0]' : wp);
@@ -202,7 +202,7 @@ PanelWindow {
   Timer {
     id: extractColorTimeout
     interval: 5000
-    onTriggered: root.dominantColor = "#6a9eff"
+    onTriggered: root.dominantColor = Color.mPrimary
   }
 
   Process {
@@ -211,13 +211,13 @@ PanelWindow {
       onStreamFinished: {
         extractColorTimeout.stop();
         const m = text.trim().match(/#([0-9A-F]{6})/i);
-        root.dominantColor = m ? "#" + m[1].toUpperCase() : "#6a9eff";
+        root.dominantColor = m ? "#" + m[1].toUpperCase() : Color.mPrimary;
       }
     }
     onExited: function (exitCode, exitStatus) {
       extractColorTimeout.stop();
       if (exitCode !== 0)
-        root.dominantColor = "#6a9eff";
+        root.dominantColor = Color.mPrimary;
     }
   }
 
@@ -270,11 +270,6 @@ PanelWindow {
       property real spacing: root.carouselSpacing
       property real centerX: width / 2
       property real centerY: height / 2
-
-      Rectangle {
-        anchors.fill: parent
-        color: "#0d0d0dcc"
-      }
 
       Repeater {
         model: scrollController.loadedCount
@@ -332,10 +327,10 @@ PanelWindow {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 25
         text: "←/→ Navigate  |  Tab/[ ] Switch Folder  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  Esc Quit"
-        color: "#888888"
+        color: Color.mOutline
         font.pixelSize: 11
         style: Text.Outline
-        styleColor: "#000000"
+        styleColor: Color.mScrim
       }
 
       Keys.onPressed: event => {

@@ -1,12 +1,12 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Shapes
+import qs.utils
 import "SettingsInput.qml"
 
 Item {
   id: settingsPanel
 
-  property var colors
   property bool settingsOpen: false
   property string activeTab: "carousel"
   property bool openDownward: false
@@ -50,14 +50,14 @@ Item {
   Rectangle {
     anchors.fill: parent
     radius: 12
-    color: "#1a1a1a"
-    border.color: "#333333"
+    color: Color.mSurfaceContainerLow
+    border.color: Color.mSurfaceContainerHighest
     border.width: 1
 
     Rectangle {
       anchors.fill: parent
       radius: 12
-      color: "black"
+      color: Color.mScrim
       opacity: 0.2
     }
   }
@@ -101,7 +101,6 @@ Item {
 
           SkewButton {
             anchors.fill: parent
-            colors: settingsPanel.colors
             skew: tabRow._tabSkew
             isActive: parent.isActive
           }
@@ -115,7 +114,7 @@ Item {
             id: tabText
             anchors.centerIn: parent
             text: modelData.label
-            color: isActive ? "#ffffff" : "#888888"
+            color: isActive ? Color.mInverseSurface : Color.mOutline
             font.pixelSize: 13
             font.weight: isActive ? Font.Bold : Font.Normal
           }

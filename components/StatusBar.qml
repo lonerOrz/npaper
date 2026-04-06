@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import qs.utils
 
 Item {
   id: root
@@ -29,8 +30,8 @@ Item {
   Rectangle {
     anchors.fill: parent
     radius: 22
-    color: "#18181b"
-    border.color: "#3f3f46"
+    color: Color.mSurfaceContainerLowest
+    border.color: Color.mOutlineVariant
     border.width: 1
 
     // Inner highlight
@@ -38,7 +39,7 @@ Item {
       anchors.fill: parent
       radius: 22
       color: "transparent"
-      border.color: "#ffffff"
+      border.color: Color.mInverseSurface
       border.width: 1
       opacity: 0.05
     }
@@ -61,8 +62,8 @@ Item {
       Layout.preferredWidth: Math.max(140, searchInput.baseWidth + 16)
       Layout.preferredHeight: 28
       radius: 14
-      color: "#27272a"
-      border.color: searchInput.activeFocus ? "#3b82f6" : "#3f3f46"
+      color: Color.mSurfaceContainerHigh
+      border.color: searchInput.activeFocus ? Color.mPrimaryContainer : Color.mOutlineVariant
       border.width: 1
 
       TextInput {
@@ -74,7 +75,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         text: root.searchText
         onTextChanged: root.searchInputChanged(text)
-        color: "#e4e4e7"
+        color: Color.mOnSurface
         font.pixelSize: 12
         cursorVisible: activeFocus
         selectByMouse: true
@@ -92,7 +93,7 @@ Item {
       Text {
         anchors.centerIn: parent
         text: "Type to search..."
-        color: "#52525b"
+        color: Color.mOutline
         font.pixelSize: 12
         visible: !searchInput.text && !searchInput.activeFocus
       }
@@ -106,7 +107,7 @@ Item {
     Rectangle {
       Layout.preferredWidth: 1
       Layout.preferredHeight: 20
-      color: "#3f3f46"
+      color: Color.mOutlineVariant
     }
 
     // Folder Tabs
@@ -121,7 +122,7 @@ Item {
         Rectangle {
           anchors.fill: parent
           radius: 14
-          color: isActive ? "#3b82f6" : "transparent"
+          color: isActive ? Color.mPrimaryContainer : "transparent"
           opacity: isActive ? 0.2 : 1.0
         }
 
@@ -129,7 +130,7 @@ Item {
           id: tabLabel
           anchors.centerIn: parent
           text: modelData
-          color: isActive ? "#60a5fa" : "#a1a1aa"
+          color: isActive ? Color.mOnPrimaryContainer : Color.mOutlineVariant
           font.pixelSize: 12
           font.weight: isActive ? Font.Bold : Font.Medium
         }
@@ -141,7 +142,7 @@ Item {
     Rectangle {
       Layout.preferredWidth: 1
       Layout.preferredHeight: 20
-      color: "#3f3f46"
+      color: Color.mOutlineVariant
       visible: root.folders.length > 0
     }
 
@@ -149,7 +150,7 @@ Item {
     Text {
       Layout.alignment: Qt.AlignVCenter
       text: "Wallpapers: " + root.wallpaperCount + "  |  Cache: " + root.cachedCount
-      color: "#a1a1aa"
+      color: Color.mOutlineVariant
       font.pixelSize: 11
       // font.family: "monospace"
     }
@@ -166,7 +167,7 @@ Item {
         width: 32
         height: 32
         radius: 16
-        color: settingsHover.containsMouse ? "#27272a" : "transparent"
+        color: settingsHover.containsMouse ? Color.mSurfaceContainerHigh : "transparent"
         MouseArea {
           id: settingsHover
           anchors.fill: parent
@@ -183,7 +184,7 @@ Item {
         anchors.centerIn: parent
         text: "⚙"
         font.pixelSize: 15
-        color: root.settingsOpen ? "#3b82f6" : "#a1a1aa"
+        color: root.settingsOpen ? Color.mPrimaryContainer : Color.mOutlineVariant
       }
     }
   }

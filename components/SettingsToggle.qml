@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import qs.utils
 
 Item {
   id: root
@@ -18,7 +19,7 @@ Item {
     Text {
       id: label
       Layout.fillWidth: true
-      color: "#cccccc"
+      color: Color.mOnSurface
       font.pixelSize: 13
     }
 
@@ -31,7 +32,7 @@ Item {
       Rectangle {
         anchors.fill: parent
         radius: 12
-        color: root.checked ? "#6a9eff" : "#333333"
+        color: root.checked ? Color.mPrimary : Color.mSurfaceContainerHighest
         Behavior on color {
           ColorAnimation {
             duration: 200
@@ -46,7 +47,7 @@ Item {
         width: 20
         height: 20
         radius: 10
-        color: "#ffffff"
+        color: Color.mInverseSurface
         Behavior on x {
           NumberAnimation {
             duration: 200

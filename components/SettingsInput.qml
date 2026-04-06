@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import qs.utils
 
 Item {
   id: root
@@ -23,7 +24,7 @@ Item {
     Text {
       id: label
       Layout.fillWidth: true
-      color: "#cccccc"
+      color: Color.mOnSurface
       font.pixelSize: 13
     }
 
@@ -31,7 +32,7 @@ Item {
       id: input
       Layout.preferredWidth: 80
       Layout.alignment: Qt.AlignRight
-      color: "#6a9eff"
+      color: Color.mPrimary
       font.pixelSize: 13
       font.family: "monospace"
       horizontalAlignment: Text.AlignRight
@@ -50,7 +51,7 @@ Item {
         anchors.fill: parent
         anchors.margins: -4
         radius: 4
-        color: input.focus ? "#333333" : "transparent"
+        color: input.focus ? Color.mSurfaceContainerHighest : "transparent"
       }
     }
 
@@ -67,12 +68,12 @@ Item {
 
       background: Rectangle {
         implicitHeight: 4
-        color: "#222222"
+        color: Color.mSurfaceContainer
         radius: 2
         Rectangle {
           width: parent.visualPosition * parent.width
           height: parent.height
-          color: "#6a9eff"
+          color: Color.mPrimary
           radius: 2
         }
       }
@@ -82,7 +83,7 @@ Item {
         implicitWidth: 14
         implicitHeight: 14
         radius: 7
-        color: "#6a9eff"
+        color: Color.mPrimary
       }
     }
   }

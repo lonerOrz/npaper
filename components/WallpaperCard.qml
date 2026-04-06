@@ -1,4 +1,6 @@
 import QtQuick
+import QtQuick.Effects
+import qs.utils
 import "../utils/CacheUtils.js" as CacheUtils
 
 Item {
@@ -50,7 +52,7 @@ Item {
     anchors.margins: 10
     anchors.topMargin: 12
     radius: itemRadius
-    color: "#000000"
+    color: Color.mScrim
     opacity: root.showShadow && visualShadowOpacity > 0 ? visualShadowOpacity : 0
     z: -1
   }
@@ -81,7 +83,7 @@ Item {
     anchors.margins: 10
     color: "transparent"
     radius: itemRadius
-    border.color: (root.isCenter && !root.showBorderGlow) ? "#6a9eff" : "transparent"
+    border.color: (root.isCenter && !root.showBorderGlow) ? Color.mPrimary : "transparent"
     border.width: 2
 
     Rectangle {
@@ -89,7 +91,8 @@ Item {
       anchors.fill: parent
       anchors.margins: 3
       radius: 8
-      color: "#111111aa"
+      color: Color.mSurfaceContainerLowest
+      opacity: 0.67
       clip: true
       layer.enabled: true
       layer.smooth: true
@@ -101,7 +104,7 @@ Item {
 
         Rectangle {
           anchors.fill: parent
-          color: "#1a1a1a"
+          color: Color.mSurfaceContainerLow
           visible: !root.isVideo && !root.isGif && staticImage.status !== Image.Ready && animatedGif.status !== AnimatedImage.Ready
         }
 
@@ -165,19 +168,18 @@ Item {
         anchors.right: parent.right
         anchors.margins: 8
         height: 24
-        color: "#00000055"
-        radius: 6
-        opacity: Math.max(0, 1 - Math.abs(root.visualRotationY / 40))
+        color: Color.mScrim
+        opacity: Math.max(0, 1 - Math.abs(root.visualRotationY / 40)) * 0.33
         visible: opacity > 0.1
 
         Text {
           anchors.centerIn: parent
           text: root.filename
-          color: "white"
+          color: Color.mInverseSurface
           font.pixelSize: 12
           elide: Text.ElideMiddle
           style: Text.Outline
-          styleColor: "black"
+          styleColor: Color.mScrim
         }
       }
     }

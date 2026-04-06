@@ -1,4 +1,5 @@
 import QtQuick
+import qs.utils
 
 Item {
   id: root
@@ -11,7 +12,7 @@ Item {
     id: title
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
-    color: "#6a9eff"
+    color: Color.mPrimary
     font.pixelSize: 12
     font.bold: true
     font.letterSpacing: 1
@@ -23,6 +24,6 @@ Item {
     anchors.right: parent.right
     anchors.bottom: parent.bottom
     height: 1
-    color: "#333333"
+    color: Color.mSurfaceContainerHighest
   }
 }
