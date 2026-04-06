@@ -5,10 +5,10 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import "utils/CacheUtils.js" as CacheUtils
-import "utils/FileTypes.js" as FileTypes
 import qs.components
 import qs.utils
+import "utils/CacheUtils.js" as CacheUtils
+import "utils/FileTypes.js" as FileTypes
 
 PanelWindow {
   id: root
@@ -50,6 +50,7 @@ PanelWindow {
   readonly property int centerIndex: scrollController.currentIndex
 
   Component.onCompleted: {
+    Logger.init(root.debugMode);
     if (wallpaperModel)
       wallpaperModel.dataLoaded.connect(applyFolderSelection);
   }
@@ -77,8 +78,7 @@ PanelWindow {
           queueCount++;
         }
       }
-      if (root.debugMode)
-        console.log("[npaper] scrollTick:", "idx=" + c, "queue=" + queueCount);
+      Logger.d("scrollTick: idx=" + c + " queue=" + queueCount);
     }
   }
 

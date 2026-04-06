@@ -3,10 +3,11 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import "components"
-import "models"
-import "services"
-import "viewmodels"
+import qs.components
+import qs.models
+import qs.services
+import qs.viewmodels
+import qs.utils
 
 ShellRoot {
   // 1. Model (State)
@@ -25,7 +26,7 @@ ShellRoot {
       model.ready = true;
     }
     onError: function (message) {
-      console.error("[npaper] ConfigService error:", message);
+      Logger.e("ConfigService error:", message);
       // Still set model with defaults on error
       model.data = JSON.parse(JSON.stringify(configService._defaults));
       model.ready = true;
@@ -77,9 +78,9 @@ ShellRoot {
   Connections {
     target: configModel
     function onReadyChanged() {
-      console.log("[npaper] ConfigModel ready changed:", configModel.ready);
+      Logger.d("ConfigModel ready changed:", configModel.ready);
       if (configModel.ready) {
-        console.log("[npaper] Triggering checkService.run()");
+        Logger.d("Triggering checkService.run()");
         checkService.run();
       }
     }

@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.utils
 import "../utils/FileTypes.js" as FileTypes
 
 Item {
@@ -39,7 +40,7 @@ Item {
 
   function switchFolder(folder) {
     if (root.debugMode)
-      console.log("[npaper] Switch folder:", folder);
+      Logger.d("Switch folder:", folder);
     root.currentFolder = folder;
     root.searchText = "";
   }
@@ -64,14 +65,14 @@ Item {
         if (f.length > 0)
           root.currentFolder = f[0];
         if (root.debugMode)
-          console.log("[npaper] Folders:", f);
+          Logger.d("Folders:", f);
         listProcess.exec({});
       }
     }
     onExited: function (exitCode, exitStatus) {
       if (exitCode !== 0) {
         if (root.debugMode)
-          console.log("[npaper] folderListProcess failed, falling back");
+          Logger.d("folderListProcess failed, falling back");
         root.folders = ["wallpapers"];
         root.currentFolder = "wallpapers";
         listProcess.exec({});
@@ -97,20 +98,20 @@ Item {
                       });
         root.wallpaperMap = folderMap;
         if (root.debugMode)
-          console.log("[npaper] Model: loaded", lines.length, "wallpapers");
+          Logger.d("Model: loaded", lines.length, "wallpapers");
         root.dataLoaded();
       }
     }
     onExited: function (exitCode, exitStatus) {
       if (exitCode !== 0 && root.debugMode)
-        console.log("[npaper] listProcess failed, exitCode:", exitCode);
+        Logger.d("listProcess failed, exitCode:", exitCode);
     }
   }
 
   function load() {
     if (root.dirs.length === 0 || !root.scriptPath) {
       if (root.debugMode)
-        console.log("[npaper] Model: Skipping load due to missing dirs or scriptPath");
+        Logger.d("Model: Skipping load due to missing dirs or scriptPath");
       return;
     }
     folderListProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-folders', "npaper-fl", root.dirs.join("|"), root.scriptPath];

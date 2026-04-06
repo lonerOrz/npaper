@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.utils
 
 Item {
   id: root
@@ -173,7 +174,7 @@ Item {
         _apply(userCfg); // Override defaults
         root.ready = true;
       } catch (e) {
-        console.error("[npaper] UserConfig parse error:", e);
+        Logger.e("UserConfig parse error:", e);
         root.ready = true;
       }
     }

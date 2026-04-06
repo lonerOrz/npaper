@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.utils
 import "../utils/CacheUtils.js" as CacheHelpers
 import "../utils/FileTypes.js" as FileTypes
 import "../utils/HashUtils.js" as HashUtils
@@ -51,7 +52,7 @@ Item {
         root.cachedFileCount = files.length;
         root.thumbCacheVersion++;
         if (root.debugMode)
-          console.log("[npaper] Cache scanned:", files.length, "files");
+          Logger.d("Cache scanned:", files.length, "files");
         root.cacheScanned();
       }
     }
@@ -62,7 +63,7 @@ Item {
     command: ["rm", "-f"]
     onExited: function (exitCode, exitStatus) {
       if (root.debugMode)
-        console.log("[npaper] Cleanup:", exitCode === 0 ? "OK" : "Failed");
+        Logger.d("Cleanup:", exitCode === 0 ? "OK" : "Failed");
       root.cacheRefreshed();
     }
   }
@@ -106,7 +107,7 @@ Item {
 
         if (exitCode !== 0) {
           if (root.debugMode)
-            console.log("[npaper] Failed:", _targetPath, "exitCode:", exitCode);
+            Logger.d("Failed:", _targetPath, "exitCode:", exitCode);
           busy = false;
           const failedPath = _targetPath;
           _targetPath = "";
@@ -176,7 +177,7 @@ Item {
 
   function initialize() {
     if (root.thumbnailWorkers && root.thumbnailWorkers.length > 0) {
-      console.log("[npaper] CacheService already initialized");
+      Logger.d("CacheService already initialized");
       return;
     }
     createCacheDirProcess.exec({});
@@ -192,7 +193,7 @@ Item {
     }
     root.thumbnailWorkers = workers;
     if (root.debugMode)
-      console.log("[npaper] Initialized", workers.length, "workers");
+      Logger.d("Initialized", workers.length, "workers");
   }
 
   function scanCache() {
@@ -201,7 +202,7 @@ Item {
 
   function refreshAndQueue(wallpaperList, folder) {
     if (root.debugMode)
-      console.log("[npaper] Refreshing folder:", folder, "count:", wallpaperList.length);
+      Logger.d("Refreshing folder:", folder, "count:", wallpaperList.length);
 
     const validKeys = {};
     wallpaperList.forEach(path => {
@@ -225,7 +226,7 @@ Item {
       cleanupCacheProcess.command = ["rm", "-f", ...invalidFiles];
       cleanupCacheProcess.exec({});
       if (root.debugMode)
-        console.log("[npaper] Removed", invalidFiles.length, "invalid files from", folder);
+        Logger.d("Removed", invalidFiles.length, "invalid files from", folder);
     } else {
       root.cacheRefreshed();
     }
@@ -234,7 +235,7 @@ Item {
                             queueThumbnail(path, FileTypes.isVideoFile(path), FileTypes.isGifFile(path));
                           });
     if (root.debugMode)
-      console.log("[npaper] Queue length:", root.queueLength);
+      Logger.d("Queue length:", root.queueLength);
   }
 
   function queueThumbnail(wallpaperPath, isVideo, isGif) {
