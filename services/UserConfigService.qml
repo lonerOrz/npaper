@@ -15,14 +15,11 @@ Item {
   property bool ready: false
 
   // ========== Reactive Properties ==========
-  // Paths
   property var wallpaperDirs: []
   property string cacheDir: ""
-
-  // Toggles
   property bool showBgPreview: true
-  property bool debugMode: false
   property string previewStyle: "carousel"
+  property bool debugMode: false
 
   // Carousel
   property real carouselItemWidth: 450
@@ -31,30 +28,16 @@ Item {
   property real carouselRotation: 40
   property real carouselPerspective: 0.3
 
-  // Grid (Reserved for future)
-  property int gridColumns: 4
-  property real gridItemWidth: 320
-  property real gridItemHeight: 220
-  property real gridSpacing: 12
-
-  // Animation
+  // Animation (Tunable)
   property int scrollDuration: 280
   property int scrollContinueInterval: 230
   property int bgSlideDuration: 250
-  property int bgFadeDuration: 400
   property real bgParallaxFactor: 40
 
   // Appearance
   property bool showBorderGlow: true
   property bool showShadow: true
   property real bgOverlayOpacity: 0.4
-
-  // Performance
-  property int visibleRange: 4
-  property int preloadRange: 2
-
-  // Search
-  property int searchDebounceMs: 150
 
   // ========== Helpers ==========
 
@@ -100,7 +83,6 @@ Item {
       if (a.scrollDuration !== undefined) root.scrollDuration = a.scrollDuration;
       if (a.scrollContinueInterval !== undefined) root.scrollContinueInterval = a.scrollContinueInterval;
       if (a.bgSlideDuration !== undefined) root.bgSlideDuration = a.bgSlideDuration;
-      if (a.bgFadeDuration !== undefined) root.bgFadeDuration = a.bgFadeDuration;
       if (a.bgParallaxFactor !== undefined) root.bgParallaxFactor = a.bgParallaxFactor;
     }
 
@@ -111,16 +93,6 @@ Item {
       if (app.showShadow !== undefined) root.showShadow = app.showShadow;
       if (app.bgOverlayOpacity !== undefined) root.bgOverlayOpacity = app.bgOverlayOpacity;
     }
-
-    // Performance
-    if (obj.performance) {
-      var p = obj.performance;
-      if (p.visibleRange !== undefined) root.visibleRange = p.visibleRange;
-      if (p.preloadRange !== undefined) root.preloadRange = p.preloadRange;
-    }
-
-    // Search
-    if (obj.search && obj.search.debounceMs !== undefined) root.searchDebounceMs = obj.search.debounceMs;
   }
 
   // ========== Config Loading ==========
@@ -216,20 +188,12 @@ Item {
           scrollDuration: root.scrollDuration,
           scrollContinueInterval: root.scrollContinueInterval,
           bgSlideDuration: root.bgSlideDuration,
-          bgFadeDuration: root.bgFadeDuration,
           bgParallaxFactor: root.bgParallaxFactor
         },
         appearance: {
           showBorderGlow: root.showBorderGlow,
           showShadow: root.showShadow,
           bgOverlayOpacity: root.bgOverlayOpacity
-        },
-        performance: {
-          visibleRange: root.visibleRange,
-          preloadRange: root.preloadRange
-        },
-        search: {
-          debounceMs: root.searchDebounceMs
         }
       };
       var str = JSON.stringify(json, null, 2);
@@ -249,7 +213,6 @@ Item {
   }
 
   Component.onCompleted: {
-    // Will be triggered by Connection to defaultConfig, but if default is already ready:
     if (defaultConfig.ready) root.startCheck();
   }
 }

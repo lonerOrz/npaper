@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import "utils"
 import "utils/CacheUtils.js" as CacheUtils
 import "utils/FileTypes.js" as FileTypes
 import "components"
@@ -20,6 +21,8 @@ PanelWindow {
   property var wallpaperApplier
 
   screen: modelData
+
+  Style { id: styleConstants }
 
   readonly property bool debugMode: userConfigService ? userConfigService.debugMode : false
 
@@ -45,8 +48,8 @@ PanelWindow {
   property bool isKeyScrolling: false
 
   readonly property int count: wallpaperModel ? wallpaperModel.count : 0
-  readonly property int visibleRange: userConfigService.visibleRange
-  readonly property int preloadRange: userConfigService.preloadRange
+  readonly property int visibleRange: styleConstants.visibleRange
+  readonly property int preloadRange: styleConstants.preloadRange
   readonly property int centerIndex: Math.round(scrollIndex)
   readonly property int baseIndex: Math.max(0, centerIndex - visibleRange - preloadRange)
   readonly property int maxIndex: Math.min(count - 1, centerIndex + visibleRange + preloadRange)
@@ -55,7 +58,7 @@ PanelWindow {
   Behavior on scrollTarget {
     NumberAnimation {
       duration: userConfigService.scrollDuration
-      easing.type: Easing.OutCubic
+      easing.type: styleConstants.easingOutCubic
     }
   }
 
@@ -128,7 +131,7 @@ PanelWindow {
     from: 0
     to: 1.0
     duration: userConfigService.bgSlideDuration
-    easing.type: Easing.OutQuad
+    easing.type: styleConstants.easingOutQuad
   }
 
   readonly property real bgBaseParallaxX: (scrollIndex - centerIndex) * userConfigService.bgParallaxFactor
@@ -271,7 +274,7 @@ PanelWindow {
 
   Timer {
     id: searchDebounce
-    interval: userConfigService.searchDebounceMs
+    interval: styleConstants.searchDebounceMs
     onTriggered: {
       wallpaperModel.setSearch(root.searchText);
       if (root.searchText) {

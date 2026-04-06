@@ -2,8 +2,8 @@
   "wallpaperDirs": ["$HOME/Pictures/wallpapers"],
   "cacheDir": "$HOME/.cache/wallpaper_thumbs",
   "showBgPreview": true,
-
   "previewStyle": "carousel",
+  "debugMode": false,
 
   "carousel": {
     "itemWidth": 450,
@@ -13,18 +13,10 @@
     "perspective": 0.3
   },
 
-  "grid": {
-    "columns": 4,
-    "itemWidth": 320,
-    "itemHeight": 220,
-    "spacing": 12
-  },
-
   "animation": {
     "scrollDuration": 280,
     "scrollContinueInterval": 230,
     "bgSlideDuration": 250,
-    "bgFadeDuration": 400,
     "bgParallaxFactor": 40
   },
 
@@ -32,16 +24,5 @@
     "showBorderGlow": true,
     "showShadow": true,
     "bgOverlayOpacity": 0.4
-  },
-
-  "performance": {
-    "visibleRange": 4,
-    "preloadRange": 2
-  },
-
-  "search": {
-    "debounceMs": 150
-  },
-
-  "debugMode": false
+  }
 }
