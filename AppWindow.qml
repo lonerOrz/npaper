@@ -204,42 +204,32 @@ PanelWindow {
         } else wallpaperModel.resetSearch()
     }}
 
+    // Background Images
+    Image {
+        id: bgImageA; anchors.fill: parent; z: -2
+        x: root.bgBaseParallaxX + (root.bgSlideProgress * root.width)
+        visible: viewModel ? viewModel.get("showBgPreview", true) : true && root.bgCurrent >= 0 && root.bgCurrent < (wallpaperModel ? wallpaperModel.list.length : 0)
+        opacity: visible ? root.bgSlideProgress : 0
+        source: _bgSourceA; fillMode: Image.PreserveAspectCrop; asynchronous: true; smooth: true; mipmap: true; cache: true
+        sourceSize: Qt.size(1920 * screen.devicePixelRatio, 1080 * screen.devicePixelRatio)
+    }
+    Image {
+        id: bgImageB; anchors.fill: parent; z: -2
+        x: root.bgBaseParallaxX + ((root.bgSlideProgress - 1) * root.width)
+        visible: viewModel ? viewModel.get("showBgPreview", true) : true && root.bgPrevious >= 0 && root.bgPrevious < (wallpaperModel ? wallpaperModel.list.length : 0)
+        opacity: visible ? (1.0 - root.bgSlideProgress) : 0
+        source: _bgSourceB; fillMode: Image.PreserveAspectCrop; asynchronous: true; smooth: true; mipmap: true; cache: true
+        sourceSize: Qt.size(Math.min(1920, screen.width) * screen.devicePixelRatio, Math.min(1080, screen.height) * screen.devicePixelRatio)
+    }
+    Rectangle { anchors.fill: parent; color: "#000000"; opacity: viewModel ? viewModel.get("bgOverlayOpacity", 0.4) : 0.4; z: -1 }
+
     // ===== UI =====
+    // Main Content Layout
     ColumnLayout {
-        anchors.fill: parent; anchors.margins: 12; spacing: 12; z: 0
-
-        // Top Bar (Folders + Settings)
-        StatusBar {
-            id: statusBar
-            Layout.alignment: Qt.AlignHCenter
-            
-            folders: wallpaperModel ? wallpaperModel.folders : []
-            activeFolder: wallpaperModel ? wallpaperModel.currentFolder : ""
-            onFolderClicked: function(folder) { switchFolder(folder) }
-
-            wallpaperCount: root.count
-            cachedCount: cacheService ? cacheService.cachedFileCount : 0
-            queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
-            
-            settingsOpen: root.settingsOpen
-            onSettingsToggled: root.settingsOpen = !root.settingsOpen
-        }
-
-        // Settings Panel (Opens downward from Top Bar)
-        SettingsPanel {
-            Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
-            Layout.topMargin: 8
-            z: 999
-            openDownward: true
-
-            viewModel: root.viewModel
-            settingsOpen: root.settingsOpen
-            onCloseRequested: {
-                root.settingsOpen = false;
-                // Return focus to main view so keyboard shortcuts work again
-                pathViewContainer.forceActiveFocus();
-            }
-        }
+        anchors.fill: parent
+        anchors.margins: 12
+        anchors.topMargin: 80 // Space for StatusBar (y=16 + h=44 + padding)
+        z: 0
 
         Item {
             id: pathViewContainer
@@ -367,22 +357,41 @@ PanelWindow {
         }
     }
 
-    // Background Images
-    Image {
-        id: bgImageA; anchors.fill: parent; z: -2
-        x: root.bgBaseParallaxX + (root.bgSlideProgress * root.width)
-        visible: viewModel ? viewModel.get("showBgPreview", true) : true && root.bgCurrent >= 0 && root.bgCurrent < (wallpaperModel ? wallpaperModel.list.length : 0)
-        opacity: visible ? root.bgSlideProgress : 0
-        source: _bgSourceA; fillMode: Image.PreserveAspectCrop; asynchronous: true; smooth: true; mipmap: true; cache: true
-        sourceSize: Qt.size(1920 * screen.devicePixelRatio, 1080 * screen.devicePixelRatio)
+    // Top Status Bar (Floating, above layout)
+    StatusBar {
+        id: statusBar
+        anchors.top: parent.top
+        anchors.topMargin: 16
+        anchors.horizontalCenter: parent.horizontalCenter
+        z: 100
+
+        folders: wallpaperModel ? wallpaperModel.folders : []
+        activeFolder: wallpaperModel ? wallpaperModel.currentFolder : ""
+        onFolderClicked: function(folder) { switchFolder(folder) }
+
+        wallpaperCount: root.count
+        cachedCount: cacheService ? cacheService.cachedFileCount : 0
+        queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
+        
+        settingsOpen: root.settingsOpen
+        onSettingsToggled: root.settingsOpen = !root.settingsOpen
     }
-    Image {
-        id: bgImageB; anchors.fill: parent; z: -2
-        x: root.bgBaseParallaxX + ((root.bgSlideProgress - 1) * root.width)
-        visible: viewModel ? viewModel.get("showBgPreview", true) : true && root.bgPrevious >= 0 && root.bgPrevious < (wallpaperModel ? wallpaperModel.list.length : 0)
-        opacity: visible ? (1.0 - root.bgSlideProgress) : 0
-        source: _bgSourceB; fillMode: Image.PreserveAspectCrop; asynchronous: true; smooth: true; mipmap: true; cache: true
-        sourceSize: Qt.size(Math.min(1920, screen.width) * screen.devicePixelRatio, Math.min(1080, screen.height) * screen.devicePixelRatio)
+
+    // Settings Panel (Anchored to StatusBar)
+    SettingsPanel {
+        id: settingsPanel
+        anchors.top: statusBar.bottom
+        anchors.topMargin: 8
+        anchors.horizontalCenter: statusBar.horizontalCenter
+        z: 999
+        openDownward: true
+
+        viewModel: root.viewModel
+        settingsOpen: root.settingsOpen
+        onCloseRequested: {
+            root.settingsOpen = false
+            // Return focus to main view
+            pathViewContainer.forceActiveFocus()
+        }
     }
-    Rectangle { anchors.fill: parent; color: "#000000"; opacity: viewModel ? viewModel.get("bgOverlayOpacity", 0.4) : 0.4; z: -1 }
 }

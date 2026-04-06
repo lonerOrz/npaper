@@ -16,8 +16,9 @@ Item {
     property bool settingsOpen: false
     signal settingsToggled()
 
-    // Fixed height, Layout controlled width
-    Layout.preferredWidth: 600
+    // Width is determined by content + margins
+    // This prevents the bar from being too wide and having empty background space
+    width: contentRow.implicitWidth + 24
     height: 44
 
     // Background Pill
@@ -28,7 +29,7 @@ Item {
         border.color: "#3f3f46"
         border.width: 1
         
-        // Inner highlight for glass effect
+        // Inner highlight
         Rectangle {
             anchors.fill: parent
             radius: 22
@@ -39,10 +40,13 @@ Item {
         }
     }
 
-    // Content
+    // Content Row
     RowLayout {
-        anchors.fill: parent
+        id: contentRow
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
         anchors.leftMargin: 12
+        anchors.right: parent.right
         anchors.rightMargin: 12
         spacing: 8
 
@@ -79,19 +83,18 @@ Item {
             Layout.preferredWidth: 1
             Layout.preferredHeight: 20
             color: "#3f3f46"
+            Layout.leftMargin: 4
+            Layout.rightMargin: 4
             visible: root.folders.length > 0
         }
 
-        // Spacer
-        Item { Layout.fillWidth: true }
-
-        // Info Text
+        // Info Text (Follows Divider immediately)
         Text {
             Layout.alignment: Qt.AlignVCenter
-            text: root.wallpaperCount + "  |  cache: " + root.cachedCount
-            color: "#71717a"
+            text: "Wallpapers: " + root.wallpaperCount + "  |  Cache: " + root.cachedCount
+            color: "#a1a1aa"
             font.pixelSize: 11
-            font.family: "monospace"
+            // font.family: "monospace" 
         }
 
         // Settings Button
