@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Effects
 import qs.utils
 
 Item {
@@ -169,33 +170,36 @@ Item {
     // Settings Button
     MouseArea {
       Layout.preferredWidth: 32
-      Layout.preferredHeight: 32
+      Layout.preferredHeight: 28
       cursorShape: Qt.PointingHandCursor
+      hoverEnabled: true
       onClicked: root.settingsToggled()
 
+      property bool hover: containsMouse
+
       Rectangle {
-        anchors.centerIn: parent
-        width: 32
-        height: 32
-        radius: 16
-        color: settingsHover.containsMouse ? Color.mSurfaceContainerHigh : "transparent"
-        MouseArea {
-          id: settingsHover
-          anchors.fill: parent
-          hoverEnabled: true
-        }
-        Behavior on color {
-          ColorAnimation {
-            duration: 150
-          }
-        }
+        anchors.fill: parent
+        radius: 6
+        color: parent.hover ? Color.mSurfaceContainerHigh : "transparent"
+        Behavior on color { ColorAnimation { duration: 150 } }
       }
 
-      Text {
+      Image {
+        id: settingsIcon
         anchors.centerIn: parent
-        text: "⚙"
-        font.pixelSize: 15
-        color: root.settingsOpen ? Color.mPrimaryContainer : Color.mOutlineVariant
+        width: 16
+        height: 16
+        source: Qt.resolvedUrl("../assets/settings.svg")
+        sourceSize.width: 16
+        sourceSize.height: 16
+        fillMode: Image.PreserveAspectFit
+        mipmap: true
+        layer.enabled: true
+        layer.effect: MultiEffect {
+          colorization: 1.0
+          colorizationColor: root.settingsOpen ? Color.mPrimaryContainer : Color.mOutlineVariant
+          Behavior on colorizationColor { ColorAnimation { duration: 150 } }
+        }
       }
     }
   }

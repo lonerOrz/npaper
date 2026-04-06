@@ -166,20 +166,17 @@ Item {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.margins: 8
+        anchors.margins: 12
         height: 24
-        color: Color.mScrim
-        opacity: Math.max(0, 1 - Math.abs(root.visualRotationY / 40)) * 0.33
-        visible: opacity > 0.1
+        color: "transparent"
 
         Text {
           anchors.centerIn: parent
           text: root.filename
           color: Color.mInverseSurface
           font.pixelSize: 12
+          font.weight: Font.Medium
           elide: Text.ElideMiddle
-          style: Text.Outline
-          styleColor: Color.mScrim
         }
       }
     }
