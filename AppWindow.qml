@@ -45,8 +45,8 @@ PanelWindow {
   property bool isKeyScrolling: false
 
   readonly property int count: wallpaperModel ? wallpaperModel.count : 0
-  readonly property int visibleRange: 4
-  readonly property int preloadRange: 2
+  readonly property int visibleRange: userConfigService.visibleRange
+  readonly property int preloadRange: userConfigService.preloadRange
   readonly property int centerIndex: Math.round(scrollIndex)
   readonly property int baseIndex: Math.max(0, centerIndex - visibleRange - preloadRange)
   readonly property int maxIndex: Math.min(count - 1, centerIndex + visibleRange + preloadRange)
@@ -54,7 +54,7 @@ PanelWindow {
 
   Behavior on scrollTarget {
     NumberAnimation {
-      duration: 280
+      duration: userConfigService.scrollDuration
       easing.type: Easing.OutCubic
     }
   }
@@ -65,7 +65,7 @@ PanelWindow {
 
   Timer {
     id: scrollContinueTimer
-    interval: 230
+    interval: userConfigService.scrollContinueInterval
     repeat: false
     onTriggered: {
       if (isKeyScrolling && keyScrollDirection !== 0 && root.count > 0) {
@@ -127,11 +127,11 @@ PanelWindow {
     properties: "bgSlideProgress"
     from: 0
     to: 1.0
-    duration: 250
+    duration: userConfigService.bgSlideDuration
     easing.type: Easing.OutQuad
   }
 
-  readonly property real bgBaseParallaxX: (scrollIndex - centerIndex) * 40
+  readonly property real bgBaseParallaxX: (scrollIndex - centerIndex) * userConfigService.bgParallaxFactor
 
   onScrollIndexChanged: {
     if (!cacheService || !wallpaperModel) return;
@@ -271,7 +271,7 @@ PanelWindow {
 
   Timer {
     id: searchDebounce
-    interval: 150
+    interval: userConfigService.searchDebounceMs
     onTriggered: {
       wallpaperModel.setSearch(root.searchText);
       if (root.searchText) {
@@ -290,6 +290,11 @@ PanelWindow {
   }
 
   // ===== UI =====
+  property real carouselItemWidth: userConfigService.carouselItemWidth
+  property real carouselItemHeight: userConfigService.carouselItemHeight
+  property real carouselSpacing: userConfigService.carouselSpacing
+  property real carouselRotation: userConfigService.carouselRotation
+  property real carouselPerspective: userConfigService.carouselPerspective
 
   Image {
     id: bgImageA
@@ -326,7 +331,7 @@ PanelWindow {
   Rectangle {
     anchors.fill: parent
     color: "#000000"
-    opacity: 0.4
+    opacity: userConfigService.bgOverlayOpacity
     z: -1
   }
 
@@ -343,9 +348,9 @@ PanelWindow {
       focus: true
       clip: true
 
-      property int itemWidth: 450
-      property int itemHeight: 320
-      property real spacing: 25
+      property int itemWidth: root.carouselItemWidth
+      property int itemHeight: root.carouselItemHeight
+      property real spacing: root.carouselSpacing
       property real centerX: width / 2
       property real centerY: height / 2
 
@@ -377,11 +382,14 @@ PanelWindow {
           thumbHashToPath: cacheService.thumbHashToPath
           isCenter: realIndex === root.centerIndex
 
+          showBorderGlow: userConfigService.showBorderGlow
+          showShadow: userConfigService.showShadow
+
           readonly property var metrics: {
             const raw = realIndex - root._cachedScrollIndex;
             const abs = Math.abs(raw);
             const cos = Math.cos(Math.min(abs, 3) * 0.523599);
-            const perspectiveScale = 1.0 / (1.0 + abs * 0.3);
+            const perspectiveScale = 1.0 / (1.0 + abs * root.carouselPerspective);
             return { raw, abs, cos, perspectiveScale };
           }
 
@@ -390,7 +398,7 @@ PanelWindow {
             return {
               scale: metrics.perspectiveScale * (0.85 + metrics.cos * 0.15) + (isCenter ? 0.06 : 0),
               opacity: abs > 6 ? 0 : Math.pow(Math.max(0, 1 - abs * 0.12), 2.5),
-              rotationY: metrics.raw * -40,
+              rotationY: metrics.raw * -root.carouselRotation,
               z: 100 - abs * 50,
               spacingFactor: 0.45 + metrics.cos * 0.35,
               yOffset: abs * 8,
