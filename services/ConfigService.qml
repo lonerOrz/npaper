@@ -5,40 +5,12 @@ import Quickshell.Io
 Item {
   id: root
 
-  readonly property string configDir: Quickshell.env("HOME") + "/.config/npaper"
-  readonly property string configPath: configDir + "/config.json"
-  readonly property string defaultConfigPath: Qt.resolvedUrl("../assets/default.json").toString().slice(7)
-
-  property var defaultConfig: ({})
-  property var userConfig: ({})
+  property string configPath: ""
+  property var config: ({})
   property bool ready: false
-  property bool isSaving: false
 
-  function _get(key) {
-    if (userConfig[key] !== undefined) return userConfig[key];
-    if (defaultConfig[key] !== undefined) return defaultConfig[key];
-    return undefined;
-  }
-
-  function getWallpaperDirs() {
-    const val = _get("wallpaperDirs");
-    return Array.isArray(val) ? _resolvePaths(val) : [];
-  }
-  function getCacheDir() {
-    const val = _get("cacheDir");
-    return val ? _resolvePath(val) : "";
-  }
-  function getShowBgPreview() {
-    const val = _get("showBgPreview");
-    return val !== undefined ? val : true;
-  }
-  function getPreviewStyle() {
-    const val = _get("previewStyle");
-    return val || "carousel";
-  }
-  function getDebugMode() {
-    const val = _get("debugMode");
-    return val === true;
+  function get(key) {
+    return config[key];
   }
 
   function _resolvePath(pathStr) {
@@ -48,114 +20,42 @@ Item {
     return pathStr;
   }
 
-  function _resolvePaths(dirs) {
-    if (!Array.isArray(dirs)) return [];
-    var result = [];
-    for (var i = 0; i < dirs.length; i++) {
-      var p = _resolvePath(dirs[i]);
-      if (p) result.push(p);
+  function getResolved(key) {
+    const val = config[key];
+    if (typeof val === "string")
+      return _resolvePath(val);
+    if (Array.isArray(val)) {
+      var result = [];
+      for (var i = 0; i < val.length; i++)
+        result.push(_resolvePath(val[i]));
+      return result;
     }
-    return result;
+    return val;
   }
 
-  Process {
-    id: checkProcess
-    onExited: function (code, status) {
-      var hasConfig = (code === 0 && stdout && stdout.trim() === "exists");
-      if (hasConfig) {
-        userConfigView.path = root.configPath;
-      } else {
-        defaultConfigView.reload();
-      }
-    }
+  function loadPath(p) {
+    fileView.path = p;
   }
 
   FileView {
-    id: userConfigView
-    path: ""
-    printErrors: true
-    watchChanges: true
-
-    onFileChanged: {
-      if (root.isSaving) {
-        root.isSaving = false;
-        return;
-      }
-      reload();
-    }
-
-    onLoaded: {
-      try {
-        root.userConfig = JSON.parse(text());
-        root.ready = true;
-      } catch (e) {
-        console.error("[npaper] Config: parse error, using defaults:", e);
-      }
-    }
-
-    onLoadFailed: function () {
-      defaultConfigView.reload();
-    }
-  }
-
-  FileView {
-    id: defaultConfigView
-    path: root.defaultConfigPath
+    id: fileView
     printErrors: true
 
     onLoaded: {
       try {
-        root.defaultConfig = JSON.parse(text());
+        root.config = JSON.parse(text());
         root.ready = true;
       } catch (e) {
-        console.error("[npaper] Config: default parse error:", e);
+        console.error("[npaper] Config parse error:", e);
+        root.config = {};
+        root.ready = true;
       }
     }
 
     onLoadFailed: function (error) {
-      console.error("[npaper] Config: cannot load defaults:", error);
+      console.error("[npaper] Config load failed:", error);
+      root.config = {};
+      root.ready = true;
     }
-  }
-
-  Process {
-    id: saveProcess
-    onExited: function (code, status) {
-      if (code === 0) {
-        root.isSaving = false;
-      } else {
-        console.error("[npaper] Config: save failed, code:", code);
-      }
-    }
-  }
-
-  Timer {
-    id: saveTimer
-    interval: 500
-    repeat: false
-    onTriggered: {
-      var configStr = JSON.stringify(root.userConfig, null, 2);
-      saveProcess.command = ["sh", "-c",
-        'mkdir -p "$1" && printf "%s" "$2" > "$1/config.json"',
-        "npaper-save", root.configDir, configStr];
-      saveProcess.exec({});
-      root.isSaving = true;
-    }
-  }
-
-  function saveConfig() {
-    saveTimer.restart();
-  }
-
-  function set(key, value) {
-    var updated = JSON.parse(JSON.stringify(root.userConfig));
-    updated[key] = value;
-    root.userConfig = updated;
-    saveConfig();
-  }
-
-  Component.onCompleted: {
-    checkProcess.command = ["sh", "-c",
-      '[ -f "$HOME/.config/npaper/config.json" ] && echo exists || echo missing'];
-    checkProcess.running = true;
   }
 }
