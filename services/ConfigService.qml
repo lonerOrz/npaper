@@ -9,14 +9,37 @@ Item {
   readonly property string configPath: configDir + "/config.json"
   readonly property string defaultConfigPath: Qt.resolvedUrl("../assets/default.json").toString().slice(7)
 
-  property var config: ({})
+  property var defaultConfig: ({})
+  property var userConfig: ({})
   property bool ready: false
   property bool isSaving: false
 
-  readonly property var wallpaperDirs: _resolvePaths(config.wallpaperDirs || ["$HOME/Pictures/wallpapers"])
-  readonly property string cacheDir: _resolvePath(config.cacheDir || "$HOME/.cache/wallpaper_thumbs")
-  readonly property string previewStyle: config.previewStyle || "carousel"
-  readonly property bool debugMode: config.debugMode || false
+  function _get(key) {
+    if (userConfig[key] !== undefined) return userConfig[key];
+    if (defaultConfig[key] !== undefined) return defaultConfig[key];
+    return undefined;
+  }
+
+  function getWallpaperDirs() {
+    const val = _get("wallpaperDirs");
+    return Array.isArray(val) ? _resolvePaths(val) : [];
+  }
+  function getCacheDir() {
+    const val = _get("cacheDir");
+    return val ? _resolvePath(val) : "";
+  }
+  function getShowBgPreview() {
+    const val = _get("showBgPreview");
+    return val !== undefined ? val : true;
+  }
+  function getPreviewStyle() {
+    const val = _get("previewStyle");
+    return val || "carousel";
+  }
+  function getDebugMode() {
+    const val = _get("debugMode");
+    return val === true;
+  }
 
   function _resolvePath(pathStr) {
     if (!pathStr) return "";
@@ -63,11 +86,10 @@ Item {
 
     onLoaded: {
       try {
-        root.config = JSON.parse(text());
+        root.userConfig = JSON.parse(text());
         root.ready = true;
       } catch (e) {
         console.error("[npaper] Config: parse error, using defaults:", e);
-        defaultConfigView.reload();
       }
     }
 
@@ -83,19 +105,15 @@ Item {
 
     onLoaded: {
       try {
-        root.config = JSON.parse(text());
+        root.defaultConfig = JSON.parse(text());
         root.ready = true;
       } catch (e) {
         console.error("[npaper] Config: default parse error:", e);
-        root.config = {};
-        root.ready = true;
       }
     }
 
     onLoadFailed: function (error) {
       console.error("[npaper] Config: cannot load defaults:", error);
-      root.config = {};
-      root.ready = true;
     }
   }
 
@@ -115,7 +133,7 @@ Item {
     interval: 500
     repeat: false
     onTriggered: {
-      var configStr = JSON.stringify(root.config, null, 2);
+      var configStr = JSON.stringify(root.userConfig, null, 2);
       saveProcess.command = ["sh", "-c",
         'mkdir -p "$1" && printf "%s" "$2" > "$1/config.json"',
         "npaper-save", root.configDir, configStr];
@@ -129,9 +147,9 @@ Item {
   }
 
   function set(key, value) {
-    var updated = JSON.parse(JSON.stringify(root.config));
+    var updated = JSON.parse(JSON.stringify(root.userConfig));
     updated[key] = value;
-    root.config = updated;
+    root.userConfig = updated;
     saveConfig();
   }
 

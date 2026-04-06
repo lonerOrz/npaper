@@ -21,8 +21,8 @@ ShellRoot {
 
   CacheService {
     id: cacheService
-    cacheDir: configService.cacheDir
-    debugMode: configService.debugMode
+    cacheDir: configService.getCacheDir()
+    debugMode: configService.getDebugMode()
     onCacheScanned: {
       wallpaperModel.load();
     }
@@ -30,9 +30,9 @@ ShellRoot {
 
   WallpaperModel {
     id: wallpaperModel
-    dirs: configService.wallpaperDirs
+    dirs: configService.getWallpaperDirs()
     scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
-    debugMode: configService.debugMode
+    debugMode: configService.getDebugMode()
   }
 
   Variants {
@@ -43,7 +43,7 @@ ShellRoot {
       property var modelData
       screen: modelData
 
-      readonly property bool debugMode: configService.debugMode
+      readonly property bool debugMode: configService.getDebugMode()
 
       visible: true
       color: "transparent"
@@ -343,7 +343,7 @@ ShellRoot {
         anchors.fill: parent
         x: root.bgBaseParallaxX + (root.bgSlideProgress * root.width)
         z: -2
-        visible: root.bgCurrent >= 0 && root.bgCurrent < wallpaperModel.list.length
+        visible: configService.getShowBgPreview() && root.bgCurrent >= 0 && root.bgCurrent < wallpaperModel.list.length
         opacity: visible ? root.bgSlideProgress : 0
         source: _bgSourceA
         fillMode: Image.PreserveAspectCrop
@@ -359,7 +359,7 @@ ShellRoot {
         anchors.fill: parent
         x: root.bgBaseParallaxX + ((root.bgSlideProgress - 1) * root.width)
         z: -2
-        visible: root.bgPrevious >= 0 && root.bgPrevious < wallpaperModel.list.length
+        visible: configService.getShowBgPreview() && root.bgPrevious >= 0 && root.bgPrevious < wallpaperModel.list.length
         opacity: visible ? (1.0 - root.bgSlideProgress) : 0
         source: _bgSourceB
         fillMode: Image.PreserveAspectCrop
@@ -653,7 +653,7 @@ ShellRoot {
           "bash", "-c",
           'NPAPER_WALLPAPER_DIRS="$1" "$2" --apply "$3" || notify-send -u critical "npaper" "Failed to apply wallpaper: $3"',
           "npaper-apply",
-          configService.wallpaperDirs.join("|"),
+          configService.getWallpaperDirs().join("|"),
           scriptPath,
           path
         ];

@@ -1,6 +1,7 @@
 {
   "wallpaperDirs": ["$HOME/Pictures/wallpapers"],
   "cacheDir": "$HOME/.cache/wallpaper_thumbs",
+  "showBgPreview": true,
 
   "previewStyle": "carousel",
 
