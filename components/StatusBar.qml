@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Effects
 import QtQuick.Layouts
+import QtQuick.Effects
 import qs.utils
 
 Item {
@@ -27,13 +27,13 @@ Item {
     searchInput.forceActiveFocus();
   }
 
-  width: contentRow.implicitWidth + 24
-  height: 44
+  width: contentRow.implicitWidth + Style.space2L
+  height: Style.barHeight
 
   // Background Pill
   Rectangle {
     anchors.fill: parent
-    radius: 22
+    radius: Style.radiusXL
     color: Color.mSurfaceContainerLowest
   }
 
@@ -42,34 +42,34 @@ Item {
     id: contentRow
     anchors.verticalCenter: parent.verticalCenter
     anchors.left: parent.left
-    anchors.leftMargin: 12
+    anchors.leftMargin: Style.barSidePadding
     anchors.right: parent.right
-    anchors.rightMargin: 12
-    spacing: 8
+    anchors.rightMargin: Style.barSidePadding
+    spacing: Style.barInnerSpacing
 
     // Search Input
     Rectangle {
       Layout.alignment: Qt.AlignVCenter
-      Layout.minimumWidth: 140
-      Layout.preferredWidth: Math.max(140, searchInput.baseWidth + 16)
-      Layout.preferredHeight: 28
-      radius: 14
+      Layout.minimumWidth: Style.barSearchMinWidth
+      Layout.preferredWidth: Math.max(Style.barSearchMinWidth, searchInput.baseWidth + Style.space2M)
+      Layout.preferredHeight: Style.barSearchHeight
+      radius: Style.radiusXL
       color: Color.mSurfaceContainer
 
       TextInput {
         id: searchInput
         anchors.fill: parent
-        anchors.leftMargin: 10
-        anchors.rightMargin: 10
+        anchors.leftMargin: Style.spaceL
+        anchors.rightMargin: Style.spaceL
         anchors.verticalCenter: parent.verticalCenter
         text: root.searchText
         onTextChanged: root.searchInputChanged(text)
         color: Color.mOnSurface
-        font.pixelSize: 12
+        font.pixelSize: Style.barSearchInputFontSize
         cursorVisible: activeFocus
         selectByMouse: true
 
-        property real baseWidth: 120
+        property real baseWidth: Style.barSearchWidthBase
 
         Keys.onPressed: event => {
                           if (event.key === Qt.Key_Escape) {
@@ -88,7 +88,7 @@ Item {
         anchors.centerIn: parent
         text: "Type to search..."
         color: Color.mOutline
-        font.pixelSize: 12
+        font.pixelSize: Style.barSearchPlaceholderFontSize
         visible: !searchInput.text && !searchInput.activeFocus
       }
 
@@ -101,9 +101,10 @@ Item {
 
     // Divider
     Rectangle {
-      Layout.preferredWidth: 1
-      Layout.preferredHeight: 18
+      Layout.preferredWidth: Style.borderS
+      Layout.preferredHeight: Style.barDividerHeight
       color: Color.mOutlineVariant
+      opacity: Style.opacityDivider
     }
 
     // Folder Tabs
@@ -112,21 +113,26 @@ Item {
       delegate: MouseArea {
         required property string modelData
         property bool isActive: root.activeFolder === modelData
-        width: tabLabel.implicitWidth + 16
-        height: 28
+        width: tabLabel.implicitWidth + Style.space2L
+        height: Style.barTabHeight
+
+        Rectangle {
+          anchors.fill: parent
+          radius: Style.radiusXL
+          color: parent.isActive ? Color.mPrimary : "transparent"
+          opacity: parent.isActive ? Style.opacityLight : Style.opacityFull
+          Behavior on color { ColorAnimation { duration: Style.animFast } }
+          Behavior on opacity { NumberAnimation { duration: Style.animFast } }
+        }
 
         Text {
           id: tabLabel
           anchors.centerIn: parent
           text: modelData
-          color: parent.isActive ? Color.mPrimary : Color.mOutlineVariant
-          font.pixelSize: 12
+          color: parent.isActive ? Color.mOnPrimaryContainer : Color.mOutlineVariant
+          font.pixelSize: Style.barTabFontSize
           font.weight: parent.isActive ? Font.Bold : Font.Normal
-          Behavior on color {
-            ColorAnimation {
-              duration: 150
-            }
-          }
+          Behavior on color { ColorAnimation { duration: Style.animFast } }
         }
         onClicked: root.folderClicked(modelData)
       }
@@ -134,9 +140,10 @@ Item {
 
     // Divider
     Rectangle {
-      Layout.preferredWidth: 1
-      Layout.preferredHeight: 18
+      Layout.preferredWidth: Style.borderS
+      Layout.preferredHeight: Style.barDividerHeight
       color: Color.mOutlineVariant
+      opacity: Style.opacityDivider
       visible: root.folders.length > 0
     }
 
@@ -145,13 +152,13 @@ Item {
       Layout.alignment: Qt.AlignVCenter
       text: root.wallpaperCount + " / " + root.cachedCount
       color: Color.mOutlineVariant
-      font.pixelSize: 11
+      font.pixelSize: Style.barInfoFontSize
     }
 
     // Settings Button
     MouseArea {
-      Layout.preferredWidth: 32
-      Layout.preferredHeight: 28
+      Layout.preferredWidth: Style.barSettingsBtnWidth
+      Layout.preferredHeight: Style.barSettingsBtnHeight
       cursorShape: Qt.PointingHandCursor
       hoverEnabled: true
       onClicked: root.settingsToggled()
@@ -160,23 +167,19 @@ Item {
 
       Rectangle {
         anchors.fill: parent
-        radius: 8
+        radius: Style.radiusXS
         color: parent.hover ? Color.mSurfaceContainerHigh : "transparent"
-        Behavior on color {
-          ColorAnimation {
-            duration: 150
-          }
-        }
+        Behavior on color { ColorAnimation { duration: Style.animFast } }
       }
 
       Image {
         id: settingsIcon
         anchors.centerIn: parent
-        width: 16
-        height: 16
-        source: Qt.resolvedUrl("../assets/settings.svg")
-        sourceSize.width: 16
-        sourceSize.height: 16
+        width: Style.barSettingsIconSize
+        height: Style.barSettingsIconSize
+        source: Qt.resolvedUrl("../assets/nixos-logo.svg")
+        sourceSize.width: Style.barSettingsIconSize
+        sourceSize.height: Style.barSettingsIconSize
         fillMode: Image.PreserveAspectFit
         mipmap: true
         layer.enabled: true
@@ -185,7 +188,7 @@ Item {
           colorizationColor: root.settingsOpen ? Color.mPrimary : Color.mOutlineVariant
           Behavior on colorizationColor {
             ColorAnimation {
-              duration: 150
+              duration: Style.animFast
             }
           }
         }

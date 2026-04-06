@@ -21,19 +21,10 @@ Item {
                                       "wallpaperDirs": ["$HOME/Pictures/wallpapers"],
                                       "cacheDir": "$HOME/.cache/wallpaper_thumbs",
                                       "debugMode": false,
-                                      "carouselItemWidth": 450,
-                                      "carouselItemHeight": 320,
-                                      "carouselSpacing": 25,
-                                      "carouselRotation": 40,
-                                      "carouselPerspective": 0.3,
                                       "scrollDuration": 280,
                                       "scrollContinueInterval": 230,
                                       "bgSlideDuration": 250,
-                                      "bgParallaxFactor": 40,
-                                      "showBgPreview": true,
-                                      "showBorderGlow": true,
-                                      "showShadow": true,
-                                      "bgOverlayOpacity": 0.4
+                                      "bgParallaxFactor": 40
                                     })
 
   property bool isSaving: false

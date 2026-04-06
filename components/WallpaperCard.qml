@@ -11,9 +11,9 @@ Item {
   property bool isVideo: false
   property bool isGif: false
 
-  property real itemWidth: 450
-  property real itemHeight: 320
-  property real itemRadius: 12
+  property real itemWidth: Style.carouselItemWidth
+  property real itemHeight: Style.carouselItemHeight
+  property real itemRadius: Style.radiusM
 
   property real visualScale: 1.0
   property real visualOpacity: 1.0
@@ -49,8 +49,8 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    anchors.margins: 10
-    anchors.topMargin: 12
+    anchors.margins: Style.cardInnerPadding
+    anchors.topMargin: Style.cardTopPadding
     radius: itemRadius
     color: Color.mScrim
     opacity: root.showShadow && visualShadowOpacity > 0 ? visualShadowOpacity : 0
@@ -80,17 +80,17 @@ Item {
   Rectangle {
     id: cardFrame
     anchors.fill: parent
-    anchors.margins: 10
+    anchors.margins: Style.cardInnerPadding
     color: "transparent"
     radius: itemRadius
     border.color: (root.isCenter && !root.showBorderGlow) ? Color.mPrimary : "transparent"
-    border.width: 2
+    border.width: Style.borderM
 
     Rectangle {
       id: imageFrame
       anchors.fill: parent
-      anchors.margins: 3
-      radius: 8
+      anchors.margins: Style.cardImageFrameMargin
+      radius: Style.radiusS
       color: Color.mSurfaceContainerLowest
       opacity: 0.67
       clip: true
@@ -151,7 +151,7 @@ Item {
         Text {
           anchors.centerIn: parent
           text: "🎬"
-          font.pixelSize: 48
+          font.pixelSize: Style.cardVideoIconSize
           visible: (root.isVideo || root.isGif) && !root.isCenter && staticImage.status !== Image.Ready
         }
 
@@ -166,15 +166,15 @@ Item {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.margins: 12
-        height: 24
+        anchors.margins: Style.cardLabelMargins
+        height: Style.cardLabelHeight
         color: "transparent"
 
         Text {
           anchors.centerIn: parent
           text: root.filename
           color: Color.mInverseSurface
-          font.pixelSize: 12
+          font.pixelSize: Style.cardLabelFontSize
           font.weight: Font.Medium
           elide: Text.ElideMiddle
         }

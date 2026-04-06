@@ -5,7 +5,7 @@ import qs.utils
 
 Item {
   id: root
-  height: 40
+  height: 36
   width: parent ? parent.width : 300
 
   property alias text: label.text
@@ -19,21 +19,21 @@ Item {
 
   RowLayout {
     anchors.fill: parent
-    spacing: 12
+    spacing: 10
 
     Text {
       id: label
       Layout.fillWidth: true
       color: Color.mOnSurface
-      font.pixelSize: 13
+      font.pixelSize: 12
     }
 
     TextInput {
       id: input
-      Layout.preferredWidth: 80
+      Layout.preferredWidth: 72
       Layout.alignment: Qt.AlignRight
       color: Color.mPrimary
-      font.pixelSize: 13
+      font.pixelSize: 12
       font.family: "monospace"
       horizontalAlignment: Text.AlignRight
       text: root.value.toFixed(root.step < 1 ? 2 : 0)
@@ -60,7 +60,7 @@ Item {
       }
 
       background: Rectangle {
-        implicitHeight: 4
+        implicitHeight: 3
         color: Color.mSurfaceContainer
         radius: 2
         Rectangle {
@@ -73,9 +73,9 @@ Item {
       handle: Rectangle {
         x: parent.leftPadding + parent.visualPosition * (parent.availableWidth - width)
         y: parent.topPadding + parent.availableHeight / 2 - height / 2
-        implicitWidth: 14
-        implicitHeight: 14
-        radius: 7
+        implicitWidth: 12
+        implicitHeight: 12
+        radius: 6
         color: Color.mPrimary
       }
     }

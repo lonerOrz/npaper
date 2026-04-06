@@ -3,7 +3,7 @@ import qs.utils
 
 Item {
   id: root
-  height: 24
+  height: 20
   width: parent ? parent.width : 300
 
   property alias text: title.text
@@ -13,8 +13,8 @@ Item {
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
     color: Color.mPrimary
-    font.pixelSize: 11
+    font.pixelSize: 10
     font.bold: true
-    font.letterSpacing: 0.8
+    font.letterSpacing: 0.6
   }
 }

@@ -8,38 +8,38 @@ Item {
   id: settingsPanel
 
   property bool settingsOpen: false
-  property string activeTab: "carousel"
-  property bool openDownward: false
+  property string activeTab: "layout"
 
-  // Accessors
-  property var viewModel
-  function get(key, def) {
-    return viewModel ? viewModel.get(key, def) : def;
-  }
-  function set(key, val) {
-    if (viewModel)
-      viewModel.set(key, val);
-  }
+  // Direct property bindings from AppWindow
+  property real carouselItemWidth: Style.carouselItemWidth
+  property real carouselItemHeight: Style.carouselItemHeight
+  property real carouselSpacing: Style.carouselSpacing
+  property real carouselRotation: Style.carouselRotation
+  property real carouselPerspective: Style.carouselPerspective
+  property bool showBorderGlow: true
+  property bool showShadow: true
+  property bool showBgPreview: true
 
   signal closeRequested
 
   z: 999
-  width: 580
-  height: Math.min(600, (tabRow ? tabRow.height : 0) + (contentArea ? contentArea.implicitHeight : 0) + 40)
+  width: Style.settingsWidth
+  height: Math.min(Style.settingsMaxHeight, (tabRow ? tabRow.height : 0) + (contentArea ? contentArea.implicitHeight : 0) + Style.space2XXL)
 
   visible: settingsOpen
-  opacity: settingsOpen ? 1 : 0
-  scale: settingsOpen ? 1 : 0.95
+  opacity: settingsOpen ? Style.opacityFull : Style.opacityNone
+  scale: settingsOpen ? Style.opacityFull : 0.95
+  transformOrigin: Item.Bottom
   Behavior on opacity {
     NumberAnimation {
-      duration: 150
-      easing.type: Easing.OutCubic
+      duration: Style.animFast
+      easing.type: Style.easingOutCubic
     }
   }
   Behavior on scale {
     NumberAnimation {
-      duration: 150
-      easing.type: Easing.OutCubic
+      duration: Style.animFast
+      easing.type: Style.easingOutCubic
     }
   }
 
@@ -49,30 +49,26 @@ Item {
   // Background
   Rectangle {
     anchors.fill: parent
-    radius: 12
+    radius: Style.settingsRadius
     color: Color.mSurfaceContainerLow
   }
 
   Column {
     id: mainCol
     anchors.fill: parent
-    anchors.margins: 20
-    spacing: 16
+    anchors.margins: Style.settingsPadding
+    spacing: Style.settingsInnerSpacing
 
     // Tabs Row
     Row {
       id: tabRow
-      spacing: 8
+      spacing: Style.settingsTabSpacing
 
       Repeater {
         model: [
           {
-            key: "carousel",
-            label: "Carousel"
-          },
-          {
-            key: "animation",
-            label: "Animation"
+            key: "layout",
+            label: "Layout"
           },
           {
             key: "appearance",
@@ -82,19 +78,15 @@ Item {
         delegate: MouseArea {
           required property var modelData
           property bool isActive: settingsPanel.activeTab === modelData.key
-          width: tabText.implicitWidth + 24
-          height: 32
+          width: tabText.implicitWidth + Style.space2L
+          height: Style.settingsTabHeight
           cursorShape: Qt.PointingHandCursor
 
           Rectangle {
             anchors.fill: parent
-            radius: 16
+            radius: Style.radiusXL
             color: parent.isActive ? Color.mPrimary : "transparent"
-            Behavior on color {
-              ColorAnimation {
-                duration: 150
-              }
-            }
+            Behavior on color { ColorAnimation { duration: Style.animFast } }
           }
 
           Text {
@@ -102,13 +94,9 @@ Item {
             anchors.centerIn: parent
             text: modelData.label
             color: parent.isActive ? Color.mSurfaceContainerLowest : Color.mOutlineVariant
-            font.pixelSize: 13
+            font.pixelSize: Style.settingsTabFontSize
             font.weight: parent.isActive ? Font.Bold : Font.Normal
-            Behavior on color {
-              ColorAnimation {
-                duration: 150
-              }
-            }
+            Behavior on color { ColorAnimation { duration: Style.animFast } }
           }
 
           onClicked: settingsPanel.activeTab = modelData.key
@@ -123,174 +111,87 @@ Item {
       height: childrenRect.height
       clip: true
 
-      // 1. Carousel Tab
+      // 1. Layout Tab
       Column {
-        id: carouselContent
-        visible: settingsPanel.activeTab === "carousel"
+        id: layoutContent
+        visible: settingsPanel.activeTab === "layout"
         width: parent.width
-        spacing: 16
+        spacing: Style.settingsContentSpacing
 
-        SectionHeader {
-          text: "Dimensions"
-        }
         SettingsInput {
           label: "Card Width"
-          value: get("carouselItemWidth")
+          value: root.carouselItemWidth
           min: 200
-          max: 800
+          max: 600
           onCommit: function (n) {
-            set("carouselItemWidth", n);
+            root.carouselItemWidth = n;
           }
         }
         SettingsInput {
           label: "Card Height"
-          value: get("carouselItemHeight")
+          value: root.carouselItemHeight
           min: 150
-          max: 600
+          max: 450
           onCommit: function (n) {
-            set("carouselItemHeight", n);
+            root.carouselItemHeight = n;
           }
         }
         SettingsInput {
           label: "Spacing"
-          value: get("carouselSpacing")
+          value: root.carouselSpacing
           min: 0
-          max: 100
+          max: 60
           onCommit: function (n) {
-            set("carouselSpacing", n);
+            root.carouselSpacing = n;
           }
-        }
-
-        SectionHeader {
-          text: "3D Perspective"
         }
         SettingsInput {
           label: "Rotation"
-          value: get("carouselRotation")
+          value: root.carouselRotation
           min: 0
           max: 90
           onCommit: function (n) {
-            set("carouselRotation", n);
+            root.carouselRotation = n;
           }
         }
         SettingsInput {
           label: "Depth"
-          value: get("carouselPerspective")
+          value: root.carouselPerspective
           min: 0.1
           max: 1.0
           step: 0.05
           onCommit: function (n) {
-            set("carouselPerspective", n);
+            root.carouselPerspective = n;
           }
         }
       }
 
-      // 2. Animation Tab
-      Column {
-        id: animationContent
-        visible: settingsPanel.activeTab === "animation"
-        width: parent.width
-        spacing: 16
-
-        SectionHeader {
-          text: "Timing"
-        }
-        SettingsInput {
-          label: "Scroll Speed"
-          value: get("scrollDuration")
-          min: 100
-          max: 800
-          onCommit: function (n) {
-            set("scrollDuration", n);
-          }
-        }
-        SettingsInput {
-          label: "Hold Delay"
-          value: get("scrollContinueInterval")
-          min: 50
-          max: 500
-          onCommit: function (n) {
-            set("scrollContinueInterval", n);
-          }
-        }
-        SettingsInput {
-          label: "Transition"
-          value: get("bgSlideDuration")
-          min: 100
-          max: 1000
-          onCommit: function (n) {
-            set("bgSlideDuration", n);
-          }
-        }
-
-        SectionHeader {
-          text: "Parallax"
-        }
-        SettingsInput {
-          label: "Intensity"
-          value: get("bgParallaxFactor")
-          min: 0
-          max: 100
-          onCommit: function (n) {
-            set("bgParallaxFactor", n);
-          }
-        }
-      }
-
-      // 3. Appearance Tab
+      // 2. Appearance Tab
       Column {
         id: appearanceContent
         visible: settingsPanel.activeTab === "appearance"
         width: parent.width
-        spacing: 16
+        spacing: Style.settingsContentSpacing
 
-        SectionHeader {
-          text: "Effects"
-        }
         SettingsToggle {
           text: "Border Glow"
-          checked: get("showBorderGlow")
+          checked: root.showBorderGlow
           onToggled: function (val) {
-            set("showBorderGlow", val);
+            root.showBorderGlow = val;
           }
         }
         SettingsToggle {
           text: "Card Shadow"
-          checked: get("showShadow")
+          checked: root.showShadow
           onToggled: function (val) {
-            set("showShadow", val);
+            root.showShadow = val;
           }
         }
         SettingsToggle {
-          text: "BG Preview"
-          checked: get("showBgPreview")
+          text: "Background Preview"
+          checked: root.showBgPreview
           onToggled: function (val) {
-            set("showBgPreview", val);
-          }
-        }
-
-        SectionHeader {
-          text: "Atmosphere"
-        }
-        SettingsInput {
-          label: "Dimming"
-          value: get("bgOverlayOpacity")
-          min: 0.0
-          max: 1.0
-          step: 0.05
-          onCommit: function (n) {
-            set("bgOverlayOpacity", n);
-          }
-        }
-
-        SectionHeader {
-          text: "System"
-        }
-        SettingsToggle {
-          text: "Debug Mode"
-          checked: get("debugMode")
-          onToggled: function (val) {
-            set("debugMode", val);
+            root.showBgPreview = val;
           }
         }
       }

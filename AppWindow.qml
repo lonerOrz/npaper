@@ -36,15 +36,15 @@ PanelWindow {
   readonly property int centerIndex: scrollController.currentIndex
   property string dominantColor: Color.mPrimary
 
-  property real carouselItemWidth: viewModel ? viewModel.get("carouselItemWidth", 450) : 450
-  property real carouselItemHeight: viewModel ? viewModel.get("carouselItemHeight", 320) : 320
-  property real carouselSpacing: viewModel ? viewModel.get("carouselSpacing", 25) : 25
-  property real carouselRotation: viewModel ? viewModel.get("carouselRotation", 40) : 40
-  property real carouselPerspective: viewModel ? viewModel.get("carouselPerspective", 0.3) : 0.3
-  property real bgOverlayOpacity: viewModel ? viewModel.get("bgOverlayOpacity", 0.4) : 0.4
-  property bool showBgPreview: viewModel ? viewModel.get("showBgPreview", true) : true
-  property bool showBorderGlow: viewModel ? viewModel.get("showBorderGlow", true) : true
-  property bool showShadow: viewModel ? viewModel.get("showShadow", true) : true
+  property real carouselItemWidth: 340
+  property real carouselItemHeight: 240
+  property real carouselSpacing: 16
+  property real carouselRotation: 40
+  property real carouselPerspective: 0.3
+  property real bgOverlayOpacity: 0.4
+  property bool showBgPreview: true
+  property bool showBorderGlow: true
+  property bool showShadow: true
   readonly property bool debugMode: viewModel ? viewModel.get("debugMode", false) : false
 
   property string searchText: ""
@@ -145,15 +145,11 @@ PanelWindow {
 
   // ========== Components ==========
 
-  Style {
-    id: styleConstants
-  }
-
   ScrollController {
     id: scrollController
     count: root.count
-    visibleRange: styleConstants.visibleRange
-    preloadRange: styleConstants.preloadRange
+    visibleRange: Style.visibleRange
+    preloadRange: Style.preloadRange
     animationDuration: viewModel ? viewModel.get("scrollDuration", 280) : 280
     scrollContinueInterval: viewModel ? viewModel.get("scrollContinueInterval", 230) : 230
     parallaxFactor: viewModel ? viewModel.get("bgParallaxFactor", 40) : 40
@@ -166,7 +162,7 @@ PanelWindow {
     from: 0
     to: 1.0
     duration: viewModel ? viewModel.get("bgSlideDuration", 250) : 250
-    easing.type: styleConstants.easingOutQuad
+    easing.type: Style.easingOutQuad
   }
 
   QtObject {
@@ -223,7 +219,7 @@ PanelWindow {
 
   Timer {
     id: searchDebounce
-    interval: styleConstants.searchDebounceMs
+    interval: Style.searchDebounceMs
     onTriggered: {
       if (wallpaperModel)
         wallpaperModel.setSearch(root.searchText);
@@ -253,9 +249,10 @@ PanelWindow {
   }
 
   ColumnLayout {
+    id: carouselLayout
     anchors.fill: parent
-    anchors.margins: 12
-    anchors.topMargin: 80
+    anchors.margins: Style.carouselSideMargin
+    anchors.topMargin: Style.carouselTopMargin
     z: 0
 
     Item {
@@ -325,10 +322,10 @@ PanelWindow {
       Text {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottomMargin: 25
+        anchors.bottomMargin: Style.keyboardHintBottomMargin
         text: "/ Search  |  ←/→ Navigate  |  Tab/[] Folder  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  Esc Quit"
         color: Color.mOutline
-        font.pixelSize: 11
+        font.pixelSize: Style.keyboardHintFontSize
         style: Text.Outline
         styleColor: Color.mScrim
       }
@@ -440,7 +437,7 @@ PanelWindow {
   StatusBar {
     id: statusBar
     anchors.top: parent.top
-    anchors.topMargin: 16
+    anchors.topMargin: Style.barTopMargin
     anchors.horizontalCenter: parent.horizontalCenter
     z: 100
 
@@ -487,13 +484,19 @@ PanelWindow {
 
   SettingsPanel {
     id: settingsPanel
-    anchors.top: statusBar.bottom
-    anchors.topMargin: 8
+    anchors.bottom: statusBar.top
+    anchors.bottomMargin: 8
     anchors.horizontalCenter: statusBar.horizontalCenter
     z: 999
-    openDownward: true
-    viewModel: root.viewModel
     settingsOpen: root.settingsOpen
+    carouselItemWidth: root.carouselItemWidth
+    carouselItemHeight: root.carouselItemHeight
+    carouselSpacing: root.carouselSpacing
+    carouselRotation: root.carouselRotation
+    carouselPerspective: root.carouselPerspective
+    showBorderGlow: root.showBorderGlow
+    showShadow: root.showShadow
+    showBgPreview: root.showBgPreview
     onCloseRequested: {
       root.settingsOpen = false;
       pathViewContainer.forceActiveFocus();
