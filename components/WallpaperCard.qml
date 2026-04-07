@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Effects
 import "../utils/CacheUtils.js" as CacheUtils
 import qs.utils
 
@@ -92,7 +91,7 @@ Item {
       anchors.margins: Style.cardImageFrameMargin
       radius: Style.radiusS
       color: Color.mSurfaceContainerLowest
-      opacity: 0.67
+      opacity: Style.cardImageFrameOpacity
       clip: true
       layer.enabled: true
       layer.smooth: true

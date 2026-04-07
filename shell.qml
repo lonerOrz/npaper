@@ -7,83 +7,58 @@ import qs.components
 import qs.models
 import qs.services
 import qs.utils
-import qs.viewmodels
 
 ShellRoot {
-  ConfigModel {
-    id: configModel
+  SettingsService {
+    id: settings
+    onDataLoaded: Logger.applyDebug(settings.config.debugMode)
   }
 
-  ConfigService {
-    id: configService
-    model: configModel
-    Component.onCompleted: load()
-    onLoaded: function (configData) {
-      model.data = configData;
-      model.ready = true;
-    }
-    onError: function (message) {
-      Logger.e("ConfigService error:", message);
-      model.data = JSON.parse(JSON.stringify(configService._defaults));
-      model.ready = true;
-    }
-  }
-
-  SettingsViewModel {
-    id: settingsVM
-    model: configModel
-    configService: configService
-  }
-
-  CacheService {
-    id: cacheService
-    cacheDir: configService.get("cacheDir")
-    debugMode: configService.get("debugMode")
-    onCacheScanned: {
-      wallpaperModel.load();
-    }
-  }
-
-  WallpaperModel {
-    id: wallpaperModel
-    dirs: configService.get("wallpaperDirs")
-    scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
-    debugMode: configService.get("debugMode")
-  }
-
-  WallpaperApplier {
-    id: wallpaperApplier
-    dirs: configService.get("wallpaperDirs")
-    scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
+  SettingsBridge {
+    id: bridge
+    settings: settings
   }
 
   CheckService {
     id: checkService
+    Component.onCompleted: run()
     onAllChecked: {
       cacheService.hasFfmpeg = hasFfmpeg;
-      if (hasFfmpeg) {
+      if (hasFfmpeg && bridge.viewModel) {
         cacheService.initialize();
         cacheService.scanCache();
       }
     }
   }
 
-  Connections {
-    target: configModel
-    function onReadyChanged() {
-      Logger.d("ConfigModel ready changed:", configModel.ready);
-      if (configModel.ready) {
-        Logger.d("Triggering checkService.run()");
-        checkService.run();
-      }
+  CacheService {
+    id: cacheService
+    cacheDir: bridge.viewModel ? bridge.viewModel.system.cacheDir : ""
+    debugMode: bridge.viewModel ? bridge.viewModel.system.debugMode : false
+    onCacheScanned: {
+      wallpaperModel.load()
     }
+  }
+
+  WallpaperModel {
+    id: wallpaperModel
+    dirs: bridge.viewModel ? bridge.viewModel.system.wallpaperDirs : []
+    scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
+    debugMode: bridge.viewModel ? bridge.viewModel.system.debugMode : false
+  }
+
+  WallpaperApplier {
+    id: wallpaperApplier
+    dirs: bridge.viewModel ? bridge.viewModel.system.wallpaperDirs : []
+    scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
   }
 
   Variants {
     model: Quickshell.screens
     delegate: AppWindow {
       screen: modelData
-      viewModel: settingsVM
+      viewModel: bridge.viewModel
+      bridge: bridge
       wallpaperModel: wallpaperModel
       cacheService: cacheService
       wallpaperApplier: wallpaperApplier

@@ -5,120 +5,130 @@ import Quickshell
 import Quickshell.Io
 
 /*
-* Color palette singleton — loads ~/.config/npaper/color.json
-* Keys match color.json exactly (e.g., Color.mPrimary → JSON mPrimary).
-*
-* Usage:
-*   import qs.utils
-*   color: Color.mPrimary
-*/
+ * Color palette singleton — loads ~/.config/npaper/color.json
+ *
+ * Usage:
+ *   import qs.utils
+ *   color: Color.mPrimary
+ */
 Singleton {
   id: root
 
-  // ========== Default Palette (current hardcoded values) ==========
+  // ── Defaults ──────────────────────────────────────────────
+  readonly property var _colorKeys: [
+    "mPrimary", "mOnPrimary", "mPrimaryContainer", "mOnPrimaryContainer",
+    "mSecondary", "mOnSecondary", "mSecondaryContainer", "mOnSecondaryContainer",
+    "mTertiary", "mOnTertiary", "mTertiaryContainer", "mOnTertiaryContainer",
+    "mError", "mOnError", "mErrorContainer", "mOnErrorContainer",
+    "mSurface", "mOnSurface", "mSurfaceVariant", "mOnSurfaceVariant",
+    "mSurfaceContainerLowest", "mSurfaceContainerLow", "mSurfaceContainer",
+    "mSurfaceContainerHigh", "mSurfaceContainerHighest",
+    "mInverseSurface", "mInverseOnSurface", "mInversePrimary",
+    "mSurfaceDim", "mSurfaceBright",
+    "mOutline", "mOutlineVariant", "mShadow", "mScrim",
+    "mPrimaryFixed", "mPrimaryFixedDim", "mOnPrimaryFixed", "mOnPrimaryFixedVariant",
+    "mSecondaryFixed", "mSecondaryFixedDim", "mOnSecondaryFixed", "mOnSecondaryFixedVariant",
+    "mTertiaryFixed", "mTertiaryFixedDim", "mOnTertiaryFixed", "mOnTertiaryFixedVariant"
+  ]
 
-  QtObject {
-    id: defaults
+  readonly property var _defaults: ({
+    "mPrimary": "#6a9eff",
+    "mOnPrimary": "#001E2C",
+    "mPrimaryContainer": "#3b82f6",
+    "mOnPrimaryContainer": "#60a5fa",
+    "mSecondary": "#B2CADD",
+    "mOnSecondary": "#1C3342",
+    "mSecondaryContainer": "#354C5C",
+    "mOnSecondaryContainer": "#CFE7FB",
+    "mTertiary": "#92CDFD",
+    "mOnTertiary": "#003450",
+    "mTertiaryContainer": "#5B96C4",
+    "mOnTertiaryContainer": "#000000",
+    "mError": "#FFB4AB",
+    "mOnError": "#690005",
+    "mErrorContainer": "#93000A",
+    "mOnErrorContainer": "#FFDAD6",
+    "mSurface": "#101416",
+    "mOnSurface": "#E0E3E6",
+    "mSurfaceVariant": "#40484D",
+    "mOnSurfaceVariant": "#BFC8CE",
+    "mSurfaceContainerLowest": "#0B0F11",
+    "mSurfaceContainerLow": "#191C1E",
+    "mSurfaceContainer": "#1D2022",
+    "mSurfaceContainerHigh": "#272A2D",
+    "mSurfaceContainerHighest": "#323538",
+    "mInverseSurface": "#E0E3E6",
+    "mInverseOnSurface": "#2D3133",
+    "mInversePrimary": "#076689",
+    "mSurfaceDim": "#101416",
+    "mSurfaceBright": "#363A3C",
+    "mOutline": "#899298",
+    "mOutlineVariant": "#40484D",
+    "mShadow": "#000000",
+    "mScrim": "#000000",
+    "mPrimaryFixed": "#C3E8FF",
+    "mPrimaryFixedDim": "#89CFF7",
+    "mOnPrimaryFixed": "#001E2C",
+    "mOnPrimaryFixedVariant": "#004C68",
+    "mSecondaryFixed": "#CDE6F9",
+    "mSecondaryFixedDim": "#B2CADD",
+    "mOnSecondaryFixed": "#041E2C",
+    "mOnSecondaryFixedVariant": "#334959",
+    "mTertiaryFixed": "#CBE6FF",
+    "mTertiaryFixedDim": "#92CDFD",
+    "mOnTertiaryFixed": "#001E30",
+    "mOnTertiaryFixedVariant": "#004B71"
+  })
 
-    readonly property color mPrimary: "#6a9eff"
-    readonly property color mOnPrimary: "#001E2C"
-    readonly property color mPrimaryContainer: "#3b82f6"
-    readonly property color mOnPrimaryContainer: "#60a5fa"
-    readonly property color mSecondary: "#B2CADD"
-    readonly property color mOnSecondary: "#1C3342"
-    readonly property color mSecondaryContainer: "#354C5C"
-    readonly property color mOnSecondaryContainer: "#CFE7FB"
-    readonly property color mTertiary: "#92CDFD"
-    readonly property color mOnTertiary: "#003450"
-    readonly property color mTertiaryContainer: "#5B96C4"
-    readonly property color mOnTertiaryContainer: "#000000"
-    readonly property color mError: "#FFB4AB"
-    readonly property color mOnError: "#690005"
-    readonly property color mErrorContainer: "#93000A"
-    readonly property color mOnErrorContainer: "#FFDAD6"
-    readonly property color mSurface: "#101416"
-    readonly property color mOnSurface: "#E0E3E6"
-    readonly property color mSurfaceVariant: "#40484D"
-    readonly property color mOnSurfaceVariant: "#BFC8CE"
-    readonly property color mSurfaceContainerLowest: "#0B0F11"
-    readonly property color mSurfaceContainerLow: "#191C1E"
-    readonly property color mSurfaceContainer: "#1D2022"
-    readonly property color mSurfaceContainerHigh: "#272A2D"
-    readonly property color mSurfaceContainerHighest: "#323538"
-    readonly property color mInverseSurface: "#E0E3E6"
-    readonly property color mInverseOnSurface: "#2D3133"
-    readonly property color mInversePrimary: "#076689"
-    readonly property color mSurfaceDim: "#101416"
-    readonly property color mSurfaceBright: "#363A3C"
-    readonly property color mOutline: "#899298"
-    readonly property color mOutlineVariant: "#40484D"
-    readonly property color mShadow: "#000000"
-    readonly property color mScrim: "#000000"
-    readonly property color mPrimaryFixed: "#C3E8FF"
-    readonly property color mPrimaryFixedDim: "#89CFF7"
-    readonly property color mOnPrimaryFixed: "#001E2C"
-    readonly property color mOnPrimaryFixedVariant: "#004C68"
-    readonly property color mSecondaryFixed: "#CDE6F9"
-    readonly property color mSecondaryFixedDim: "#B2CADD"
-    readonly property color mOnSecondaryFixed: "#041E2C"
-    readonly property color mOnSecondaryFixedVariant: "#334959"
-    readonly property color mTertiaryFixed: "#CBE6FF"
-    readonly property color mTertiaryFixedDim: "#92CDFD"
-    readonly property color mOnTertiaryFixed: "#001E30"
-    readonly property color mOnTertiaryFixedVariant: "#004B71"
-  }
+  // ── Live color properties ─────────────────────────────────
+  property color mPrimary: _defaults.mPrimary
+  property color mOnPrimary: _defaults.mOnPrimary
+  property color mPrimaryContainer: _defaults.mPrimaryContainer
+  property color mOnPrimaryContainer: _defaults.mOnPrimaryContainer
+  property color mSecondary: _defaults.mSecondary
+  property color mOnSecondary: _defaults.mOnSecondary
+  property color mSecondaryContainer: _defaults.mSecondaryContainer
+  property color mOnSecondaryContainer: _defaults.mOnSecondaryContainer
+  property color mTertiary: _defaults.mTertiary
+  property color mOnTertiary: _defaults.mOnTertiary
+  property color mTertiaryContainer: _defaults.mTertiaryContainer
+  property color mOnTertiaryContainer: _defaults.mOnTertiaryContainer
+  property color mError: _defaults.mError
+  property color mOnError: _defaults.mOnError
+  property color mErrorContainer: _defaults.mErrorContainer
+  property color mOnErrorContainer: _defaults.mOnErrorContainer
+  property color mSurface: _defaults.mSurface
+  property color mOnSurface: _defaults.mOnSurface
+  property color mSurfaceVariant: _defaults.mSurfaceVariant
+  property color mOnSurfaceVariant: _defaults.mOnSurfaceVariant
+  property color mSurfaceContainerLowest: _defaults.mSurfaceContainerLowest
+  property color mSurfaceContainerLow: _defaults.mSurfaceContainerLow
+  property color mSurfaceContainer: _defaults.mSurfaceContainer
+  property color mSurfaceContainerHigh: _defaults.mSurfaceContainerHigh
+  property color mSurfaceContainerHighest: _defaults.mSurfaceContainerHighest
+  property color mInverseSurface: _defaults.mInverseSurface
+  property color mInverseOnSurface: _defaults.mInverseOnSurface
+  property color mInversePrimary: _defaults.mInversePrimary
+  property color mSurfaceDim: _defaults.mSurfaceDim
+  property color mSurfaceBright: _defaults.mSurfaceBright
+  property color mOutline: _defaults.mOutline
+  property color mOutlineVariant: _defaults.mOutlineVariant
+  property color mShadow: _defaults.mShadow
+  property color mScrim: _defaults.mScrim
+  property color mPrimaryFixed: _defaults.mPrimaryFixed
+  property color mPrimaryFixedDim: _defaults.mPrimaryFixedDim
+  property color mOnPrimaryFixed: _defaults.mOnPrimaryFixed
+  property color mOnPrimaryFixedVariant: _defaults.mOnPrimaryFixedVariant
+  property color mSecondaryFixed: _defaults.mSecondaryFixed
+  property color mSecondaryFixedDim: _defaults.mSecondaryFixedDim
+  property color mOnSecondaryFixed: _defaults.mOnSecondaryFixed
+  property color mOnSecondaryFixedVariant: _defaults.mOnSecondaryFixedVariant
+  property color mTertiaryFixed: _defaults.mTertiaryFixed
+  property color mTertiaryFixedDim: _defaults.mTertiaryFixedDim
+  property color mOnTertiaryFixed: _defaults.mOnTertiaryFixed
+  property color mOnTertiaryFixedVariant: _defaults.mOnTertiaryFixedVariant
 
-  // ========== Live Color Properties (bound to color.json) ==========
-
-  property color mPrimary: defaults.mPrimary
-  property color mOnPrimary: defaults.mOnPrimary
-  property color mPrimaryContainer: defaults.mPrimaryContainer
-  property color mOnPrimaryContainer: defaults.mOnPrimaryContainer
-  property color mSecondary: defaults.mSecondary
-  property color mOnSecondary: defaults.mOnSecondary
-  property color mSecondaryContainer: defaults.mSecondaryContainer
-  property color mOnSecondaryContainer: defaults.mOnSecondaryContainer
-  property color mTertiary: defaults.mTertiary
-  property color mOnTertiary: defaults.mOnTertiary
-  property color mTertiaryContainer: defaults.mTertiaryContainer
-  property color mOnTertiaryContainer: defaults.mOnTertiaryContainer
-  property color mError: defaults.mError
-  property color mOnError: defaults.mOnError
-  property color mErrorContainer: defaults.mErrorContainer
-  property color mOnErrorContainer: defaults.mOnErrorContainer
-  property color mSurface: defaults.mSurface
-  property color mOnSurface: defaults.mOnSurface
-  property color mSurfaceVariant: defaults.mSurfaceVariant
-  property color mOnSurfaceVariant: defaults.mOnSurfaceVariant
-  property color mSurfaceContainerLowest: defaults.mSurfaceContainerLowest
-  property color mSurfaceContainerLow: defaults.mSurfaceContainerLow
-  property color mSurfaceContainer: defaults.mSurfaceContainer
-  property color mSurfaceContainerHigh: defaults.mSurfaceContainerHigh
-  property color mSurfaceContainerHighest: defaults.mSurfaceContainerHighest
-  property color mInverseSurface: defaults.mInverseSurface
-  property color mInverseOnSurface: defaults.mInverseOnSurface
-  property color mInversePrimary: defaults.mInversePrimary
-  property color mSurfaceDim: defaults.mSurfaceDim
-  property color mSurfaceBright: defaults.mSurfaceBright
-  property color mOutline: defaults.mOutline
-  property color mOutlineVariant: defaults.mOutlineVariant
-  property color mShadow: defaults.mShadow
-  property color mScrim: defaults.mScrim
-  property color mPrimaryFixed: defaults.mPrimaryFixed
-  property color mPrimaryFixedDim: defaults.mPrimaryFixedDim
-  property color mOnPrimaryFixed: defaults.mOnPrimaryFixed
-  property color mOnPrimaryFixedVariant: defaults.mOnPrimaryFixedVariant
-  property color mSecondaryFixed: defaults.mSecondaryFixed
-  property color mSecondaryFixedDim: defaults.mSecondaryFixedDim
-  property color mOnSecondaryFixed: defaults.mOnSecondaryFixed
-  property color mOnSecondaryFixedVariant: defaults.mOnSecondaryFixedVariant
-  property color mTertiaryFixed: defaults.mTertiaryFixed
-  property color mTertiaryFixedDim: defaults.mTertiaryFixedDim
-  property color mOnTertiaryFixed: defaults.mOnTertiaryFixed
-  property color mOnTertiaryFixedVariant: defaults.mOnTertiaryFixedVariant
-
-  // ========== FileView: Load & Hot-Reload color.json ==========
-
+  // ── FileView: Load & Hot-Reload ───────────────────────────
   readonly property string colorPath: Quickshell.env("HOME") + "/.config/npaper/color.json"
 
   FileView {
@@ -129,107 +139,18 @@ Singleton {
 
     onLoaded: {
       try {
-        _apply(JSON.parse(text()));
+        var t = colorFile.text();
+        if (t) _apply(JSON.parse(t));
       } catch (e) { /* invalid JSON → keep defaults */ }
     }
-
     onFileChanged: reload()
   }
 
   function _apply(cfg) {
-    if (!cfg)
-      return;
-    if (cfg.mPrimary)
-      root.mPrimary = cfg.mPrimary;
-    if (cfg.mOnPrimary)
-      root.mOnPrimary = cfg.mOnPrimary;
-    if (cfg.mPrimaryContainer)
-      root.mPrimaryContainer = cfg.mPrimaryContainer;
-    if (cfg.mOnPrimaryContainer)
-      root.mOnPrimaryContainer = cfg.mOnPrimaryContainer;
-    if (cfg.mSecondary)
-      root.mSecondary = cfg.mSecondary;
-    if (cfg.mOnSecondary)
-      root.mOnSecondary = cfg.mOnSecondary;
-    if (cfg.mSecondaryContainer)
-      root.mSecondaryContainer = cfg.mSecondaryContainer;
-    if (cfg.mOnSecondaryContainer)
-      root.mOnSecondaryContainer = cfg.mOnSecondaryContainer;
-    if (cfg.mTertiary)
-      root.mTertiary = cfg.mTertiary;
-    if (cfg.mOnTertiary)
-      root.mOnTertiary = cfg.mOnTertiary;
-    if (cfg.mTertiaryContainer)
-      root.mTertiaryContainer = cfg.mTertiaryContainer;
-    if (cfg.mOnTertiaryContainer)
-      root.mOnTertiaryContainer = cfg.mOnTertiaryContainer;
-    if (cfg.mError)
-      root.mError = cfg.mError;
-    if (cfg.mOnError)
-      root.mOnError = cfg.mOnError;
-    if (cfg.mErrorContainer)
-      root.mErrorContainer = cfg.mErrorContainer;
-    if (cfg.mOnErrorContainer)
-      root.mOnErrorContainer = cfg.mOnErrorContainer;
-    if (cfg.mSurface)
-      root.mSurface = cfg.mSurface;
-    if (cfg.mOnSurface)
-      root.mOnSurface = cfg.mOnSurface;
-    if (cfg.mSurfaceVariant)
-      root.mSurfaceVariant = cfg.mSurfaceVariant;
-    if (cfg.mOnSurfaceVariant)
-      root.mOnSurfaceVariant = cfg.mOnSurfaceVariant;
-    if (cfg.mSurfaceContainerLowest)
-      root.mSurfaceContainerLowest = cfg.mSurfaceContainerLowest;
-    if (cfg.mSurfaceContainerLow)
-      root.mSurfaceContainerLow = cfg.mSurfaceContainerLow;
-    if (cfg.mSurfaceContainer)
-      root.mSurfaceContainer = cfg.mSurfaceContainer;
-    if (cfg.mSurfaceContainerHigh)
-      root.mSurfaceContainerHigh = cfg.mSurfaceContainerHigh;
-    if (cfg.mSurfaceContainerHighest)
-      root.mSurfaceContainerHighest = cfg.mSurfaceContainerHighest;
-    if (cfg.mInverseSurface)
-      root.mInverseSurface = cfg.mInverseSurface;
-    if (cfg.mInverseOnSurface)
-      root.mInverseOnSurface = cfg.mInverseOnSurface;
-    if (cfg.mInversePrimary)
-      root.mInversePrimary = cfg.mInversePrimary;
-    if (cfg.mSurfaceDim)
-      root.mSurfaceDim = cfg.mSurfaceDim;
-    if (cfg.mSurfaceBright)
-      root.mSurfaceBright = cfg.mSurfaceBright;
-    if (cfg.mOutline)
-      root.mOutline = cfg.mOutline;
-    if (cfg.mOutlineVariant)
-      root.mOutlineVariant = cfg.mOutlineVariant;
-    if (cfg.mShadow)
-      root.mShadow = cfg.mShadow;
-    if (cfg.mScrim)
-      root.mScrim = cfg.mScrim;
-    if (cfg.mPrimaryFixed)
-      root.mPrimaryFixed = cfg.mPrimaryFixed;
-    if (cfg.mPrimaryFixedDim)
-      root.mPrimaryFixedDim = cfg.mPrimaryFixedDim;
-    if (cfg.mOnPrimaryFixed)
-      root.mOnPrimaryFixed = cfg.mOnPrimaryFixed;
-    if (cfg.mOnPrimaryFixedVariant)
-      root.mOnPrimaryFixedVariant = cfg.mOnPrimaryFixedVariant;
-    if (cfg.mSecondaryFixed)
-      root.mSecondaryFixed = cfg.mSecondaryFixed;
-    if (cfg.mSecondaryFixedDim)
-      root.mSecondaryFixedDim = cfg.mSecondaryFixedDim;
-    if (cfg.mOnSecondaryFixed)
-      root.mOnSecondaryFixed = cfg.mOnSecondaryFixed;
-    if (cfg.mOnSecondaryFixedVariant)
-      root.mOnSecondaryFixedVariant = cfg.mOnSecondaryFixedVariant;
-    if (cfg.mTertiaryFixed)
-      root.mTertiaryFixed = cfg.mTertiaryFixed;
-    if (cfg.mTertiaryFixedDim)
-      root.mTertiaryFixedDim = cfg.mTertiaryFixedDim;
-    if (cfg.mOnTertiaryFixed)
-      root.mOnTertiaryFixed = cfg.mOnTertiaryFixed;
-    if (cfg.mOnTertiaryFixedVariant)
-      root.mOnTertiaryFixedVariant = cfg.mOnTertiaryFixedVariant;
+    if (!cfg) return;
+    for (var i = 0; i < _colorKeys.length; i++) {
+      var key = _colorKeys[i];
+      if (cfg[key]) root[key] = cfg[key];
+    }
   }
 }

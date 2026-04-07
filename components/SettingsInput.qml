@@ -17,6 +17,21 @@ Item {
 
   signal commit(real val)
 
+  property bool _updating: false
+
+  Component.onCompleted: {
+    var fmt = step < 1 ? 2 : 0;
+    input.text = value.toFixed(fmt);
+  }
+
+  onValueChanged: {
+    if (_updating) return;
+    _updating = true;
+    var fmt = step < 1 ? 2 : 0;
+    input.text = value.toFixed(fmt);
+    _updating = false;
+  }
+
   RowLayout {
     anchors.fill: parent
     spacing: 10
@@ -55,6 +70,7 @@ Item {
       stepSize: root.step
       value: root.value
       onMoved: {
+        if (_updating) return;
         input.text = value.toFixed(root.step < 1 ? 2 : 0);
         root.commit(value);
       }

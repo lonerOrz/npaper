@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Layouts
 import qs.utils
 
 Item {
@@ -15,6 +15,7 @@ Item {
   required property int cachedCount
   required property int queueCount
 
+  property color dominantColor: Color.mPrimary
   property bool settingsOpen: false
   signal settingsToggled
 
@@ -33,7 +34,7 @@ Item {
   // Background Pill
   Rectangle {
     anchors.fill: parent
-    radius: Style.radiusXL
+    radius: Style.barRadius
     color: Color.mSurfaceContainerLowest
   }
 
@@ -47,20 +48,50 @@ Item {
     anchors.rightMargin: Style.barSidePadding
     spacing: Style.barInnerSpacing
 
+    // NixOS Logo
+    Image {
+      id: nixosLogo
+      Layout.preferredWidth: Style.barLogoSize
+      Layout.preferredHeight: Style.barLogoSize
+      Layout.alignment: Qt.AlignVCenter
+      source: Qt.resolvedUrl("../assets/nixos-logo.svg")
+      sourceSize.width: Style.barLogoSize
+      sourceSize.height: Style.barLogoSize
+      fillMode: Image.PreserveAspectFit
+      mipmap: true
+      layer.enabled: true
+      layer.effect: MultiEffect {
+        colorization: 1.0
+        colorizationColor: root.dominantColor
+        Behavior on colorizationColor {
+          ColorAnimation {
+            duration: Style.animFast
+          }
+        }
+      }
+
+      RotationAnimation on rotation {
+        from: 0
+        to: 360
+        duration: Style.logoRotationMs
+        loops: Animation.Infinite
+      }
+    }
+
     // Search Input
     Rectangle {
       Layout.alignment: Qt.AlignVCenter
       Layout.minimumWidth: Style.barSearchMinWidth
       Layout.preferredWidth: Math.max(Style.barSearchMinWidth, searchInput.baseWidth + Style.space2M)
       Layout.preferredHeight: Style.barSearchHeight
-      radius: Style.radiusXL
+      radius: Style.barSearchHeight / 2
       color: Color.mSurfaceContainer
 
       TextInput {
         id: searchInput
         anchors.fill: parent
-        anchors.leftMargin: Style.spaceL
-        anchors.rightMargin: Style.spaceL
+        anchors.leftMargin: Style.barTabSidePadding
+        anchors.rightMargin: Style.barTabSidePadding
         anchors.verticalCenter: parent.verticalCenter
         text: root.searchText
         onTextChanged: root.searchInputChanged(text)
@@ -113,16 +144,24 @@ Item {
       delegate: MouseArea {
         required property string modelData
         property bool isActive: root.activeFolder === modelData
-        width: tabLabel.implicitWidth + Style.space2L
+        width: tabLabel.implicitWidth + Style.barTabSidePadding
         height: Style.barTabHeight
 
         Rectangle {
           anchors.fill: parent
-          radius: Style.radiusXL
+          radius: Style.barTabHeight / 2
           color: parent.isActive ? Color.mPrimary : "transparent"
           opacity: parent.isActive ? Style.opacityLight : Style.opacityFull
-          Behavior on color { ColorAnimation { duration: Style.animFast } }
-          Behavior on opacity { NumberAnimation { duration: Style.animFast } }
+          Behavior on color {
+            ColorAnimation {
+              duration: Style.animFast
+            }
+          }
+          Behavior on opacity {
+            NumberAnimation {
+              duration: Style.animFast
+            }
+          }
         }
 
         Text {
@@ -132,7 +171,11 @@ Item {
           color: parent.isActive ? Color.mOnPrimaryContainer : Color.mOutlineVariant
           font.pixelSize: Style.barTabFontSize
           font.weight: parent.isActive ? Font.Bold : Font.Normal
-          Behavior on color { ColorAnimation { duration: Style.animFast } }
+          Behavior on color {
+            ColorAnimation {
+              duration: Style.animFast
+            }
+          }
         }
         onClicked: root.folderClicked(modelData)
       }
@@ -167,29 +210,23 @@ Item {
 
       Rectangle {
         anchors.fill: parent
-        radius: Style.radiusXS
+        radius: Style.barSettingsBtnHeight / 2
         color: parent.hover ? Color.mSurfaceContainerHigh : "transparent"
-        Behavior on color { ColorAnimation { duration: Style.animFast } }
+        Behavior on color {
+          ColorAnimation {
+            duration: Style.animFast
+          }
+        }
       }
 
-      Image {
-        id: settingsIcon
+      Text {
         anchors.centerIn: parent
-        width: Style.barSettingsIconSize
-        height: Style.barSettingsIconSize
-        source: Qt.resolvedUrl("../assets/nixos-logo.svg")
-        sourceSize.width: Style.barSettingsIconSize
-        sourceSize.height: Style.barSettingsIconSize
-        fillMode: Image.PreserveAspectFit
-        mipmap: true
-        layer.enabled: true
-        layer.effect: MultiEffect {
-          colorization: 1.0
-          colorizationColor: root.settingsOpen ? Color.mPrimary : Color.mOutlineVariant
-          Behavior on colorizationColor {
-            ColorAnimation {
-              duration: Style.animFast
-            }
+        text: "⚙"
+        font.pixelSize: Style.barSettingsGearFontSize
+        color: root.settingsOpen ? Color.mPrimary : Color.mOutlineVariant
+        Behavior on color {
+          ColorAnimation {
+            duration: Style.animFast
           }
         }
       }

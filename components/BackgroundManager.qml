@@ -54,32 +54,4 @@ Item {
     opacity: root.overlayOpacity
     z: -1
   }
-
-  // Dominant Color Logo
-  Image {
-    id: nixosLogo
-    anchors.horizontalCenter: parent.horizontalCenter
-    anchors.bottom: parent.bottom
-    anchors.bottomMargin: 120
-    width: 160
-    height: 160
-    source: Qt.resolvedUrl("../assets/nixos-logo.svg")
-    fillMode: Image.PreserveAspectFit
-    smooth: true
-    z: 10
-
-    layer.enabled: true
-    layer.effect: MultiEffect {
-      colorization: 1.0
-      colorizationColor: Qt.color(root.dominantColor)
-      blurEnabled: true
-      blur: 0.12
-      brightness: 1.3
-      Behavior on colorizationColor {
-        ColorAnimation {
-          duration: 200
-        }
-      }
-    }
-  }
 }

@@ -15,6 +15,7 @@ PanelWindow {
 
   property var modelData
   property var viewModel
+  property var bridge
   property var wallpaperModel
   property var cacheService
   property var wallpaperApplier
@@ -22,6 +23,8 @@ PanelWindow {
 
   property bool settingsOpen: false
   screen: modelData
+
+  onViewModelChanged: { _loadSettings(); }
 
   visible: true
   color: "transparent"
@@ -36,16 +39,15 @@ PanelWindow {
   readonly property int centerIndex: scrollController.currentIndex
   property string dominantColor: Color.mPrimary
 
-  property real carouselItemWidth: 340
-  property real carouselItemHeight: 240
-  property real carouselSpacing: 16
-  property real carouselRotation: 40
-  property real carouselPerspective: 0.3
-  property real bgOverlayOpacity: 0.4
+  property real carouselItemWidth: Style.carouselItemWidth
+  property real carouselItemHeight: Style.carouselItemHeight
+  property real carouselSpacing: Style.carouselSpacing
+  property real carouselRotation: Style.carouselRotation
+  property real carouselPerspective: Style.carouselPerspective
+  property real bgOverlayOpacity: Style.bgOverlayOpacity
   property bool showBgPreview: true
   property bool showBorderGlow: true
   property bool showShadow: true
-  readonly property bool debugMode: viewModel ? viewModel.get("debugMode", false) : false
 
   property string searchText: ""
 
@@ -58,9 +60,31 @@ PanelWindow {
   // ========== Logic ==========
 
   Component.onCompleted: {
-    Logger.init(root.debugMode);
+    Style.uiScaleRatio = screen.height / 1080;
+    _loadSettings();
     if (wallpaperModel)
       wallpaperModel.dataLoaded.connect(applyFolderSelection);
+  }
+
+  function _loadSettings() {
+    if (!viewModel) return;
+    carouselItemWidth   = viewModel.layout.carouselItemWidth;
+    carouselItemHeight  = viewModel.layout.carouselItemHeight;
+    carouselSpacing     = viewModel.layout.carouselSpacing;
+    carouselRotation    = viewModel.layout.carouselRotation;
+    carouselPerspective = viewModel.layout.carouselPerspective;
+    showBorderGlow      = viewModel.appearance.showBorderGlow;
+    showShadow          = viewModel.appearance.showShadow;
+    showBgPreview       = viewModel.appearance.showBgPreview;
+    bgOverlayOpacity    = viewModel.appearance.bgOverlayOpacity;
+  }
+
+  // Initial load + hot-reload: SettingsService fires dataLoaded on first load,
+  // dataChanged when file is edited externally
+  Connections {
+    target: bridge ? bridge.settingsService : null
+    function onDataLoaded()  { _loadSettings(); }
+    function onDataChanged() { _loadSettings(); }
   }
 
   Connections {
@@ -150,9 +174,9 @@ PanelWindow {
     count: root.count
     visibleRange: Style.visibleRange
     preloadRange: Style.preloadRange
-    animationDuration: viewModel ? viewModel.get("scrollDuration", 280) : 280
-    scrollContinueInterval: viewModel ? viewModel.get("scrollContinueInterval", 230) : 230
-    parallaxFactor: viewModel ? viewModel.get("bgParallaxFactor", 40) : 40
+    animationDuration: viewModel ? viewModel.timing.scrollDuration : 280
+    scrollContinueInterval: viewModel ? viewModel.timing.scrollContinueInterval : 230
+    parallaxFactor: viewModel ? viewModel.timing.bgParallaxFactor : 40
   }
 
   PropertyAnimation {
@@ -161,7 +185,7 @@ PanelWindow {
     properties: "bgSlideProgress"
     from: 0
     to: 1.0
-    duration: viewModel ? viewModel.get("bgSlideDuration", 250) : 250
+    duration: viewModel ? viewModel.timing.bgSlideDuration : 250
     easing.type: Style.easingOutQuad
   }
 
@@ -362,9 +386,7 @@ PanelWindow {
                           const fs = wallpaperModel ? wallpaperModel.folders : [];
                           if (fs.length > 0) {
                             const idx = fs.indexOf(wallpaperModel ? wallpaperModel.currentFolder : "");
-                            switchFolder(event.key === Qt.Key_Tab
-                              ? (idx < fs.length - 1 ? idx + 1 : 0)
-                              : (idx > 0 ? idx - 1 : fs.length - 1));
+                            switchFolder(event.key === Qt.Key_Tab ? (idx < fs.length - 1 ? idx + 1 : 0) : (idx > 0 ? idx - 1 : fs.length - 1));
                           }
                           event.accepted = true;
                           return;
@@ -449,10 +471,12 @@ PanelWindow {
     wallpaperCount: root.count
     cachedCount: cacheService ? cacheService.cachedFileCount : 0
     queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
+    dominantColor: root.dominantColor
     settingsOpen: root.settingsOpen
     onSettingsToggled: {
       root.settingsOpen = !root.settingsOpen;
-      if (!root.settingsOpen) pathViewContainer.forceActiveFocus();
+      if (!root.settingsOpen)
+        pathViewContainer.forceActiveFocus();
     }
     searchText: root.searchText
     onSearchInputChanged: function (text) {
@@ -485,7 +509,7 @@ PanelWindow {
   SettingsPanel {
     id: settingsPanel
     anchors.bottom: statusBar.top
-    anchors.bottomMargin: 8
+    anchors.bottomMargin: Style.spaceM
     anchors.horizontalCenter: statusBar.horizontalCenter
     z: 999
     settingsOpen: root.settingsOpen
@@ -497,6 +521,25 @@ PanelWindow {
     showBorderGlow: root.showBorderGlow
     showShadow: root.showShadow
     showBgPreview: root.showBgPreview
+
+    onSettingChanged: function(key, val) {
+      // Map dot-paths to flat root property names for immediate UI update
+      var propMap = {
+        "carousel.itemWidth": "carouselItemWidth",
+        "carousel.itemHeight": "carouselItemHeight",
+        "carousel.spacing": "carouselSpacing",
+        "carousel.rotation": "carouselRotation",
+        "carousel.perspective": "carouselPerspective",
+        "appearance.showBorderGlow": "showBorderGlow",
+        "appearance.showShadow": "showShadow",
+        "appearance.showBgPreview": "showBgPreview",
+        "appearance.bgOverlayOpacity": "bgOverlayOpacity"
+      };
+      var prop = propMap[key] || key;
+      root[prop] = val;
+      if (viewModel) viewModel.set(key, val);
+    }
+
     onCloseRequested: {
       root.settingsOpen = false;
       pathViewContainer.forceActiveFocus();
