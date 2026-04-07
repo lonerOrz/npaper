@@ -126,6 +126,73 @@ Item {
       }
     }
 
+    // View Mode Pill
+    Rectangle {
+      Layout.preferredWidth: viewModeRow.implicitWidth + Style.spaceM
+      Layout.preferredHeight: Style.barTabHeight
+      Layout.alignment: Qt.AlignVCenter
+      radius: Style.barTabHeight / 2
+      color: Color.mSurfaceContainer
+      visible: !root.isWallhaven
+
+      Row {
+        id: viewModeRow
+        anchors.centerIn: parent
+        anchors.margins: Style.spaceXS
+        spacing: Style.spaceXS
+
+        MouseArea {
+          id: carouselModeBtn
+          width: carouselLabel.implicitWidth + Style.spaceM
+          height: Style.barTabHeight
+          cursorShape: Qt.PointingHandCursor
+          hoverEnabled: true
+
+          Text {
+            id: carouselLabel
+            anchors.centerIn: parent
+            text: "Carousel"
+            color: Config.previewStyle === "carousel" ? Color.mPrimary : Color.mOutlineVariant
+            font.pixelSize: Style.barTabFontSize
+            font.weight: Config.previewStyle === "carousel" ? Font.Bold : Font.Normal
+            Behavior on color { ColorAnimation { duration: Style.animFast } }
+          }
+          Rectangle {
+            anchors.fill: parent
+            radius: parent.height / 2
+            color: parent.containsMouse ? Color.mSurfaceContainerHigh : "transparent"
+            Behavior on color { ColorAnimation { duration: Style.animFast } }
+          }
+          onClicked: Config.update("previewStyle", "carousel")
+        }
+
+        MouseArea {
+          id: gridModeBtn
+          width: gridLabel.implicitWidth + Style.spaceM
+          height: Style.barTabHeight
+          cursorShape: Qt.PointingHandCursor
+          hoverEnabled: true
+
+          Text {
+            id: gridLabel
+            anchors.centerIn: parent
+            text: "Grid"
+            color: Config.previewStyle === "grid" ? Color.mPrimary : Color.mOutlineVariant
+            font.pixelSize: Style.barTabFontSize
+            font.weight: Config.previewStyle === "grid" ? Font.Bold : Font.Normal
+            Behavior on color { ColorAnimation { duration: Style.animFast } }
+          }
+          Rectangle {
+            anchors.fill: parent
+            radius: parent.height / 2
+            color: parent.containsMouse ? Color.mSurfaceContainerHigh : "transparent"
+            Behavior on color { ColorAnimation { duration: Style.animFast } }
+          }
+          onClicked: Config.update("previewStyle", "grid")
+        }
+      }
+    }
+
     // Divider
     Rectangle {
       Layout.preferredWidth: Style.borderS

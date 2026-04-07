@@ -171,7 +171,6 @@ Item {
       id: staticImage
       anchors.fill: parent
       source: {
-        // Remote wallpaper: use remote thumbnail URL
         if (root.isRemote)
           return root.remoteThumb;
 
@@ -181,7 +180,10 @@ Item {
         if ((root.isGif || root.isVideo) && root.isCenter && animatedGif.status === AnimatedImage.Ready && animatedGif.visible)
           return "";
         const bg = CacheUtils.getCachedBgPreview(root.thumbHashToPath, path);
-        return bg ? "file://" + bg : ("file://" + path);
+        if (bg) return "file://" + bg;
+        // Video/GIF without cache: don't try to load .mp4 directly
+        if (root.isVideo || root.isGif) return "";
+        return "file://" + path;
       }
       fillMode: Image.PreserveAspectCrop
       asynchronous: true

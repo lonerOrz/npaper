@@ -21,6 +21,9 @@ Singleton {
   property bool isLoaded: false
   property bool _isSaving: false
 
+  // QML-accessible properties (trackable by QML bindings)
+  property string previewStyle: "carousel"
+
   signal dataLoaded
 
   // ── Hardcoded defaults ──────────────────────────────────
@@ -92,8 +95,8 @@ Singleton {
         Logger.i("Config", "No config file — creating defaults at", root.configPath);
         root.data = _resolvePaths(_deepClone(_defaults));
         root.isLoaded = true;
+        root.previewStyle = root.data.previewStyle || "carousel";
         root.dataLoaded();
-        // Write defaults to disk so next startup has a file to read
         _doSave();
         return;
       }
@@ -101,12 +104,14 @@ Singleton {
         var user = JSON.parse(String(raw).trim());
         root.data = _deepMerge(_deepClone(_defaults), user);
         root.data = _resolvePaths(root.data);
+        root.previewStyle = root.data.previewStyle || "carousel";
         Logger.i("Config", "Loaded user config");
         root.isLoaded = true;
         root.dataLoaded();
       } catch (e) {
         Logger.w("Config", "Parse error, using defaults:", e);
         root.data = _deepClone(_defaults);
+        root.previewStyle = root.data.previewStyle || "carousel";
         root.isLoaded = true;
         root.dataLoaded();
       }
@@ -154,6 +159,9 @@ Singleton {
       obj = obj[parts[i]];
     }
     obj[parts[parts.length - 1]] = value;
+    // Sync QML property for trackable bindings
+    if (path === "previewStyle")
+      root.previewStyle = value;
     if (_saveTimer.running) {
       _saveTimer.restart();
     } else {

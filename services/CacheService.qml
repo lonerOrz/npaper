@@ -48,9 +48,12 @@ Item {
     stdout: StdioCollector {
       onStreamFinished: {
         const files = text.trim().split('\n').filter(f => f.length > 0 && f.indexOf('/') > 0);
+        // Replace entire object to trigger QML binding updates
+        var newMap = {};
         files.forEach(f => {
-                        root.thumbHashToPath[f] = root.cacheDir + '/' + f;
+                        newMap[f] = root.cacheDir + '/' + f;
                       });
+        root.thumbHashToPath = newMap;
         root.cachedFileCount = files.length;
         root.thumbCacheVersion++;
         if (root.debugMode)
@@ -166,12 +169,15 @@ Item {
       function _finish() {
         root.thumbnailGenerated(_path, "", _bgPath, _animPath);
 
+        // Replace entire object to trigger QML binding updates
+        var newMap = Object.assign({}, root.thumbHashToPath);
         if (_bgPath) {
-          root.thumbHashToPath[_folder + '/' + HashUtils.getThumbnailHash(_path) + '_bg.png'] = _bgPath;
+          newMap[_folder + '/' + HashUtils.getThumbnailHash(_path) + '_bg.png'] = _bgPath;
         }
         if (_animPath) {
-          root.thumbHashToPath[_folder + '/' + HashUtils.getThumbnailHash(_path) + '_anim.gif'] = _animPath;
+          newMap[_folder + '/' + HashUtils.getThumbnailHash(_path) + '_anim.gif'] = _animPath;
         }
+        root.thumbHashToPath = newMap;
         root.thumbCacheVersion++;
         root.cachedFileCount++;
 
@@ -244,13 +250,16 @@ Item {
                             validKeys[folder + '/' + hash + '_anim.gif'] = true;
                           });
 
+    // Replace entire object to trigger QML binding updates
+    var newMap = Object.assign({}, root.thumbHashToPath);
     const invalidFiles = [];
-    Object.keys(root.thumbHashToPath).forEach(key => {
-                                                if (key.startsWith(folder + '/') && !validKeys[key]) {
-                                                  invalidFiles.push(root.thumbHashToPath[key]);
-                                                  delete root.thumbHashToPath[key];
-                                                }
-                                              });
+    Object.keys(newMap).forEach(key => {
+                                    if (key.startsWith(folder + '/') && !validKeys[key]) {
+                                      invalidFiles.push(newMap[key]);
+                                      delete newMap[key];
+                                    }
+                                  });
+    root.thumbHashToPath = newMap;
 
     if (invalidFiles.length > 0) {
       root.cachedFileCount = Math.max(0, root.cachedFileCount - invalidFiles.length);
