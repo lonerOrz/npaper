@@ -160,6 +160,24 @@ PanelWindow {
     }
   }
 
+  function nextFolder() {
+    if (!adapter || adapter.currentSource !== "local") return;
+    const fs = adapter.folders;
+    if (fs.length === 0) return;
+    const idx = fs.indexOf(adapter.currentFolder);
+    const nextIdx = idx >= 0 && idx < fs.length - 1 ? idx + 1 : 0;
+    switchFolder(fs[nextIdx]);
+  }
+
+  function prevFolder() {
+    if (!adapter || adapter.currentSource !== "local") return;
+    const fs = adapter.folders;
+    if (fs.length === 0) return;
+    const idx = fs.indexOf(adapter.currentFolder);
+    const prevIdx = idx > 0 ? idx - 1 : fs.length - 1;
+    switchFolder(fs[prevIdx]);
+  }
+
   function refreshCache() {
     if (adapter)
       adapter.refresh();
@@ -405,16 +423,7 @@ PanelWindow {
 
         // ===== Folder switching (Tab/Shift+Tab or [ / ]) =====
         if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-          if (adapter.currentSource === "local") {
-            const fs = adapter.folders;
-            if (fs.length > 0) {
-              const idx = fs.indexOf(adapter.currentFolder);
-              const nextIdx = event.key === Qt.Key_Tab
-                ? (idx < fs.length - 1 ? idx + 1 : 0)
-                : (idx > 0 ? idx - 1 : fs.length - 1);
-              switchFolder(fs[nextIdx]);
-            }
-          }
+          event.key === Qt.Key_Tab ? nextFolder() : prevFolder();
           event.accepted = true;
           return;
         }
@@ -427,24 +436,12 @@ PanelWindow {
         }
 
         if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft) {
-          if (adapter.currentSource === "local") {
-            const fs = adapter.folders;
-            if (fs.length > 0) {
-              const idx = fs.indexOf(adapter.currentFolder);
-              switchFolder(idx > 0 ? fs[idx - 1] : fs[fs.length - 1]);
-            }
-          }
+          prevFolder();
           event.accepted = true;
           return;
         }
         if (event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
-          if (adapter.currentSource === "local") {
-            const fs = adapter.folders;
-            if (fs.length > 0) {
-              const idx = fs.indexOf(adapter.currentFolder);
-              switchFolder(idx >= 0 && idx < fs.length - 1 ? fs[idx + 1] : fs[0]);
-            }
-          }
+          nextFolder();
           event.accepted = true;
           return;
         }
@@ -610,25 +607,8 @@ PanelWindow {
       pathViewContainer.forceActiveFocus();
     }
 
-    onSwitchToNextFolder: {
-      if (adapter) {
-        const fs = adapter.folders;
-        if (fs.length > 0) {
-          const idx = fs.indexOf(adapter.currentFolder);
-          switchFolder(idx >= 0 && idx < fs.length - 1 ? fs[idx + 1] : fs[0]);
-        }
-      }
-    }
-
-    onSwitchToPrevFolder: {
-      if (adapter) {
-        const fs = adapter.folders;
-        if (fs.length > 0) {
-          const idx = fs.indexOf(adapter.currentFolder);
-          switchFolder(idx > 0 ? fs[idx - 1] : fs[fs.length - 1]);
-        }
-      }
-    }
+    onSwitchToNextFolder: nextFolder()
+    onSwitchToPrevFolder: prevFolder()
 
     onToggleSettings: {
       root.settingsOpen = !root.settingsOpen;
