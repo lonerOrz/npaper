@@ -25,8 +25,10 @@ Item {
       _initialSearchDone = true;
       root.whService.search(1);
     }
-    if (filterVisible)
+    if (filterVisible) {
       root.visible = true;
+      root.focus = true;
+    }
     _animTarget = filterVisible ? 1.0 : 0.0;
     _anim.restart();
   }
@@ -61,7 +63,6 @@ Item {
   }
 
   Component.onCompleted: visible = filterVisible
-  focus: filterVisible
 
   // ── Background ──────────────────────────────────────────
   Rectangle {

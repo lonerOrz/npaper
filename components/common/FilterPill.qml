@@ -4,9 +4,11 @@ import qs.services
 /* FilterPill — rounded pill toggle button (npaper style). */
 MouseArea {
   id: root
+
   property string label: ""
   property bool active: false
   property bool hovered: false
+  property bool enabled: true  // MouseArea has built-in enabled, but we expose for clarity
 
   width: labelText.implicitWidth + Style.spaceXXXL
   height: Style.barSearchHeight

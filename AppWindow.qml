@@ -239,25 +239,27 @@ PanelWindow {
     }
   }
 
+  function _doSearch() {
+    if (adapter)
+      adapter.setSearch(root.searchText);
+    if (root.searchText) {
+      scrollController.scrollTo(0);
+      bgCurrent = 0;
+      bgSlideProgress = 1.0;
+      if (adapter.items.length > 0) {
+        const item = adapter.items[0];
+        if (item.type === "local")
+          colorExtractor.run(item.path);
+      }
+    } else {
+      adapter.resetSearch();
+    }
+  }
+
   Timer {
     id: searchDebounce
     interval: Style.searchDebounceMs
-    onTriggered: {
-      if (adapter)
-        adapter.setSearch(root.searchText);
-      if (root.searchText) {
-        scrollController.scrollTo(0);
-        bgCurrent = 0;
-        bgSlideProgress = 1.0;
-        if (adapter.items.length > 0) {
-          const item = adapter.items[0];
-          if (item.type === "local")
-            colorExtractor.run(item.path);
-        }
-      } else {
-        adapter.resetSearch();
-      }
-    }
+    onTriggered: _doSearch()
   }
 
   // ========== UI ==========
@@ -532,26 +534,15 @@ PanelWindow {
       pathViewContainer.forceActiveFocus();
     }
     onSearchSubmitted: {
-      if (adapter)
-        adapter.setSearch(root.searchText);
-      if (root.searchText) {
-        scrollController.scrollTo(0);
-        bgCurrent = 0;
-        bgSlideProgress = 1.0;
-        if (adapter.items.length > 0) {
-          const item = adapter.items[0];
-          if (item.type === "local")
-            colorExtractor.run(item.path);
-        }
-      } else {
-        adapter.resetSearch();
-      }
+      _doSearch();
       searchDebounce.stop();
       pathViewContainer.forceActiveFocus();
     }
   }
 
   // Wallhaven Filter Panel (Separate from StatusBar)
+  property var _whResultsConn: null
+
   WallhavenFilter {
     id: wallhavenFilter
     anchors.bottom: statusBar.top
@@ -561,8 +552,12 @@ PanelWindow {
     adapter: root.adapter
     whService: adapter ? adapter.whService : null
     onWhServiceChanged: {
-      if (whService)
-        whService.resultsUpdated.connect(() => scrollController.scrollTo(0));
+      if (root._whResultsConn && root._whResultsConn.target)
+        root._whResultsConn.target.resultsUpdated.disconnect(root._whResultsConn.callback);
+      if (whService) {
+        root._whResultsConn = { target: whService, callback: () => scrollController.scrollTo(0) };
+        whService.resultsUpdated.connect(root._whResultsConn.callback);
+      }
     }
   }
 
