@@ -17,11 +17,26 @@ Item {
   readonly property int checkTimeout: 2000
 
   readonly property var _checks: [
-    { key: "hasFfmpeg",      cmd: "command -v ffmpeg >/dev/null 2>&1 && echo OK" },
-    { key: "hasImagemagick", cmd: "command -v magick >/dev/null 2>&1 && echo OK" },
-    { key: "hasAwww",        cmd: "command -v awww >/dev/null 2>&1 && echo OK" },
-    { key: "hasWlrRandr",    cmd: "command -v wlr-randr >/dev/null 2>&1 && echo OK" },
-    { key: "hasMpvpaper",    cmd: "command -v mpvpaper >/dev/null 2>&1 && echo OK" }
+    {
+      key: "hasFfmpeg",
+      cmd: "command -v ffmpeg >/dev/null 2>&1 && echo OK"
+    },
+    {
+      key: "hasImagemagick",
+      cmd: "command -v magick >/dev/null 2>&1 && echo OK"
+    },
+    {
+      key: "hasAwww",
+      cmd: "command -v awww >/dev/null 2>&1 && echo OK"
+    },
+    {
+      key: "hasWlrRandr",
+      cmd: "command -v wlr-randr >/dev/null 2>&1 && echo OK"
+    },
+    {
+      key: "hasMpvpaper",
+      cmd: "command -v mpvpaper >/dev/null 2>&1 && echo OK"
+    }
   ]
 
   property int _idx: 0
@@ -30,7 +45,8 @@ Item {
     id: timeoutTimer
     interval: root.checkTimeout
     onTriggered: {
-      if (checkProc.running) checkProc.running = false;
+      if (checkProc.running)
+        checkProc.running = false;
       _finishCheck(false);
     }
   }

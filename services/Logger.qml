@@ -16,9 +16,22 @@ Singleton {
   }
 
   // Logging Levels
-  function d(...args) { if (root.isDebug) console.log("[npaper][D]", ...args); }
-  function i(...args) { if (root.isDebug) console.log("[npaper][I]", ...args); }
-  function w(...args) { console.warn("[npaper][W]", ...args); }
-  function r(...args) { if (root.isDebug) console.log("[npaper][R]", ...args); }
-  function e(...args) { console.error("[npaper][E]", ...args); }
+  function d(...args) {
+    if (root.isDebug)
+      console.log("[npaper][D]", ...args);
+  }
+  function i(...args) {
+    if (root.isDebug)
+      console.log("[npaper][I]", ...args);
+  }
+  function w(...args) {
+    console.warn("[npaper][W]", ...args);
+  }
+  function r(...args) {
+    if (root.isDebug)
+      console.log("[npaper][R]", ...args);
+  }
+  function e(...args) {
+    console.error("[npaper][E]", ...args);
+  }
 }

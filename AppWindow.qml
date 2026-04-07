@@ -7,10 +7,10 @@ import Quickshell.Io
 import Quickshell.Wayland
 import "utils/CacheUtils.js" as CacheUtils
 import "utils/FileTypes.js" as FileTypes
-import qs.components.common
-import qs.components.wallpaper
 import qs.components.bar
+import qs.components.common
 import qs.components.settings
+import qs.components.wallpaper
 import qs.services
 
 PanelWindow {
@@ -509,7 +509,7 @@ PanelWindow {
     bgSlideDuration: root.bgSlideDuration
     bgParallaxFactor: root.bgParallaxFactor
 
-    onSettingChanged: function(key, val) {
+    onSettingChanged: function (key, val) {
       Logger.i("AppWindow", "Setting changed:", key, "=", val);
       // Map dot-paths to flat root property names for immediate UI update
       var propMap = {
@@ -530,7 +530,8 @@ PanelWindow {
       var prop = propMap[key] || key;
       root[prop] = val;
       var vm = viewModel;
-      if (vm) vm.set(key, val);
+      if (vm)
+        vm.set(key, val);
     }
 
     onCloseRequested: {

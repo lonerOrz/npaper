@@ -25,7 +25,8 @@ Item {
   }
 
   onValueChanged: {
-    if (_updating) return;
+    if (_updating)
+      return;
     _updating = true;
     var fmt = step < 1 ? 2 : 0;
     input.text = value.toFixed(fmt);
@@ -70,7 +71,8 @@ Item {
       stepSize: root.step
       value: root.value
       onMoved: {
-        if (_updating) return;
+        if (_updating)
+          return;
         input.text = value.toFixed(root.step < 1 ? 2 : 0);
         root.commit(value);
       }

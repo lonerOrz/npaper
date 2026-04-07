@@ -49,8 +49,8 @@ Item {
       onStreamFinished: {
         const files = text.trim().split('\n').filter(f => f.length > 0 && f.indexOf('/') > 0);
         files.forEach(f => {
-          root.thumbHashToPath[f] = root.cacheDir + '/' + f;
-        });
+                        root.thumbHashToPath[f] = root.cacheDir + '/' + f;
+                      });
         root.cachedFileCount = files.length;
         root.thumbCacheVersion++;
         if (root.debugMode)
@@ -95,33 +95,23 @@ Item {
         const bh = root.bgHeight;
         const target = _path;
 
-        if (!_path) return [];  // idle
+        if (!_path)
+          return [];  // idle
 
         if (!_needAnim()) {
           // Static image: single ffmpeg with split filter (thumb + bg)
-          return step === 0 ? [
-            "ffmpeg", "-y", "-i", target, "-vframes", "1",
-            "-filter_complex",
-            `[0:v]split=2[a][b];[a]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}[thumb];[b]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}[bg]`,
-            "-map", "[thumb]", "-q:v", "5", "-update", "1", _thumbPath,
-            "-map", "[bg]", "-q:v", "2", _bgPath
-          ] : [];
+          return step === 0 ? ["ffmpeg", "-y", "-i", target, "-vframes", "1", "-filter_complex", `[0:v]split=2[a][b];[a]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}[thumb];[b]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}[bg]`, "-map", "[thumb]", "-q:v", "5", "-update", "1", _thumbPath, "-map", "[bg]", "-q:v", "2",
+                               _bgPath] : [];
         }
 
         // Animated: multi-step
         switch (step) {
         case 0: // thumbnail frame
-          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-vframes", "1",
-                  "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`,
-                  "-q:v", "5", _thumbPath];
+          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-vframes", "1", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-q:v", "5", _thumbPath];
         case 1: // background frame
-          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-vframes", "1",
-                  "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`,
-                  "-q:v", "2", _bgPath];
+          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-vframes", "1", "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`, "-q:v", "2", _bgPath];
         case 2: // animated gif
-          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-r", "30",
-                  "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`,
-                  "-t", "10", _animPath];
+          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-r", "30", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-t", "10", _animPath];
         default:
           return [];
         }
@@ -231,7 +221,9 @@ Item {
   function initWorkers() {
     var workers = [];
     for (let i = 0; i < root.thumbnailConcurrency; i++) {
-      workers.push(thumbWorkerComponent.createObject(root, { _workerId: i }));
+      workers.push(thumbWorkerComponent.createObject(root, {
+                                                       _workerId: i
+                                                     }));
     }
     root.thumbnailWorkers = workers;
     if (root.debugMode)
@@ -248,19 +240,19 @@ Item {
 
     const validKeys = {};
     wallpaperList.forEach(path => {
-      const hash = HashUtils.getThumbnailHash(path);
-      validKeys[folder + '/' + hash + '.png'] = true;
-      validKeys[folder + '/' + hash + '_bg.png'] = true;
-      validKeys[folder + '/' + hash + '_anim.gif'] = true;
-    });
+                            const hash = HashUtils.getThumbnailHash(path);
+                            validKeys[folder + '/' + hash + '.png'] = true;
+                            validKeys[folder + '/' + hash + '_bg.png'] = true;
+                            validKeys[folder + '/' + hash + '_anim.gif'] = true;
+                          });
 
     const invalidFiles = [];
     Object.keys(root.thumbHashToPath).forEach(key => {
-      if (key.startsWith(folder + '/') && !validKeys[key]) {
-        invalidFiles.push(root.thumbHashToPath[key]);
-        delete root.thumbHashToPath[key];
-      }
-    });
+                                                if (key.startsWith(folder + '/') && !validKeys[key]) {
+                                                  invalidFiles.push(root.thumbHashToPath[key]);
+                                                  delete root.thumbHashToPath[key];
+                                                }
+                                              });
 
     if (invalidFiles.length > 0) {
       root.cachedFileCount = Math.max(0, root.cachedFileCount - invalidFiles.length);
@@ -274,8 +266,8 @@ Item {
     }
 
     wallpaperList.forEach(path => {
-      queueThumbnail(path, FileTypes.isVideoFile(path), FileTypes.isGifFile(path));
-    });
+                            queueThumbnail(path, FileTypes.isVideoFile(path), FileTypes.isGifFile(path));
+                          });
     if (root.debugMode)
       Logger.d("Queue length:", root.queueLength);
   }
@@ -302,11 +294,11 @@ Item {
 
     root.queuedSet[wallpaperPath] = true;
     root.thumbnailQueue.push({
-      path: wallpaperPath,
-      hash: HashUtils.getThumbnailHash(wallpaperPath),
-      isVideo: isVideo,
-      isGif: isGif
-    });
+                               path: wallpaperPath,
+                               hash: HashUtils.getThumbnailHash(wallpaperPath),
+                               isVideo: isVideo,
+                               isGif: isGif
+                             });
     root.queueLength = root.thumbnailQueue.length;
 
     processQueue();
@@ -332,14 +324,14 @@ Item {
         const worker = root.thumbnailWorkers[i];
         if (worker && !worker.busy) {
           worker.setup({
-            path: item.path,
-            thumbPath: thumbPath,
-            bgPath: bgPath,
-            animPath: item.isVideo || item.isGif ? animPath : "",
-            folder: folder,
-            isVideo: item.isVideo,
-            isGif: item.isGif
-          });
+                         path: item.path,
+                         thumbPath: thumbPath,
+                         bgPath: bgPath,
+                         animPath: item.isVideo || item.isGif ? animPath : "",
+                         folder: folder,
+                         isVideo: item.isVideo,
+                         isGif: item.isGif
+                       });
           worker.runNext();
           break;
         }

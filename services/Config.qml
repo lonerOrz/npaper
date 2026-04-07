@@ -5,15 +5,15 @@ import Quickshell
 import Quickshell.Io
 
 /*
- * Config — persistent user configuration (pure JS, no JsonAdapter).
- *
- * Flow:
- *   1. Component.onCompleted → start with _defaults
- *   2. Read config.json via Process → deepMerge into data
- *   3. UI reads:  Config.data.carousel.itemWidth
- *   4. UI writes: Config.update("carousel.itemWidth", 450) → modifies data → debounced save
- *   5. Hot-reload: FileView watches config.json → re-read → merge → dataUpdated
- */
+* Config — persistent user configuration (pure JS, no JsonAdapter).
+*
+* Flow:
+*   1. Component.onCompleted → start with _defaults
+*   2. Read config.json via Process → deepMerge into data
+*   3. UI reads:  Config.data.carousel.itemWidth
+*   4. UI writes: Config.update("carousel.itemWidth", 450) → modifies data → debounced save
+*   5. Hot-reload: FileView watches config.json → re-read → merge → dataUpdated
+*/
 Singleton {
   id: root
 
@@ -26,30 +26,30 @@ Singleton {
 
   // ── Hardcoded defaults ──────────────────────────────────
   readonly property var _defaults: ({
-    "wallpaperDirs": ["$HOME/Pictures/wallpapers"],
-    "cacheDir": "$HOME/.cache/wallpaper_thumbs",
-    "debugMode": false,
-    "previewStyle": "carousel",
-    "carousel": {
-      "itemWidth": 400,
-      "itemHeight": 280,
-      "spacing": 20,
-      "rotation": 40,
-      "perspective": 0.3
-    },
-    "animation": {
-      "scrollDuration": 280,
-      "scrollContinueInterval": 230,
-      "bgSlideDuration": 250,
-      "bgParallaxFactor": 40
-    },
-    "appearance": {
-      "showBorderGlow": true,
-      "showShadow": true,
-      "showBgPreview": true,
-      "bgOverlayOpacity": 0.4
-    }
-  })
+                                      "wallpaperDirs": ["$HOME/Pictures/wallpapers"],
+                                      "cacheDir": "$HOME/.cache/wallpaper_thumbs",
+                                      "debugMode": false,
+                                      "previewStyle": "carousel",
+                                      "carousel": {
+                                        "itemWidth": 400,
+                                        "itemHeight": 280,
+                                        "spacing": 20,
+                                        "rotation": 40,
+                                        "perspective": 0.3
+                                      },
+                                      "animation": {
+                                        "scrollDuration": 280,
+                                        "scrollContinueInterval": 230,
+                                        "bgSlideDuration": 250,
+                                        "bgParallaxFactor": 40
+                                      },
+                                      "appearance": {
+                                        "showBorderGlow": true,
+                                        "showShadow": true,
+                                        "showBgPreview": true,
+                                        "bgOverlayOpacity": 0.4
+                                      }
+                                    })
 
   // ── Merged data (pure JS object) ────────────────────────
   property var data: ({})
@@ -76,15 +76,21 @@ Singleton {
 
   Process {
     id: _readProc
-    stdout: StdioCollector { id: _readStdout }
-    stderr: StdioCollector { id: _readStderr }
+    stdout: StdioCollector {
+      id: _readStdout
+    }
+    stderr: StdioCollector {
+      id: _readStderr
+    }
     onExited: function (code) {
       var raw = _readStdout.text;
       if (code !== 0 || !raw || String(raw).trim().length === 0) {
-        // No file — use defaults (already set)
-        Logger.i("Config", "No config file — using defaults");
+        Logger.i("Config", "No config file — creating defaults at", root.configPath);
+        root.data = _resolvePaths(_deepClone(_defaults));
         root.isLoaded = true;
         root.dataLoaded();
+        // Write defaults to disk so next startup has a file to read
+        _doSave();
         return;
       }
       try {
@@ -111,7 +117,8 @@ Singleton {
     watchChanges: true
 
     onFileChanged: {
-      if (root._isSaving) return;
+      if (root._isSaving)
+      return;
       _readConfig();
     }
   }
@@ -153,19 +160,19 @@ Singleton {
   // ── Save ─────────────────────────────────────────────────
   function _doSave() {
     root._isSaving = true;
+    // Resolve $HOME paths before writing
+    var resolvedData = _resolvePaths(root.data);
     var ordered = {
-      "wallpaperDirs": root.data.wallpaperDirs,
-      "cacheDir": root.data.cacheDir,
-      "debugMode": root.data.debugMode,
-      "previewStyle": root.data.previewStyle,
-      "carousel": _pick(root.data.carousel, ["itemWidth","itemHeight","spacing","rotation","perspective"]),
-      "animation": _pick(root.data.animation, ["scrollDuration","scrollContinueInterval","bgSlideDuration","bgParallaxFactor"]),
-      "appearance": _pick(root.data.appearance, ["showBorderGlow","showShadow","showBgPreview","bgOverlayOpacity"])
+      "wallpaperDirs": resolvedData.wallpaperDirs,
+      "cacheDir": resolvedData.cacheDir,
+      "debugMode": resolvedData.debugMode,
+      "previewStyle": resolvedData.previewStyle,
+      "carousel": _pick(resolvedData.carousel, ["itemWidth", "itemHeight", "spacing", "rotation", "perspective"]),
+      "animation": _pick(resolvedData.animation, ["scrollDuration", "scrollContinueInterval", "bgSlideDuration", "bgParallaxFactor"]),
+      "appearance": _pick(resolvedData.appearance, ["showBorderGlow", "showShadow", "showBgPreview", "bgOverlayOpacity"])
     };
     var jsonStr = JSON.stringify(ordered, null, 2);
-    _writeProc.command = ["python3", "-c",
-      "import sys, json; json.dump(json.loads(sys.argv[1]), open(sys.argv[2], 'w'), indent=2)",
-      jsonStr, root.configPath];
+    _writeProc.command = ["python3", "-c", "import sys, json; json.dump(json.loads(sys.argv[1]), open(sys.argv[2], 'w'), indent=2)", jsonStr, root.configPath];
     _writeProc.exec({});
   }
 
@@ -183,8 +190,7 @@ Singleton {
   function _deepMerge(base, user) {
     var result = _deepClone(base);
     for (var k in user) {
-      if (user[k] && typeof user[k] === "object" && !Array.isArray(user[k])
-          && result[k] && typeof result[k] === "object") {
+      if (user[k] && typeof user[k] === "object" && !Array.isArray(user[k]) && result[k] && typeof result[k] === "object") {
         result[k] = _deepMerge(result[k], user[k]);
       } else {
         result[k] = user[k];

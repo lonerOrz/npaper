@@ -2,9 +2,9 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
-import qs.services
-import qs.components.wallpaper
 import qs.components.bar
+import qs.components.wallpaper
+import qs.services
 
 Item {
   id: root

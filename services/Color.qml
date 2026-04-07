@@ -5,67 +5,67 @@ import Quickshell
 import Quickshell.Io
 
 /*
- * Color palette singleton — loads ~/.config/npaper/color.json
- *
- * Defaults are defined in _defaults. When color.json exists,
- * it overrides matching keys. FileView watches for hot-reload.
- *
- * Usage:
- *   import qs.services
- *   color: Color.mPrimary
- */
+* Color palette singleton — loads ~/.config/npaper/color.json
+*
+* Defaults are defined in _defaults. When color.json exists,
+* it overrides matching keys. FileView watches for hot-reload.
+*
+* Usage:
+*   import qs.services
+*   color: Color.mPrimary
+*/
 Singleton {
   id: root
 
   // ── Defaults ──────────────────────────────────────────────
   readonly property var _defaults: ({
-    "mPrimary": "#6a9eff",
-    "mOnPrimary": "#001E2C",
-    "mPrimaryContainer": "#3b82f6",
-    "mOnPrimaryContainer": "#60a5fa",
-    "mSecondary": "#B2CADD",
-    "mOnSecondary": "#1C3342",
-    "mSecondaryContainer": "#354C5C",
-    "mOnSecondaryContainer": "#CFE7FB",
-    "mTertiary": "#92CDFD",
-    "mOnTertiary": "#003450",
-    "mTertiaryContainer": "#5B96C4",
-    "mOnTertiaryContainer": "#000000",
-    "mError": "#FFB4AB",
-    "mOnError": "#690005",
-    "mErrorContainer": "#93000A",
-    "mOnErrorContainer": "#FFDAD6",
-    "mSurface": "#101416",
-    "mOnSurface": "#E0E3E6",
-    "mSurfaceVariant": "#40484D",
-    "mOnSurfaceVariant": "#BFC8CE",
-    "mSurfaceContainerLowest": "#0B0F11",
-    "mSurfaceContainerLow": "#191C1E",
-    "mSurfaceContainer": "#1D2022",
-    "mSurfaceContainerHigh": "#272A2D",
-    "mSurfaceContainerHighest": "#323538",
-    "mInverseSurface": "#E0E3E6",
-    "mInverseOnSurface": "#2D3133",
-    "mInversePrimary": "#076689",
-    "mSurfaceDim": "#101416",
-    "mSurfaceBright": "#363A3C",
-    "mOutline": "#899298",
-    "mOutlineVariant": "#40484D",
-    "mShadow": "#000000",
-    "mScrim": "#000000",
-    "mPrimaryFixed": "#C3E8FF",
-    "mPrimaryFixedDim": "#89CFF7",
-    "mOnPrimaryFixed": "#001E2C",
-    "mOnPrimaryFixedVariant": "#004C68",
-    "mSecondaryFixed": "#CDE6F9",
-    "mSecondaryFixedDim": "#B2CADD",
-    "mOnSecondaryFixed": "#041E2C",
-    "mOnSecondaryFixedVariant": "#334959",
-    "mTertiaryFixed": "#CBE6FF",
-    "mTertiaryFixedDim": "#92CDFD",
-    "mOnTertiaryFixed": "#001E30",
-    "mOnTertiaryFixedVariant": "#004B71"
-  })
+                                      "mPrimary": "#6a9eff",
+                                      "mOnPrimary": "#001E2C",
+                                      "mPrimaryContainer": "#3b82f6",
+                                      "mOnPrimaryContainer": "#60a5fa",
+                                      "mSecondary": "#B2CADD",
+                                      "mOnSecondary": "#1C3342",
+                                      "mSecondaryContainer": "#354C5C",
+                                      "mOnSecondaryContainer": "#CFE7FB",
+                                      "mTertiary": "#92CDFD",
+                                      "mOnTertiary": "#003450",
+                                      "mTertiaryContainer": "#5B96C4",
+                                      "mOnTertiaryContainer": "#000000",
+                                      "mError": "#FFB4AB",
+                                      "mOnError": "#690005",
+                                      "mErrorContainer": "#93000A",
+                                      "mOnErrorContainer": "#FFDAD6",
+                                      "mSurface": "#101416",
+                                      "mOnSurface": "#E0E3E6",
+                                      "mSurfaceVariant": "#40484D",
+                                      "mOnSurfaceVariant": "#BFC8CE",
+                                      "mSurfaceContainerLowest": "#0B0F11",
+                                      "mSurfaceContainerLow": "#191C1E",
+                                      "mSurfaceContainer": "#1D2022",
+                                      "mSurfaceContainerHigh": "#272A2D",
+                                      "mSurfaceContainerHighest": "#323538",
+                                      "mInverseSurface": "#E0E3E6",
+                                      "mInverseOnSurface": "#2D3133",
+                                      "mInversePrimary": "#076689",
+                                      "mSurfaceDim": "#101416",
+                                      "mSurfaceBright": "#363A3C",
+                                      "mOutline": "#899298",
+                                      "mOutlineVariant": "#40484D",
+                                      "mShadow": "#000000",
+                                      "mScrim": "#000000",
+                                      "mPrimaryFixed": "#C3E8FF",
+                                      "mPrimaryFixedDim": "#89CFF7",
+                                      "mOnPrimaryFixed": "#001E2C",
+                                      "mOnPrimaryFixedVariant": "#004C68",
+                                      "mSecondaryFixed": "#CDE6F9",
+                                      "mSecondaryFixedDim": "#B2CADD",
+                                      "mOnSecondaryFixed": "#041E2C",
+                                      "mOnSecondaryFixedVariant": "#334959",
+                                      "mTertiaryFixed": "#CBE6FF",
+                                      "mTertiaryFixedDim": "#92CDFD",
+                                      "mOnTertiaryFixed": "#001E30",
+                                      "mOnTertiaryFixedVariant": "#004B71"
+                                    })
 
   // ── Live color properties ─────────────────────────────────
   property color mPrimary: _defaults.mPrimary
@@ -127,14 +127,16 @@ Singleton {
     onLoaded: {
       try {
         var t = colorFile.text();
-        if (t) _apply(JSON.parse(t));
+        if (t)
+        _apply(JSON.parse(t));
       } catch (e) { /* invalid JSON → keep defaults */ }
     }
     onFileChanged: reload()
   }
 
   function _apply(cfg) {
-    if (!cfg) return;
+    if (!cfg)
+      return;
     for (var k in cfg) {
       if (root[k] !== undefined)
         root[k] = cfg[k];

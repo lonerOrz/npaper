@@ -34,9 +34,12 @@ ShellRoot {
       }
 
       function _initCache() {
-        if (cacheService._initialized) return;
-        if (!checkService.hasFfmpeg) return;
-        if (!bridge.viewModel) return;
+        if (cacheService._initialized)
+          return;
+        if (!checkService.hasFfmpeg)
+          return;
+        if (!bridge.viewModel)
+          return;
         cacheService._initialized = true;
         cacheService.initialize();
         cacheService.scanCache();
@@ -45,7 +48,9 @@ ShellRoot {
       CheckService {
         id: checkService
         property bool _ready: false
-        Component.onCompleted: { run(); }
+        Component.onCompleted: {
+          run();
+        }
         onAllChecked: {
           _ready = true;
           cacheService.hasFfmpeg = hasFfmpeg;
@@ -70,7 +75,7 @@ ShellRoot {
         cacheDir: Config.data.cacheDir
         debugMode: Config.data.debugMode
         onCacheScanned: {
-          wallpaperModel.load()
+          wallpaperModel.load();
         }
       }
 

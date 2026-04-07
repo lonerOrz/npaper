@@ -66,19 +66,19 @@ Singleton {
 
   // ==================== Config-Derived Values ====================
   // These auto-update when Config.data changes (QML binding)
-  readonly property int carouselItemWidth:   _s(Config.data.carousel.itemWidth)
-  readonly property int carouselItemHeight:  _s(Config.data.carousel.itemHeight)
-  readonly property int carouselSpacing:     _s(Config.data.carousel.spacing)
-  readonly property int carouselRotation:    Config.data.carousel.rotation
+  readonly property int carouselItemWidth: _s(Config.data.carousel.itemWidth)
+  readonly property int carouselItemHeight: _s(Config.data.carousel.itemHeight)
+  readonly property int carouselSpacing: _s(Config.data.carousel.spacing)
+  readonly property int carouselRotation: Config.data.carousel.rotation
   readonly property real carouselPerspective: Config.data.carousel.perspective
-  readonly property int carouselTopMargin:   _s(440)
-  readonly property int carouselSideMargin:  _s(10)
+  readonly property int carouselTopMargin: _s(440)
+  readonly property int carouselSideMargin: _s(10)
 
-  readonly property int scrollDuration:         Config.data.animation.scrollDuration
+  readonly property int scrollDuration: Config.data.animation.scrollDuration
   readonly property int scrollContinueInterval: Config.data.animation.scrollContinueInterval
-  readonly property int bgSlideDuration:        Config.data.animation.bgSlideDuration
-  readonly property int bgParallaxFactor:       Config.data.animation.bgParallaxFactor
-  readonly property real bgOverlayOpacity:      Config.data.appearance.bgOverlayOpacity
+  readonly property int bgSlideDuration: Config.data.animation.bgSlideDuration
+  readonly property int bgParallaxFactor: Config.data.animation.bgParallaxFactor
+  readonly property real bgOverlayOpacity: Config.data.appearance.bgOverlayOpacity
 
   // ==================== Pure Constants ====================
   // Status Bar
