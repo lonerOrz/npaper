@@ -1,6 +1,6 @@
 import QtQuick
 import "../utils/CacheUtils.js" as CacheUtils
-import qs.utils
+import qs.services
 
 Item {
   id: root

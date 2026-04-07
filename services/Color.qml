@@ -7,30 +7,17 @@ import Quickshell.Io
 /*
  * Color palette singleton — loads ~/.config/npaper/color.json
  *
+ * Defaults are defined in _defaults. When color.json exists,
+ * it overrides matching keys. FileView watches for hot-reload.
+ *
  * Usage:
- *   import qs.utils
+ *   import qs.services
  *   color: Color.mPrimary
  */
 Singleton {
   id: root
 
   // ── Defaults ──────────────────────────────────────────────
-  readonly property var _colorKeys: [
-    "mPrimary", "mOnPrimary", "mPrimaryContainer", "mOnPrimaryContainer",
-    "mSecondary", "mOnSecondary", "mSecondaryContainer", "mOnSecondaryContainer",
-    "mTertiary", "mOnTertiary", "mTertiaryContainer", "mOnTertiaryContainer",
-    "mError", "mOnError", "mErrorContainer", "mOnErrorContainer",
-    "mSurface", "mOnSurface", "mSurfaceVariant", "mOnSurfaceVariant",
-    "mSurfaceContainerLowest", "mSurfaceContainerLow", "mSurfaceContainer",
-    "mSurfaceContainerHigh", "mSurfaceContainerHighest",
-    "mInverseSurface", "mInverseOnSurface", "mInversePrimary",
-    "mSurfaceDim", "mSurfaceBright",
-    "mOutline", "mOutlineVariant", "mShadow", "mScrim",
-    "mPrimaryFixed", "mPrimaryFixedDim", "mOnPrimaryFixed", "mOnPrimaryFixedVariant",
-    "mSecondaryFixed", "mSecondaryFixedDim", "mOnSecondaryFixed", "mOnSecondaryFixedVariant",
-    "mTertiaryFixed", "mTertiaryFixedDim", "mOnTertiaryFixed", "mOnTertiaryFixedVariant"
-  ]
-
   readonly property var _defaults: ({
     "mPrimary": "#6a9eff",
     "mOnPrimary": "#001E2C",
@@ -148,9 +135,9 @@ Singleton {
 
   function _apply(cfg) {
     if (!cfg) return;
-    for (var i = 0; i < _colorKeys.length; i++) {
-      var key = _colorKeys[i];
-      if (cfg[key]) root[key] = cfg[key];
+    for (var k in cfg) {
+      if (root[k] !== undefined)
+        root[k] = cfg[k];
     }
   }
 }

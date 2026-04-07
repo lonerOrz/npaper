@@ -2,81 +2,88 @@ import QtQuick
 import qs.services
 
 /*
- * SettingsBridge — bridge between SettingsService and UI layer.
+ * SettingsBridge — bridges Config JsonAdapter → plain JS viewModel for UI.
  *
- * Exposes a viewModel with typed sub-objects that AppWindow and
- * SettingsPanel consume. Never call SettingsService directly from UI.
+ * UI reads:  SettingsBridge.viewModel.layout.carouselItemWidth
+ * UI writes: SettingsBridge.viewModel.set("carousel.itemWidth", 450)
+ *
+ * viewModel is a plain JS object. _syncViewModel() manually updates all
+ * properties on hot-reload.
  */
 Item {
   id: root
 
-  required property SettingsService settings
-
-  readonly property alias settingsService: root.settings
+  readonly property var config: Config
 
   property var viewModel: null
 
   Connections {
-    target: settings
+    target: Config
     function onDataLoaded()  { _buildViewModel(); }
-    function onDataChanged() { _syncViewModel(); }
+    function onDataUpdated() { _syncViewModel(); }
   }
 
   Component.onCompleted: {
-    if (settings.ready) _buildViewModel();
+    if (Config.isLoaded) _buildViewModel();
   }
 
   function _buildViewModel() {
-    var c = settings.config;
+    var d = Config.data;
     root.viewModel = {
       layout: {
-        carouselItemWidth:   c.carousel.itemWidth,
-        carouselItemHeight:  c.carousel.itemHeight,
-        carouselSpacing:     c.carousel.spacing,
-        carouselRotation:    c.carousel.rotation,
-        carouselPerspective: c.carousel.perspective
+        carouselItemWidth:   d.carousel.itemWidth,
+        carouselItemHeight:  d.carousel.itemHeight,
+        carouselSpacing:     d.carousel.spacing,
+        carouselRotation:    d.carousel.rotation,
+        carouselPerspective: d.carousel.perspective
       },
       appearance: {
-        showBorderGlow:  c.appearance.showBorderGlow,
-        showShadow:      c.appearance.showShadow,
-        showBgPreview:   c.appearance.showBgPreview,
-        bgOverlayOpacity: c.appearance.bgOverlayOpacity
+        showBorderGlow:   d.appearance.showBorderGlow,
+        showShadow:       d.appearance.showShadow,
+        showBgPreview:    d.appearance.showBgPreview,
+        bgOverlayOpacity: d.appearance.bgOverlayOpacity
       },
       timing: {
-        scrollDuration:         c.animation.scrollDuration,
-        scrollContinueInterval: c.animation.scrollContinueInterval,
-        bgSlideDuration:        c.animation.bgSlideDuration,
-        bgParallaxFactor:       c.animation.bgParallaxFactor
+        scrollDuration:         d.animation.scrollDuration,
+        scrollContinueInterval: d.animation.scrollContinueInterval,
+        bgSlideDuration:        d.animation.bgSlideDuration,
+        bgParallaxFactor:       d.animation.bgParallaxFactor
       },
       system: {
-        wallpaperDirs: c.wallpaperDirs,
-        cacheDir:     c.cacheDir,
-        debugMode:    c.debugMode,
-        previewStyle: c.previewStyle
+        wallpaperDirs: d.wallpaperDirs,
+        cacheDir:     d.cacheDir,
+        debugMode:    d.debugMode,
+        previewStyle: d.previewStyle
       },
-      set: function(key, value) { settings.update(key, value); }
+      set: function(key, value) {
+        var parts = key.split(".");
+        var obj = Config.data;
+        for (var i = 0; i < parts.length - 1; i++)
+          obj = obj[parts[i]];
+        obj[parts[parts.length - 1]] = value;
+      }
     };
   }
 
   function _syncViewModel() {
     if (!root.viewModel) return;
-    var c = settings.config;
-    root.viewModel.layout.carouselItemWidth   = c.carousel.itemWidth;
-    root.viewModel.layout.carouselItemHeight  = c.carousel.itemHeight;
-    root.viewModel.layout.carouselSpacing     = c.carousel.spacing;
-    root.viewModel.layout.carouselRotation    = c.carousel.rotation;
-    root.viewModel.layout.carouselPerspective = c.carousel.perspective;
-    root.viewModel.appearance.showBorderGlow  = c.appearance.showBorderGlow;
-    root.viewModel.appearance.showShadow      = c.appearance.showShadow;
-    root.viewModel.appearance.showBgPreview   = c.appearance.showBgPreview;
-    root.viewModel.appearance.bgOverlayOpacity = c.appearance.bgOverlayOpacity;
-    root.viewModel.timing.scrollDuration         = c.animation.scrollDuration;
-    root.viewModel.timing.scrollContinueInterval = c.animation.scrollContinueInterval;
-    root.viewModel.timing.bgSlideDuration        = c.animation.bgSlideDuration;
-    root.viewModel.timing.bgParallaxFactor       = c.animation.bgParallaxFactor;
-    root.viewModel.system.wallpaperDirs       = c.wallpaperDirs;
-    root.viewModel.system.cacheDir            = c.cacheDir;
-    root.viewModel.system.debugMode           = c.debugMode;
-    root.viewModel.system.previewStyle        = c.previewStyle;
+    var d = Config.data;
+    root.viewModel.layout.carouselItemWidth   = d.carousel.itemWidth;
+    root.viewModel.layout.carouselItemHeight  = d.carousel.itemHeight;
+    root.viewModel.layout.carouselSpacing     = d.carousel.spacing;
+    root.viewModel.layout.carouselRotation    = d.carousel.rotation;
+    root.viewModel.layout.carouselPerspective = d.carousel.perspective;
+    root.viewModel.appearance.showBorderGlow  = d.appearance.showBorderGlow;
+    root.viewModel.appearance.showShadow      = d.appearance.showShadow;
+    root.viewModel.appearance.showBgPreview   = d.appearance.showBgPreview;
+    root.viewModel.appearance.bgOverlayOpacity = d.appearance.bgOverlayOpacity;
+    root.viewModel.timing.scrollDuration         = d.animation.scrollDuration;
+    root.viewModel.timing.scrollContinueInterval = d.animation.scrollContinueInterval;
+    root.viewModel.timing.bgSlideDuration        = d.animation.bgSlideDuration;
+    root.viewModel.timing.bgParallaxFactor       = d.animation.bgParallaxFactor;
+    root.viewModel.system.wallpaperDirs       = d.wallpaperDirs;
+    root.viewModel.system.cacheDir            = d.cacheDir;
+    root.viewModel.system.debugMode           = d.debugMode;
+    root.viewModel.system.previewStyle        = d.previewStyle;
   }
 }

@@ -9,7 +9,7 @@ Singleton {
   // Check env var on startup
   property bool isDebug: Quickshell.env("NPAPER_DEBUG") === "1"
 
-  // Called by SettingsService once config loads
+  // Called by shell.qml once config loads
   function applyDebug(debugMode) {
     if (debugMode === true)
       root.isDebug = true;

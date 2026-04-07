@@ -4,7 +4,7 @@ import Quickshell.Io
 import "../utils/CacheUtils.js" as CacheHelpers
 import "../utils/FileTypes.js" as FileTypes
 import "../utils/HashUtils.js" as HashUtils
-import qs.utils
+import qs.services
 
 Item {
   id: root

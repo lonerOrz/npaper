@@ -2,13 +2,18 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import qs.services
 
 /*
-* Style constants singleton — design token source for all UI sizing.
-* All layout values scale automatically via uiScaleRatio (1.0 = 1080p).
+* Style — computed design tokens.
+* Pure computation layer: no file I/O, no persistence.
+*
+* Two categories:
+*   1. Pure constants (font sizes, radii, margins, etc.) — never change at runtime
+*   2. Config-derived values (carousel dims, animation timings) — auto-update when Config changes
 *
 * Usage:
-*   import qs.utils
+*   import qs.services
 *   font.pixelSize: Style.fontM
 *   anchors.margins: Style.spaceL
 */
@@ -59,16 +64,23 @@ Singleton {
   readonly property int space2XXL: space2XL * 2
   readonly property int space2XXXL: spaceXXXL * 2
 
-  // ==================== Layout ====================
-  // Carousel
-  readonly property int carouselItemWidth: _s(400)
-  readonly property int carouselItemHeight: _s(280)
-  readonly property int carouselSpacing: _s(20)
-  readonly property int carouselRotation: 40
-  readonly property real carouselPerspective: 0.3
-  readonly property int carouselTopMargin: _s(440)
-  readonly property int carouselSideMargin: _s(10)
+  // ==================== Config-Derived Values ====================
+  // These auto-update when Config.data changes (QML binding)
+  readonly property int carouselItemWidth:   _s(Config.data.carousel.itemWidth)
+  readonly property int carouselItemHeight:  _s(Config.data.carousel.itemHeight)
+  readonly property int carouselSpacing:     _s(Config.data.carousel.spacing)
+  readonly property int carouselRotation:    Config.data.carousel.rotation
+  readonly property real carouselPerspective: Config.data.carousel.perspective
+  readonly property int carouselTopMargin:   _s(440)
+  readonly property int carouselSideMargin:  _s(10)
 
+  readonly property int scrollDuration:         Config.data.animation.scrollDuration
+  readonly property int scrollContinueInterval: Config.data.animation.scrollContinueInterval
+  readonly property int bgSlideDuration:        Config.data.animation.bgSlideDuration
+  readonly property int bgParallaxFactor:       Config.data.animation.bgParallaxFactor
+  readonly property real bgOverlayOpacity:      Config.data.appearance.bgOverlayOpacity
+
+  // ==================== Pure Constants ====================
   // Status Bar
   readonly property int barTopMargin: _s(400)
   readonly property int barHeight: _s(40)
@@ -131,7 +143,6 @@ Singleton {
   readonly property real opacityHeavy: 0.75
   readonly property real opacityAlmost: 0.95
   readonly property real opacityFull: 1.0
-  readonly property real bgOverlayOpacity: 0.4
 
   // ==================== Animation Duration (ms) ====================
   readonly property int animVeryFast: 100
@@ -159,7 +170,7 @@ Singleton {
   readonly property int borderS: _s(1)
   readonly property int borderM: _s(2)
 
-  // ==================== Config Keys (dot-paths for SettingsService) ====================
+  // ==================== Config Keys (dot-paths for Config.update) ====================
   readonly property string cfgCarouselItemWidth: "carousel.itemWidth"
   readonly property string cfgCarouselItemHeight: "carousel.itemHeight"
   readonly property string cfgCarouselSpacing: "carousel.spacing"

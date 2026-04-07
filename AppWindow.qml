@@ -8,14 +8,12 @@ import Quickshell.Wayland
 import "utils/CacheUtils.js" as CacheUtils
 import "utils/FileTypes.js" as FileTypes
 import qs.components
-import qs.utils
+import qs.services
 
 PanelWindow {
   id: root
 
   property var modelData
-  property var viewModel
-  property var bridge
   property var wallpaperModel
   property var cacheService
   property var wallpaperApplier
@@ -23,8 +21,6 @@ PanelWindow {
 
   property bool settingsOpen: false
   screen: modelData
-
-  onViewModelChanged: { _loadSettings(); }
 
   visible: true
   color: "transparent"
@@ -67,24 +63,29 @@ PanelWindow {
   }
 
   function _loadSettings() {
-    if (!viewModel) return;
-    carouselItemWidth   = viewModel.layout.carouselItemWidth;
-    carouselItemHeight  = viewModel.layout.carouselItemHeight;
-    carouselSpacing     = viewModel.layout.carouselSpacing;
-    carouselRotation    = viewModel.layout.carouselRotation;
-    carouselPerspective = viewModel.layout.carouselPerspective;
-    showBorderGlow      = viewModel.appearance.showBorderGlow;
-    showShadow          = viewModel.appearance.showShadow;
-    showBgPreview       = viewModel.appearance.showBgPreview;
-    bgOverlayOpacity    = viewModel.appearance.bgOverlayOpacity;
+    var vm = SettingsBridge.viewModel;
+    if (!vm) return;
+    carouselItemWidth   = vm.layout.carouselItemWidth;
+    carouselItemHeight  = vm.layout.carouselItemHeight;
+    carouselSpacing     = vm.layout.carouselSpacing;
+    carouselRotation    = vm.layout.carouselRotation;
+    carouselPerspective = vm.layout.carouselPerspective;
+    showBorderGlow      = vm.appearance.showBorderGlow;
+    showShadow          = vm.appearance.showShadow;
+    showBgPreview       = vm.appearance.showBgPreview;
+    bgOverlayOpacity    = vm.appearance.bgOverlayOpacity;
   }
 
-  // Initial load + hot-reload: SettingsService fires dataLoaded on first load,
-  // dataChanged when file is edited externally
+  // Initial load: SettingsBridge builds viewModel → triggers this
   Connections {
-    target: bridge ? bridge.settingsService : null
-    function onDataLoaded()  { _loadSettings(); }
-    function onDataChanged() { _loadSettings(); }
+    target: SettingsBridge
+    function onViewModelChanged() { _loadSettings(); }
+  }
+
+  // Hot-reload: Config dataUpdated → SettingsBridge syncs → re-trigger
+  Connections {
+    target: Config
+    function onDataUpdated() { _loadSettings(); }
   }
 
   Connections {
@@ -174,9 +175,9 @@ PanelWindow {
     count: root.count
     visibleRange: Style.visibleRange
     preloadRange: Style.preloadRange
-    animationDuration: viewModel ? viewModel.timing.scrollDuration : 280
-    scrollContinueInterval: viewModel ? viewModel.timing.scrollContinueInterval : 230
-    parallaxFactor: viewModel ? viewModel.timing.bgParallaxFactor : 40
+    animationDuration: SettingsBridge.viewModel ? SettingsBridge.viewModel.timing.scrollDuration : 280
+    scrollContinueInterval: SettingsBridge.viewModel ? SettingsBridge.viewModel.timing.scrollContinueInterval : 230
+    parallaxFactor: SettingsBridge.viewModel ? SettingsBridge.viewModel.timing.bgParallaxFactor : 40
   }
 
   PropertyAnimation {
@@ -185,7 +186,7 @@ PanelWindow {
     properties: "bgSlideProgress"
     from: 0
     to: 1.0
-    duration: viewModel ? viewModel.timing.bgSlideDuration : 250
+    duration: SettingsBridge.viewModel ? SettingsBridge.viewModel.timing.bgSlideDuration : 250
     easing.type: Style.easingOutQuad
   }
 
@@ -537,7 +538,8 @@ PanelWindow {
       };
       var prop = propMap[key] || key;
       root[prop] = val;
-      if (viewModel) viewModel.set(key, val);
+      var vm = SettingsBridge.viewModel;
+      if (vm) vm.set(key, val);
     }
 
     onCloseRequested: {

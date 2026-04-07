@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Effects
-import qs.utils
+import qs.services
 
 Item {
   id: root

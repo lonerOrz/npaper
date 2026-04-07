@@ -1,8 +1,9 @@
 import QtQuick
+import qs.services
 import Quickshell
 import Quickshell.Io
 import "../utils/FileTypes.js" as FileTypes
-import qs.utils
+import qs.services
 
 Item {
   id: root

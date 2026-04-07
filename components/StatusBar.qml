@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
-import qs.utils
+import qs.services
+import qs.services
 
 Item {
   id: root

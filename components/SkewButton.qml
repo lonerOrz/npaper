@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import qs.utils
+import qs.services
 
 Shape {
   id: root
