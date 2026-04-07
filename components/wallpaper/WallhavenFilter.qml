@@ -61,6 +61,7 @@ Item {
   }
 
   Component.onCompleted: visible = filterVisible
+  focus: filterVisible
 
   // ── Background ──────────────────────────────────────────
   Rectangle {
@@ -119,6 +120,22 @@ Item {
       FilterPill { label: "4K";    active: root.whService && root.whService.atleast === "3840x2160";  onClicked: { if (root.whService) root.whService.atleast = "3840x2160";  root._triggerSearch(); } }
     }
 
+    // ── Pagination ────────────────────────────────────────
+    FilterGroup { label: "PAGE"
+      FilterPill { label: "‹"; active: false; enabled: root.whService && root.whService.currentPage > 1; onClicked: { if (root.whService) root.whService.search(root.whService.currentPage - 1); } }
+      Text {
+        id: pageText
+        text: {
+          if (!root.whService) return "";
+          return root.whService.currentPage + "/" + root.whService.lastPage;
+        }
+        color: Color.mOutline
+        font.pixelSize: Style.barTabFontSize
+        font.weight: Font.Medium
+      }
+      FilterPill { label: "›"; active: false; enabled: root.whService && root.whService.hasMore; onClicked: { if (root.whService) root.whService.search(root.whService.currentPage + 1); } }
+    }
+
     // ── Results indicator ─────────────────────────────────
     Item {
       height: Style.barSearchHeight + Style.spaceM
@@ -137,6 +154,21 @@ Item {
         font.pixelSize: Style.barTabFontSize
         font.weight: Font.Medium
       }
+    }
+  }
+
+  // ── Keyboard: Page navigation ───────────────────────────
+  Keys.onPressed: event => {
+    if (!root.whService) return;
+    if (event.key === Qt.Key_PageDown || event.key === Qt.Key_BracketRight) {
+      if (root.whService.hasMore)
+        root.whService.search(root.whService.currentPage + 1);
+      event.accepted = true;
+    }
+    if (event.key === Qt.Key_PageUp || event.key === Qt.Key_BracketLeft) {
+      if (root.whService.currentPage > 1)
+        root.whService.search(root.whService.currentPage - 1);
+      event.accepted = true;
     }
   }
 

@@ -76,7 +76,7 @@ QtObject {
   function search(page) {
     if (loading) return;
     currentPage = page || 1;
-    if (currentPage === 1) results = [];
+    results = [];
     loading = true;
     errorText = "";
     _searchProcess.running = true;

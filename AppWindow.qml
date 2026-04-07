@@ -560,6 +560,10 @@ PanelWindow {
     z: 998
     adapter: root.adapter
     whService: adapter ? adapter.whService : null
+    onWhServiceChanged: {
+      if (whService)
+        whService.resultsUpdated.connect(() => scrollController.scrollTo(0));
+    }
   }
 
   SettingsPanel {
