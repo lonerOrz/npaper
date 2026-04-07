@@ -72,7 +72,7 @@ Item {
 
   Keys.onEscapePressed: closeRequested()
 
-  Keys.onPressed: {
+  Keys.onPressed: function (event) {
     if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
       event.key === Qt.Key_Tab ? switchToNextFolder() : switchToPrevFolder();
       event.accepted = true;

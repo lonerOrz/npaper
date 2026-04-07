@@ -2,19 +2,19 @@ import QtQuick
 import qs.services
 
 /*
- * WallpaperAdapter — unified interface for local and remote wallpaper sources.
- *
- * UI layer reads:
- *   adapter.items          → current source's filtered items
- *   adapter.currentSource  → "local" or "remote"
- *   adapter.folders        → local folders (empty for remote)
- *   adapter.currentFolder  → current local folder
- *
- * UI layer writes:
- *   adapter.switchSource("local"|"remote")
- *   adapter.searchText = "query"
- *   adapter.apply(item)  → applies wallpaper (local or downloads remote first)
- */
+* WallpaperAdapter — unified interface for local and remote wallpaper sources.
+*
+* UI layer reads:
+*   adapter.items          → current source's filtered items
+*   adapter.currentSource  → "local" or "remote"
+*   adapter.folders        → local folders (empty for remote)
+*   adapter.currentFolder  → current local folder
+*
+* UI layer writes:
+*   adapter.switchSource("local"|"remote")
+*   adapter.searchText = "query"
+*   adapter.apply(item)  → applies wallpaper (local or downloads remote first)
+*/
 Item {
   id: root
 

@@ -19,15 +19,29 @@ Item {
       strokeWidth: 0
       fillColor: root.active ? Color.mPrimary : Color.mSurfaceContainerHighest
       Behavior on fillColor {
-        ColorAnimation { duration: 150 }
+        ColorAnimation {
+          duration: 150
+        }
       }
 
       startX: root.skew
       startY: 0
-      PathLine { x: root.width; y: 0 }
-      PathLine { x: root.width - root.skew; y: root.height }
-      PathLine { x: 0; y: root.height }
-      PathLine { x: root.skew; y: 0 }
+      PathLine {
+        x: root.width
+        y: 0
+      }
+      PathLine {
+        x: root.width - root.skew
+        y: root.height
+      }
+      PathLine {
+        x: 0
+        y: root.height
+      }
+      PathLine {
+        x: root.skew
+        y: 0
+      }
     }
   }
 

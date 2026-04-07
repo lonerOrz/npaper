@@ -56,17 +56,19 @@ QtObject {
     command: ["find", root.wallpaperDir, "-maxdepth", "1", "-name", "wallhaven-*", "-printf", "%f\n"]
     stdout: SplitParser {
       onRead: data => {
-        root._localScanOutput += data + "\n";
-      }
+                root._localScanOutput += data + "\n";
+              }
     }
     onExited: function (exitCode, exitStatus) {
       var ids = {};
       var lines = root._localScanOutput.split("\n");
       for (var i = 0; i < lines.length; i++) {
         var fname = lines[i].trim();
-        if (!fname) continue;
+        if (!fname)
+          continue;
         var m = fname.match(/^wallhaven-([a-zA-Z0-9]+)/);
-        if (m) ids[m[1]] = true;
+        if (m)
+          ids[m[1]] = true;
       }
       root.localWallhavenIds = ids;
     }
@@ -74,7 +76,8 @@ QtObject {
 
   // ===== Search API =====
   function search(page) {
-    if (loading) return;
+    if (loading)
+      return;
     currentPage = page || 1;
     results = [];
     loading = true;
@@ -83,7 +86,8 @@ QtObject {
   }
 
   function loadMore() {
-    if (loading || !hasMore) return;
+    if (loading || !hasMore)
+      return;
     search(currentPage + 1);
   }
 
@@ -98,20 +102,25 @@ QtObject {
   function _buildUrl() {
     var url = "https://wallhaven.cc/api/v1/search?";
     var params = [];
-    
-    if (query) params.push("q=" + encodeURIComponent(query));
+
+    if (query)
+      params.push("q=" + encodeURIComponent(query));
     params.push("categories=" + categories);
     params.push("purity=" + purity);
     params.push("sorting=" + sorting);
     params.push("order=" + order);
-    
-    if (sorting === "toplist" && topRange) params.push("topRange=" + topRange);
-    if (atleast) params.push("atleast=" + atleast);
-    if (ratios) params.push("ratios=" + ratios);
-    
+
+    if (sorting === "toplist" && topRange)
+      params.push("topRange=" + topRange);
+    if (atleast)
+      params.push("atleast=" + atleast);
+    if (ratios)
+      params.push("ratios=" + ratios);
+
     params.push("page=" + currentPage);
-    if (apiKey) params.push("apikey=" + apiKey);
-    
+    if (apiKey)
+      params.push("apikey=" + apiKey);
+
     return url + params.join("&");
   }
 
@@ -122,11 +131,12 @@ QtObject {
     stdout: SplitParser {
       splitMarker: ""
       onRead: data => {
-        root._searchOutput += data;
-      }
+                root._searchOutput += data;
+              }
     }
     onRunningChanged: {
-      if (running) root._searchOutput = "";
+      if (running)
+        root._searchOutput = "";
     }
     onExited: function (exitCode, exitStatus) {
       root.loading = false;
@@ -169,14 +179,19 @@ QtObject {
 
   // ===== Download =====
   readonly property var _allowedExts: ({
-    "jpg": true, "jpeg": true, "png": true,
-    "webp": true, "gif": true, "bmp": true
-  })
+                                         "jpg": true,
+                                         "jpeg": true,
+                                         "png": true,
+                                         "webp": true,
+                                         "gif": true,
+                                         "bmp": true
+                                       })
   readonly property var _allowedHosts: ["w.wallhaven.cc"]
 
   // Parse URL without relying on URL constructor (V4 compatibility)
   function _parseUrl(url) {
-    if (!url || typeof url !== "string") return null;
+    if (!url || typeof url !== "string")
+      return null;
     var protocol = "";
     var rest = url;
     var protoIdx = url.indexOf("://");
@@ -187,38 +202,50 @@ QtObject {
     var slashIdx = rest.indexOf("/");
     var host = slashIdx >= 0 ? rest.substring(0, slashIdx) : rest;
     var hostname = host.split(":")[0]; // strip port if present
-    return { protocol: protocol, hostname: hostname, host: host };
+    return {
+      protocol: protocol,
+      hostname: hostname,
+      host: host
+    };
   }
 
   function downloadWallpaper(wallhavenId, fullUrl) {
-    if (_activeDownloads[wallhavenId]) return;
+    if (_activeDownloads[wallhavenId])
+      return;
 
     var urlParts = root._parseUrl(fullUrl);
-    if (!urlParts) return;
-    if (urlParts.protocol !== "https:") return;
+    if (!urlParts)
+      return;
+    if (urlParts.protocol !== "https:")
+      return;
 
     var hostOk = _allowedHosts.some(function (h) {
       return urlParts.hostname === h;
     });
-    if (!hostOk) return;
+    if (!hostOk)
+      return;
 
     var ext = fullUrl.split(".").pop().split("?")[0].toLowerCase();
-    if (!_allowedExts[ext]) ext = "jpg";
+    if (!_allowedExts[ext])
+      ext = "jpg";
 
     var safeId = wallhavenId.replace(/[^a-zA-Z0-9]/g, "");
-    if (!safeId) return;
-    
+    if (!safeId)
+      return;
+
     var dest = wallpaperDir + "/wallhaven-" + safeId + "." + ext;
     var status = Object.assign({}, downloadStatus);
     status[wallhavenId] = "downloading";
     downloadStatus = status;
-    
-    _activeDownloads[wallhavenId] = { dest: dest };
-    _downloadQueue.push({
-      id: wallhavenId,
-      url: fullUrl,
+
+    _activeDownloads[wallhavenId] = {
       dest: dest
-    });
+    };
+    _downloadQueue.push({
+                          id: wallhavenId,
+                          url: fullUrl,
+                          dest: dest
+                        });
     _drainDownloadQueue();
   }
 
@@ -239,13 +266,12 @@ QtObject {
     // Sanitize inputs to prevent QML injection via single quotes
     var safeUrl = url.replace(/'/g, "");
     var safeDest = dest.replace(/'/g, "");
-    if (!safeUrl || !safeDest) return;
+    if (!safeUrl || !safeDest)
+      return;
 
-    var proc = Qt.createQmlObject(
-      'import QtQuick; import Quickshell.Io; Process { command: ["curl", "-#", "-fsSL", "-o", "' + safeDest + '", "' + safeUrl + '"]; running: true }',
-      root
-    );
-    if (!proc) return;
+    var proc = Qt.createQmlObject('import QtQuick; import Quickshell.Io; Process { command: ["curl", "-#", "-fsSL", "-o", "' + safeDest + '", "' + safeUrl + '"]; running: true }', root);
+    if (!proc)
+      return;
     proc.onExited = function (exitCode, exitStatus) {
       _runningDownloads--;
       var s = Object.assign({}, downloadStatus);

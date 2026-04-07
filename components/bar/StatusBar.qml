@@ -65,10 +65,12 @@ Item {
       layer.effect: MultiEffect {
         colorization: 1.0
         colorizationColor: root.dominantColor
-        Behavior on colorizationColor { ColorAnimation { duration: Style.animFast } }
       }
       RotationAnimation on rotation {
-        from: 0; to: 360; duration: Style.logoRotationMs; loops: Animation.Infinite
+        from: 0
+        to: 360
+        duration: Style.logoRotationMs
+        loops: Animation.Infinite
       }
     }
 
@@ -97,16 +99,16 @@ Item {
         property real baseWidth: Style.barSearchWidthBase
 
         Keys.onPressed: event => {
-          if (event.key === Qt.Key_Escape) {
-            root.searchCleared();
-            event.accepted = true;
-          }
-          if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            root.searchSubmitted();
-            searchInput.focus = false;
-            event.accepted = true;
-          }
-        }
+                          if (event.key === Qt.Key_Escape) {
+                            root.searchCleared();
+                            event.accepted = true;
+                          }
+                          if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            root.searchSubmitted();
+                            searchInput.focus = false;
+                            event.accepted = true;
+                          }
+                        }
       }
 
       Text {
@@ -145,7 +147,9 @@ Item {
 
       Connections {
         target: root
-        function onActiveFolderChanged() { Qt.callLater(folderTabs._updatePill); }
+        function onActiveFolderChanged() {
+          Qt.callLater(folderTabs._updatePill);
+        }
       }
 
       Rectangle {
@@ -157,10 +161,18 @@ Item {
         x: folderTabs._pillX
         width: folderTabs._pillW
         Behavior on x {
-          NumberAnimation { duration: Style.animEnter; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+          NumberAnimation {
+            duration: Style.animEnter
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.2
+          }
         }
         Behavior on width {
-          NumberAnimation { duration: Style.animEnter; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+          NumberAnimation {
+            duration: Style.animEnter
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.2
+          }
         }
       }
 
@@ -186,10 +198,17 @@ Item {
               font.weight: parent.isActive ? Font.Bold : Font.Normal
               x: (parent.width - implicitWidth) / 2
               anchors.verticalCenter: parent.verticalCenter
-              Behavior on color { ColorAnimation { duration: Style.animFast } }
+              Behavior on color {
+                ColorAnimation {
+                  duration: Style.animFast
+                }
+              }
             }
             onClicked: root.folderClicked(modelData)
-            Component.onCompleted: { if (isActive) Qt.callLater(folderTabs._updatePill); }
+            Component.onCompleted: {
+              if (isActive)
+                Qt.callLater(folderTabs._updatePill);
+            }
           }
         }
         Component.onCompleted: Qt.callLater(folderTabs._updatePill)
@@ -220,7 +239,11 @@ Item {
         anchors.fill: parent
         radius: Style.barSettingsBtnHeight / 2
         color: parent.hover ? Color.mSurfaceContainerHigh : "transparent"
-        Behavior on color { ColorAnimation { duration: Style.animFast } }
+        Behavior on color {
+          ColorAnimation {
+            duration: Style.animFast
+          }
+        }
       }
 
       Text {
@@ -261,7 +284,11 @@ Item {
         anchors.fill: parent
         radius: Style.barSettingsBtnHeight / 2
         color: parent.hover ? Color.mSurfaceContainerHigh : "transparent"
-        Behavior on color { ColorAnimation { duration: Style.animFast } }
+        Behavior on color {
+          ColorAnimation {
+            duration: Style.animFast
+          }
+        }
       }
 
       Text {
@@ -269,7 +296,11 @@ Item {
         text: "⚙"
         font.pixelSize: Style.barSettingsGearFontSize
         color: root.settingsOpen ? Color.mPrimary : Color.mOutlineVariant
-        Behavior on color { ColorAnimation { duration: Style.animFast } }
+        Behavior on color {
+          ColorAnimation {
+            duration: Style.animFast
+          }
+        }
       }
     }
   }

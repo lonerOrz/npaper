@@ -19,7 +19,11 @@ MouseArea {
     anchors.fill: parent
     radius: height / 2
     color: !enabled ? Color.mSurfaceContainer : (root.active ? Color.mPrimary : (root.hovered ? Color.mSurfaceContainerHigh : Color.mSurfaceContainer))
-    Behavior on color { ColorAnimation { duration: Style.animFast } }
+    Behavior on color {
+      ColorAnimation {
+        duration: Style.animFast
+      }
+    }
   }
 
   Text {

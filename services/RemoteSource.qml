@@ -2,11 +2,11 @@ import QtQuick
 import qs.services
 
 /*
- * RemoteSource — Wallhaven.cc wallpaper source.
- *
- * Outputs unified items:
- *   { id, type:"remote", path, thumb, filename, resolution, fileSize, isVideo, isGif }
- */
+* RemoteSource — Wallhaven.cc wallpaper source.
+*
+* Outputs unified items:
+*   { id, type:"remote", path, thumb, filename, resolution, fileSize, isVideo, isGif }
+*/
 Item {
   id: root
 
@@ -27,8 +27,10 @@ Item {
     return {
       id: "wallhaven-" + safeId,
       type: "remote",
-      path: r.path || "",        // remote path for download
-      thumb: r.thumbLarge || "", // direct URL to thumbnail
+      path: r.path || ""        // remote path for download
+            ,
+      thumb: r.thumbLarge || "" // direct URL to thumbnail
+             ,
       filename: "wallhaven-" + safeId + (r.resolution ? " (" + r.resolution + ")" : ""),
       resolution: r.resolution || "",
       fileSize: r.filesize || 0,
@@ -72,7 +74,7 @@ Item {
     root.whService.downloadWallpaper(safeId, item.path);
     var startTime = new Date().getTime();
     var timeoutMs = 30000; // 30 seconds
-    var checkDone = function() {
+    var checkDone = function () {
       var elapsed = new Date().getTime() - startTime;
       if (elapsed > timeoutMs) {
         Logger.w("RemoteSource", "Download timeout for", item.id, "after", Math.round(elapsed / 1000) + "s");

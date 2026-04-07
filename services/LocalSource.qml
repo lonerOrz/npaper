@@ -1,16 +1,16 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../utils/FileTypes.js" as FileTypes
 import "../utils/CacheUtils.js" as CacheUtils
+import "../utils/FileTypes.js" as FileTypes
 import qs.services
 
 /*
- * LocalSource — local wallpaper directory scanner.
- *
- * Outputs unified items:
- *   { id, type:"local", path, thumb, filename, resolution, fileSize, apply }
- */
+* LocalSource — local wallpaper directory scanner.
+*
+* Outputs unified items:
+*   { id, type:"local", path, thumb, filename, resolution, fileSize, apply }
+*/
 Item {
   id: root
 
@@ -34,7 +34,8 @@ Item {
   function _filterItems() {
     const folder = root.wallpaperMap[root.currentFolder];
     if (!folder) {
-      if (root.debugMode) Logger.d("LocalSource: No folder found:", root.currentFolder);
+      if (root.debugMode)
+        Logger.d("LocalSource: No folder found:", root.currentFolder);
       return [];
     }
     if (!root.searchText)
@@ -77,7 +78,7 @@ Item {
     if (root.debugMode)
       Logger.d("LocalSource: Refresh — re-scanning all directories");
     var _cs = cacheService; // capture reference for callback
-    var _onDone = function() {
+    var _onDone = function () {
       // Refresh thumbnail cache for current folder after re-scan
       if (_cs && root.currentFolder && root.wallpaperMap[root.currentFolder]) {
         _cs.refreshAndQueue(root.wallpaperMap[root.currentFolder], root.currentFolder);
@@ -132,15 +133,15 @@ Item {
         const lines = text.trim().split('\n').filter(l => l.length > 0);
         const folderMap = {};
         lines.forEach(line => {
-          const sepIdx = line.indexOf('|');
-          if (sepIdx > 0) {
-            const folder = line.substring(0, sepIdx);
-            const path = line.substring(sepIdx + 1);
-            if (!folderMap[folder])
-              folderMap[folder] = [];
-            folderMap[folder].push(path);
-          }
-        });
+                        const sepIdx = line.indexOf('|');
+                        if (sepIdx > 0) {
+                          const folder = line.substring(0, sepIdx);
+                          const path = line.substring(sepIdx + 1);
+                          if (!folderMap[folder])
+                          folderMap[folder] = [];
+                          folderMap[folder].push(path);
+                        }
+                      });
         root.wallpaperMap = folderMap;
         Logger.i("LocalSource: loaded", lines.length, "wallpapers into", Object.keys(folderMap).length, "folders");
         root.dataLoaded();

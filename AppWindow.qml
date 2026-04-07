@@ -68,7 +68,7 @@ PanelWindow {
     Style.uiScaleRatio = screen.height / 1080;
     if (adapter) {
       adapter.dataLoaded.connect(applyFolderSelection);
-      adapter.wallpaperApplied.connect(function(path) {
+      adapter.wallpaperApplied.connect(function (path) {
         if (wallpaperApplier)
           wallpaperApplier.apply(path);
         Qt.quit();
@@ -86,13 +86,18 @@ PanelWindow {
     }
   }
 
-  onBgCurrentChanged: { updateSourceA(); }
-  onBgPreviousChanged: { updateSourceB(); }
+  onBgCurrentChanged: {
+    updateSourceA();
+  }
+  onBgPreviousChanged: {
+    updateSourceB();
+  }
 
   function updateSourceA() {
     if (bgCurrent >= 0 && bgCurrent < (adapter ? adapter.items.length : 0)) {
       const item = adapter.items[bgCurrent];
-      if (!item) return;
+      if (!item)
+        return;
       if (item.type === "local") {
         const p = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, item.path);
         _bgSourceA = p ? ("file://" + p) : ("file://" + item.path);
@@ -106,7 +111,8 @@ PanelWindow {
   function updateSourceB() {
     if (bgPrevious >= 0 && bgPrevious < (adapter ? adapter.items.length : 0)) {
       const item = adapter.items[bgPrevious];
-      if (!item) return;
+      if (!item)
+        return;
       if (item.type === "local") {
         const p = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, item.path);
         _bgSourceB = p ? ("file://" + p) : ("file://" + item.path);
@@ -131,7 +137,8 @@ PanelWindow {
   }
 
   function queueThumbnails(base, max) {
-    if (!adapter) return;
+    if (!adapter)
+      return;
     for (let i = base; i <= max && i < adapter.items.length; i++) {
       const item = adapter.items[i];
       if (item && item.type === "local")
@@ -161,21 +168,42 @@ PanelWindow {
   }
 
   function nextFolder() {
-    if (!adapter || adapter.currentSource !== "local") return;
+    if (!adapter || adapter.currentSource !== "local")
+      return;
     const fs = adapter.folders;
-    if (fs.length === 0) return;
+    if (fs.length === 0)
+      return;
     const idx = fs.indexOf(adapter.currentFolder);
     const nextIdx = idx >= 0 && idx < fs.length - 1 ? idx + 1 : 0;
     switchFolder(fs[nextIdx]);
   }
 
   function prevFolder() {
-    if (!adapter || adapter.currentSource !== "local") return;
+    if (!adapter || adapter.currentSource !== "local")
+      return;
     const fs = adapter.folders;
-    if (fs.length === 0) return;
+    if (fs.length === 0)
+      return;
     const idx = fs.indexOf(adapter.currentFolder);
     const prevIdx = idx > 0 ? idx - 1 : fs.length - 1;
     switchFolder(fs[prevIdx]);
+  }
+
+  function _doSearch() {
+    if (adapter)
+      adapter.setSearch(root.searchText);
+    if (root.searchText) {
+      scrollController.scrollTo(0);
+      bgCurrent = 0;
+      bgSlideProgress = 1.0;
+      if (adapter.items.length > 0) {
+        const item = adapter.items[0];
+        if (item.type === "local")
+          colorExtractor.run(item.path);
+      }
+    } else {
+      adapter.resetSearch();
+    }
   }
 
   function refreshCache() {
@@ -205,73 +233,11 @@ PanelWindow {
     easing.type: Style.easingOutQuad
   }
 
-  QtObject {
+  ColorExtractor {
     id: colorExtractor
-    property string dominantColor: Color.mPrimary
-
-    function run(wp) {
-      if (!checkService || !checkService.hasImagemagick || !wp || wp.length === 0) {
-        root.dominantColor = Color.mPrimary;
-        return;
-      }
-      const bg = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, wp);
-      if (bg) {
-        _runColorExtract(bg);
-        return;
-      }
-      if (FileTypes.isVideoFile(wp)) {
-        root.dominantColor = Color.mPrimary;
-        return;
-      }
-      _runColorExtract(wp.toLowerCase().endsWith('.gif') ? wp + '[0]' : wp);
-    }
-
-    function _runColorExtract(src) {
-      if (extractColorProcess.running)
-        extractColorProcess.running = false;
-      extractColorTimeout.start();
-      extractColorProcess.command = ["magick", src, "-resize", "1x1!", "-modulate", "100,180", "txt:"];
-      extractColorProcess.exec({});
-    }
-  }
-
-  Timer {
-    id: extractColorTimeout
-    interval: 5000
-    onTriggered: root.dominantColor = Color.mPrimary
-  }
-
-  Process {
-    id: extractColorProcess
-    stdout: StdioCollector {
-      onStreamFinished: {
-        extractColorTimeout.stop();
-        const m = text.trim().match(/#([0-9A-F]{6})/i);
-        root.dominantColor = m ? "#" + m[1].toUpperCase() : Color.mPrimary;
-      }
-    }
-    onExited: function (exitCode, exitStatus) {
-      extractColorTimeout.stop();
-      if (exitCode !== 0)
-        root.dominantColor = Color.mPrimary;
-    }
-  }
-
-  function _doSearch() {
-    if (adapter)
-      adapter.setSearch(root.searchText);
-    if (root.searchText) {
-      scrollController.scrollTo(0);
-      bgCurrent = 0;
-      bgSlideProgress = 1.0;
-      if (adapter.items.length > 0) {
-        const item = adapter.items[0];
-        if (item.type === "local")
-          colorExtractor.run(item.path);
-      }
-    } else {
-      adapter.resetSearch();
-    }
+    thumbHashToPath: cacheService ? cacheService.thumbHashToPath : ({})
+    hasImageMagick: checkService ? checkService.hasImagemagick : false
+    onColorChanged: root.dominantColor = color
   }
 
   Timer {
@@ -312,6 +278,102 @@ PanelWindow {
       property real spacing: root.carouselSpacing
       property real centerX: width / 2
       property real centerY: height / 2
+
+      Keys.onPressed: function (event) {
+        // ===== Escape =====
+        if (event.key === Qt.Key_Escape) {
+          if (root.settingsOpen) {
+            root.settingsOpen = false;
+            pathViewContainer.forceActiveFocus();
+            event.accepted = true;
+            return;
+          }
+          Qt.quit();
+          event.accepted = true;
+          return;
+        }
+
+        // ===== Settings (S) =====
+        if (event.key === Qt.Key_S && !event.modifiers) {
+          root.settingsOpen = !root.settingsOpen;
+          root.settingsOpen ? settingsPanel.forceActiveFocus() : pathViewContainer.forceActiveFocus();
+          event.accepted = true;
+          return;
+        }
+
+        // ===== Wallhaven (W) =====
+        if (event.key === Qt.Key_W && !event.modifiers) {
+          wallhavenFilter.filterVisible = !wallhavenFilter.filterVisible;
+          if (wallhavenFilter.filterVisible && adapter)
+            adapter.switchSource("remote");
+          if (!wallhavenFilter.filterVisible && adapter)
+            adapter.switchSource("local");
+          pathViewContainer.forceActiveFocus();
+          event.accepted = true;
+          return;
+        }
+
+        // ===== Folder (Tab/[ / ]) =====
+        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+          event.key === Qt.Key_Tab ? nextFolder() : prevFolder();
+          event.accepted = true;
+          return;
+        }
+        if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft) {
+          prevFolder();
+          event.accepted = true;
+          return;
+        }
+        if (event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
+          nextFolder();
+          event.accepted = true;
+          return;
+        }
+
+        // ===== Search (/, Ctrl+F) =====
+        if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
+          statusBar.focusSearch();
+          event.accepted = true;
+          return;
+        }
+
+        // ===== Apply (Enter) =====
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+          if (root.count > 0 && adapter.items.length > 0)
+            adapter.apply(adapter.items[scrollController.currentIndex]);
+          event.accepted = true;
+          return;
+        }
+
+        // ===== Navigate (←/→) =====
+        if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+          const dir = event.key === Qt.Key_Left ? -1 : 1;
+          event.modifiers & Qt.ShiftModifier ? (dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight()) : (dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight());
+          event.accepted = true;
+          return;
+        }
+
+        // ===== Random (R) =====
+        if (event.key === Qt.Key_R && !event.modifiers) {
+          scrollController.random();
+          event.accepted = true;
+          return;
+        }
+
+        // ===== Refresh (F5) =====
+        if (event.key === Qt.Key_F5) {
+          refreshCache();
+          event.accepted = true;
+          return;
+        }
+      }
+
+      Keys.onReleased: function (event) {
+        if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+          scrollController.handleKeyRelease(event.key === Qt.Key_Left ? -1 : 1);
+          event.accepted = true;
+        }
+      }
 
       Repeater {
         model: scrollController.loadedCount
@@ -380,116 +442,6 @@ PanelWindow {
         style: Text.Outline
         styleColor: Color.mScrim
       }
-
-      Keys.onPressed: function(event) {
-        // ===== Escape: context-sensitive =====
-        if (event.key === Qt.Key_Escape) {
-          if (root.settingsOpen) {
-            root.settingsOpen = false;
-            event.accepted = true;
-            return;
-          }
-          Qt.quit();
-          event.accepted = true;
-          return;
-        }
-
-        // ===== Settings toggle (S) =====
-        if (event.key === Qt.Key_S && !event.modifiers) {
-          root.settingsOpen = !root.settingsOpen;
-          if (root.settingsOpen) {
-            settingsPanel.forceActiveFocus();
-          } else {
-            pathViewContainer.forceActiveFocus();
-          }
-          event.accepted = true;
-          return;
-        }
-
-        // ===== Wallhaven toggle (W) =====
-        if (event.key === Qt.Key_W && !event.modifiers) {
-          // Toggle filter panel
-          wallhavenFilter.filterVisible = !wallhavenFilter.filterVisible;
-          // If opening, ensure we are in remote mode to search
-          if (wallhavenFilter.filterVisible && adapter)
-            adapter.switchSource("remote");
-          // If closing, revert to local mode
-          if (!wallhavenFilter.filterVisible && adapter)
-            adapter.switchSource("local");
-          pathViewContainer.forceActiveFocus();
-          event.accepted = true;
-          return;
-        }
-
-        // ===== Folder switching (Tab/Shift+Tab or [ / ]) =====
-        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-          event.key === Qt.Key_Tab ? nextFolder() : prevFolder();
-          event.accepted = true;
-          return;
-        }
-
-        // ===== Search (/, Ctrl+F) =====
-        if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
-          statusBar.focusSearch();
-          event.accepted = true;
-          return;
-        }
-
-        if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft) {
-          prevFolder();
-          event.accepted = true;
-          return;
-        }
-        if (event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
-          nextFolder();
-          event.accepted = true;
-          return;
-        }
-
-        // ===== Apply wallpaper (Enter) =====
-        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-          if (root.count > 0) {
-            const idx = scrollController.currentIndex;
-            if (idx < adapter.items.length)
-              adapter.apply(adapter.items[idx]);
-          }
-          event.accepted = true;
-          return;
-        }
-
-        // ===== Navigation (Left/Right) =====
-        if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
-          const dir = (event.key === Qt.Key_Left) ? -1 : 1;
-          if (event.modifiers & Qt.ShiftModifier) {
-            dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight();
-          } else {
-            dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight();
-          }
-          event.accepted = true;
-          return;
-        }
-
-        // ===== Random (R) =====
-        if (event.key === Qt.Key_R && !event.modifiers) {
-          scrollController.random();
-          event.accepted = true;
-          return;
-        }
-
-        // ===== Refresh (F5) =====
-        if (event.key === Qt.Key_F5) {
-          refreshCache();
-          event.accepted = true;
-          return;
-        }
-      }
-      Keys.onReleased: function(event) {
-        if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
-          const dir = (event.key === Qt.Key_Left) ? -1 : 1;
-          scrollController.handleKeyRelease(dir);
-          event.accepted = true;
-        }
-      }
     }
   }
 
@@ -516,9 +468,8 @@ PanelWindow {
       if (!root.settingsOpen)
         pathViewContainer.forceActiveFocus();
     }
-    onWallhavenToggled: {
-      wallhavenFilter.filterVisible = !wallhavenFilter.filterVisible;
-    }
+    onWallhavenToggled: wallhavenFilter.filterVisible = !wallhavenFilter.filterVisible
+
     searchText: root.searchText
     onSearchInputChanged: function (text) {
       root.searchText = text;
@@ -552,7 +503,10 @@ PanelWindow {
       if (root._whResultsConn && root._whResultsConn.target)
         root._whResultsConn.target.resultsUpdated.disconnect(root._whResultsConn.callback);
       if (whService) {
-        root._whResultsConn = { target: whService, callback: () => scrollController.scrollTo(0) };
+        root._whResultsConn = {
+          target: whService,
+          callback: () => scrollController.scrollTo(0)
+        };
         whService.resultsUpdated.connect(root._whResultsConn.callback);
       }
     }
@@ -609,14 +563,9 @@ PanelWindow {
 
     onSwitchToNextFolder: nextFolder()
     onSwitchToPrevFolder: prevFolder()
-
     onToggleSettings: {
       root.settingsOpen = !root.settingsOpen;
-      if (root.settingsOpen) {
-        settingsPanel.forceActiveFocus();
-      } else {
-        pathViewContainer.forceActiveFocus();
-      }
+      root.settingsOpen ? settingsPanel.forceActiveFocus() : pathViewContainer.forceActiveFocus();
     }
   }
 }
