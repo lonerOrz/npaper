@@ -2,8 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
-import qs.components.bar
-import qs.components.wallpaper
 import qs.services
 
 Item {
@@ -21,6 +19,9 @@ Item {
   property bool settingsOpen: false
   signal settingsToggled
 
+  property bool isWallhaven: false
+  signal wallhavenToggled
+
   property string searchText: ""
   signal searchInputChanged(string text)
   signal searchCleared
@@ -30,29 +31,28 @@ Item {
     searchInput.forceActiveFocus();
   }
 
-  width: contentRow.implicitWidth + Style.space2L
+  // Fixed height, single row
   height: Style.barHeight
+  width: contentRow.implicitWidth + Style.space2L
 
-  // Background Pill
+  // ── Background Pill ──────────────────────────────────────
   Rectangle {
     anchors.fill: parent
     radius: Style.barRadius
     color: Color.mSurfaceContainerLowest
   }
 
-  // Content Row
+  // ── Content Row ──────────────────────────────────────────
   RowLayout {
     id: contentRow
     anchors.verticalCenter: parent.verticalCenter
     anchors.left: parent.left
-    anchors.leftMargin: Style.barSidePadding
     anchors.right: parent.right
-    anchors.rightMargin: Style.barSidePadding
+    anchors.margins: Style.barSidePadding
     spacing: Style.barInnerSpacing
 
     // NixOS Logo
     Image {
-      id: nixosLogo
       Layout.preferredWidth: Style.barLogoSize
       Layout.preferredHeight: Style.barLogoSize
       Layout.alignment: Qt.AlignVCenter
@@ -65,18 +65,10 @@ Item {
       layer.effect: MultiEffect {
         colorization: 1.0
         colorizationColor: root.dominantColor
-        Behavior on colorizationColor {
-          ColorAnimation {
-            duration: Style.animFast
-          }
-        }
+        Behavior on colorizationColor { ColorAnimation { duration: Style.animFast } }
       }
-
       RotationAnimation on rotation {
-        from: 0
-        to: 360
-        duration: Style.logoRotationMs
-        loops: Animation.Infinite
+        from: 0; to: 360; duration: Style.logoRotationMs; loops: Animation.Infinite
       }
     }
 
@@ -101,25 +93,24 @@ Item {
         font.pixelSize: Style.barSearchInputFontSize
         cursorVisible: activeFocus
         selectByMouse: true
-
         property real baseWidth: Style.barSearchWidthBase
 
         Keys.onPressed: event => {
-                          if (event.key === Qt.Key_Escape) {
-                            root.searchCleared();
-                            event.accepted = true;
-                          }
-                          if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            root.searchSubmitted();
-                            searchInput.focus = false;
-                            event.accepted = true;
-                          }
-                        }
+          if (event.key === Qt.Key_Escape) {
+            root.searchCleared();
+            event.accepted = true;
+          }
+          if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            root.searchSubmitted();
+            searchInput.focus = false;
+            event.accepted = true;
+          }
+        }
       }
 
       Text {
         anchors.centerIn: parent
-        text: "Type to search..."
+        text: root.isWallhaven ? "Search Wallhaven..." : "Type to search..."
         color: Color.mOutline
         font.pixelSize: Style.barSearchPlaceholderFontSize
         visible: !searchInput.text && !searchInput.activeFocus
@@ -140,47 +131,35 @@ Item {
       opacity: Style.opacityDivider
     }
 
-    // Folder Tabs with sliding capsule
+    // Folder Tabs
     Item {
       id: folderTabs
       Layout.preferredWidth: tabsRow.implicitWidth + Style.spaceM
       Layout.preferredHeight: Style.barTabHeight
       Layout.alignment: Qt.AlignVCenter
+      visible: !root.isWallhaven
 
       property real _pillX: 0
       property real _pillW: 0
 
       Connections {
         target: root
-        function onActiveFolderChanged() {
-          Qt.callLater(folderTabs._updatePill);
-        }
+        function onActiveFolderChanged() { Qt.callLater(folderTabs._updatePill); }
       }
 
-      // Sliding capsule indicator
       Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         height: Style.barTabHeight
         radius: height / 2
         color: Color.mPrimary
         opacity: Style.opacityLight
-
         x: folderTabs._pillX
         width: folderTabs._pillW
-
         Behavior on x {
-          NumberAnimation {
-            duration: Style.animEnter
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.2
-          }
+          NumberAnimation { duration: Style.animEnter; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
         }
         Behavior on width {
-          NumberAnimation {
-            duration: Style.animEnter
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.2
-          }
+          NumberAnimation { duration: Style.animEnter; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
         }
       }
 
@@ -198,34 +177,20 @@ Item {
             width: tabLabel.implicitWidth + Style.barTabSidePadding * 2
             height: Style.barTabHeight
             cursorShape: Qt.PointingHandCursor
-
             Text {
               id: tabLabel
               text: modelData
               color: parent.isActive ? Color.mPrimary : Color.mOutlineVariant
               font.pixelSize: Style.barTabFontSize
               font.weight: parent.isActive ? Font.Bold : Font.Normal
-
-              // Explicit centering calculation avoids anchor rounding errors
               x: (parent.width - implicitWidth) / 2
               anchors.verticalCenter: parent.verticalCenter
-
-              Behavior on color {
-                ColorAnimation {
-                  duration: Style.animFast
-                }
-              }
+              Behavior on color { ColorAnimation { duration: Style.animFast } }
             }
-
             onClicked: root.folderClicked(modelData)
-
-            Component.onCompleted: {
-              if (isActive)
-                Qt.callLater(folderTabs._updatePill);
-            }
+            Component.onCompleted: { if (isActive) Qt.callLater(folderTabs._updatePill); }
           }
         }
-
         Component.onCompleted: Qt.callLater(folderTabs._updatePill)
       }
 
@@ -234,10 +199,34 @@ Item {
           const item = tabsRow.children[i];
           if (item && item.isActive) {
             _pillX = item.x;
-            // Ensure capsule always has a pill shape (1.4x width:height)
             _pillW = Math.max(item.width, Style.barTabHeight * 1.4);
           }
         }
+      }
+    }
+
+    // Wallhaven Button
+    MouseArea {
+      Layout.preferredWidth: Style.barSettingsBtnWidth
+      Layout.preferredHeight: Style.barSettingsBtnHeight
+      cursorShape: Qt.PointingHandCursor
+      hoverEnabled: true
+      onClicked: root.wallhavenToggled()
+
+      property bool hover: containsMouse
+
+      Rectangle {
+        anchors.fill: parent
+        radius: Style.barSettingsBtnHeight / 2
+        color: parent.hover ? Color.mSurfaceContainerHigh : "transparent"
+        Behavior on color { ColorAnimation { duration: Style.animFast } }
+      }
+
+      Text {
+        anchors.centerIn: parent
+        text: "🌐"
+        font.pixelSize: 14
+        color: root.isWallhaven ? Color.mPrimary : Color.mOutlineVariant
       }
     }
 
@@ -249,6 +238,15 @@ Item {
       font.pixelSize: Style.barInfoFontSize
     }
 
+    // Queue Count
+    Text {
+      Layout.alignment: Qt.AlignVCenter
+      text: root.queueCount > 0 ? "⏳ " + root.queueCount : ""
+      color: Color.mPrimary
+      font.pixelSize: Style.barInfoFontSize
+      visible: root.queueCount > 0
+    }
+
     // Settings Button
     MouseArea {
       Layout.preferredWidth: Style.barSettingsBtnWidth
@@ -258,16 +256,11 @@ Item {
       onClicked: root.settingsToggled()
 
       property bool hover: containsMouse
-
       Rectangle {
         anchors.fill: parent
         radius: Style.barSettingsBtnHeight / 2
         color: parent.hover ? Color.mSurfaceContainerHigh : "transparent"
-        Behavior on color {
-          ColorAnimation {
-            duration: Style.animFast
-          }
-        }
+        Behavior on color { ColorAnimation { duration: Style.animFast } }
       }
 
       Text {
@@ -275,11 +268,7 @@ Item {
         text: "⚙"
         font.pixelSize: Style.barSettingsGearFontSize
         color: root.settingsOpen ? Color.mPrimary : Color.mOutlineVariant
-        Behavior on color {
-          ColorAnimation {
-            duration: Style.animFast
-          }
-        }
+        Behavior on color { ColorAnimation { duration: Style.animFast } }
       }
     }
   }

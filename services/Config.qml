@@ -29,6 +29,13 @@ Singleton {
                                       "cacheDir": "$HOME/.cache/wallpaper_thumbs",
                                       "debugMode": false,
                                       "previewStyle": "carousel",
+                                      "wallhaven": {
+                                        "apiKey": "",
+                                        "defaultAtleast": "1920x1080",
+                                        "categories": "111",
+                                        "purity": "100",
+                                        "sorting": "toplist"
+                                      },
                                       "carousel": {
                                         "itemWidth": 400,
                                         "itemHeight": 280,
@@ -166,6 +173,7 @@ Singleton {
       "cacheDir": resolvedData.cacheDir,
       "debugMode": resolvedData.debugMode,
       "previewStyle": resolvedData.previewStyle,
+      "wallhaven": _pick(resolvedData.wallhaven, ["apiKey", "defaultAtleast", "categories", "purity", "sorting"]),
       "carousel": _pick(resolvedData.carousel, ["itemWidth", "itemHeight", "spacing", "rotation", "perspective"]),
       "animation": _pick(resolvedData.animation, ["scrollDuration", "scrollContinueInterval", "bgSlideDuration", "bgParallaxFactor"]),
       "appearance": _pick(resolvedData.appearance, ["showBorderGlow", "showShadow", "showBgPreview", "bgOverlayOpacity"])

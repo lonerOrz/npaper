@@ -18,7 +18,7 @@ PanelWindow {
 
   property var modelData
   property var viewModel
-  property var wallpaperModel
+  property var adapter
   property var cacheService
   property var wallpaperApplier
   property var checkService
@@ -35,7 +35,7 @@ PanelWindow {
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
   WlrLayershell.exclusiveZone: -1
 
-  readonly property int count: wallpaperModel ? wallpaperModel.count : 0
+  readonly property int count: adapter ? adapter.count : 0
   readonly property int centerIndex: scrollController.currentIndex
   property string dominantColor: Color.mPrimary
 
@@ -66,58 +66,76 @@ PanelWindow {
 
   Component.onCompleted: {
     Style.uiScaleRatio = screen.height / 1080;
-    if (wallpaperModel)
-      wallpaperModel.dataLoaded.connect(applyFolderSelection);
+    if (adapter) {
+      adapter.dataLoaded.connect(applyFolderSelection);
+      adapter.wallpaperApplied.connect(function(path) {
+        if (wallpaperApplier)
+          wallpaperApplier.apply(path);
+        Qt.quit();
+      });
+      adapter.load();
+    }
   }
 
   Connections {
     target: scrollController
     function onCurrentIndexChanged() {
       updateBackground(scrollController.currentIndex);
-      if (wallpaperModel)
+      if (adapter && adapter.currentSource === "local")
         queueThumbnails(scrollController.baseIndex, scrollController.maxIndex);
     }
   }
 
-  onBgCurrentChanged: {
-    updateSourceA();
-  }
-
-  onBgPreviousChanged: {
-    updateSourceB();
-  }
+  onBgCurrentChanged: { updateSourceA(); }
+  onBgPreviousChanged: { updateSourceB(); }
 
   function updateSourceA() {
-    if (bgCurrent >= 0 && bgCurrent < (wallpaperModel ? wallpaperModel.list.length : 0)) {
-      const path = wallpaperModel.list[bgCurrent];
-      const p = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, path);
-      _bgSourceA = p ? ("file://" + p) : ("file://" + path);
+    if (bgCurrent >= 0 && bgCurrent < (adapter ? adapter.items.length : 0)) {
+      const item = adapter.items[bgCurrent];
+      if (!item) return;
+      if (item.type === "local") {
+        const p = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, item.path);
+        _bgSourceA = p ? ("file://" + p) : ("file://" + item.path);
+      } else if (item.type === "remote" && item.thumb) {
+        // Use remote thumbnail for background preview
+        _bgSourceA = item.thumb;
+      }
     }
   }
 
   function updateSourceB() {
-    if (bgPrevious >= 0 && bgPrevious < (wallpaperModel ? wallpaperModel.list.length : 0)) {
-      const path = wallpaperModel.list[bgPrevious];
-      const p = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, path);
-      _bgSourceB = p ? ("file://" + p) : ("file://" + path);
+    if (bgPrevious >= 0 && bgPrevious < (adapter ? adapter.items.length : 0)) {
+      const item = adapter.items[bgPrevious];
+      if (!item) return;
+      if (item.type === "local") {
+        const p = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, item.path);
+        _bgSourceB = p ? ("file://" + p) : ("file://" + item.path);
+      } else if (item.type === "remote" && item.thumb) {
+        _bgSourceB = item.thumb;
+      }
     }
   }
 
   function updateBackground(index) {
-    if (index !== bgCurrent && index >= 0 && index < (wallpaperModel ? wallpaperModel.list.length : 0)) {
+    if (index !== bgCurrent && index >= 0 && index < (adapter ? adapter.items.length : 0)) {
       bgPrevious = bgCurrent;
       bgCurrent = index;
       bgSlideProgress = 0;
       bgSlideAnim.restart();
-      colorExtractor.run(wallpaperModel.list[index]);
+      const item = adapter.items[index];
+      if (item && item.type === "local")
+        colorExtractor.run(item.path);
+      else
+        root.dominantColor = Color.mPrimary;
     }
   }
 
   function queueThumbnails(base, max) {
-    if (!wallpaperModel)
-      return;
-    for (let i = base; i <= max && i < wallpaperModel.list.length; i++) {
-      cacheService.queueThumbnail(wallpaperModel.list[i], FileTypes.isVideoFile(wallpaperModel.list[i]), FileTypes.isGifFile(wallpaperModel.list[i]));
+    if (!adapter) return;
+    for (let i = base; i <= max && i < adapter.items.length; i++) {
+      const item = adapter.items[i];
+      if (item && item.type === "local")
+        cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
     }
   }
 
@@ -126,28 +144,25 @@ PanelWindow {
     bgPrevious = -1;
     bgCurrent = -1;
     bgSlideProgress = 1.0;
-    if (wallpaperModel.list.length > 0) {
+    if (adapter && adapter.items.length > 0) {
       bgCurrent = 0;
-      colorExtractor.run(wallpaperModel.list[0]);
+      const item = adapter.items[0];
+      if (item.type === "local")
+        colorExtractor.run(item.path);
     }
   }
 
   function switchFolder(folder) {
-    if (wallpaperModel) {
-      wallpaperModel.switchFolder(folder);
-      applyFolderSelection();
+    if (adapter) {
+      adapter.switchFolder(folder);
+      // Qt.callLater ensures adapter.items has fully updated before reset
+      Qt.callLater(applyFolderSelection);
     }
   }
 
   function refreshCache() {
-    if (wallpaperModel)
-      wallpaperModel.refresh(wallpaperModel.currentFolder, cacheService);
-  }
-
-  function applyWallpaper(path) {
-    if (wallpaperApplier)
-      wallpaperApplier.apply(path);
-    Qt.quit();
+    if (adapter)
+      adapter.refresh();
   }
 
   // ========== Components ==========
@@ -181,9 +196,9 @@ PanelWindow {
         root.dominantColor = Color.mPrimary;
         return;
       }
-      const t = CacheUtils.getCachedThumb(cacheService.thumbHashToPath, wp);
-      if (t) {
-        _runColorExtract(t);
+      const bg = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, wp);
+      if (bg) {
+        _runColorExtract(bg);
         return;
       }
       if (FileTypes.isVideoFile(wp)) {
@@ -228,16 +243,19 @@ PanelWindow {
     id: searchDebounce
     interval: Style.searchDebounceMs
     onTriggered: {
-      if (wallpaperModel)
-        wallpaperModel.setSearch(root.searchText);
+      if (adapter)
+        adapter.setSearch(root.searchText);
       if (root.searchText) {
         scrollController.scrollTo(0);
         bgCurrent = 0;
         bgSlideProgress = 1.0;
-        if (wallpaperModel.list.length > 0)
-          colorExtractor.run(wallpaperModel.list[0]);
+        if (adapter.items.length > 0) {
+          const item = adapter.items[0];
+          if (item.type === "local")
+            colorExtractor.run(item.path);
+        }
       } else {
-        wallpaperModel.resetSearch();
+        adapter.resetSearch();
       }
     }
   }
@@ -280,11 +298,16 @@ PanelWindow {
         delegate: WallpaperCard {
           required property int index
           property int realIndex: scrollController.baseIndex + index
-          wallpaperPath: realIndex < wallpaperModel.list.length ? wallpaperModel.list[realIndex] : ""
-          filename: realIndex < (wallpaperModel ? wallpaperModel.filenames.length : 0) ? (wallpaperModel ? wallpaperModel.filenames[realIndex] : "") : ""
-          isVideo: FileTypes.isVideoFile(wallpaperPath)
-          isGif: FileTypes.isGifFile(wallpaperPath)
-          thumbHashToPath: cacheService ? cacheService.thumbHashToPath : {}
+
+          readonly property var _item: realIndex < adapter.items.length ? adapter.items[realIndex] : null
+          wallpaperPath: _item ? (_item.type === "remote" ? _item.thumb : _item.path) : ""
+          filename: _item ? _item.filename : ""
+          isVideo: _item ? _item.isVideo : false
+          isGif: _item ? _item.isGif : false
+          isRemote: _item ? _item.type === "remote" : false
+          remoteId: _item && _item.type === "remote" ? _item.id : ""
+          remoteThumb: _item && _item.type === "remote" ? _item.thumb : ""
+          thumbHashToPath: _item && _item.type === "local" ? (cacheService ? cacheService.thumbHashToPath : {}) : {}
           isCenter: realIndex === root.centerIndex
           showBorderGlow: root.showBorderGlow
           showShadow: root.showShadow
@@ -321,7 +344,8 @@ PanelWindow {
           y: pathViewContainer.centerY - height / 2 + visual.yOffset
           onClicked: function (path) {
             scrollController.scrollTo(realIndex);
-            Qt.callLater(() => applyWallpaper(path));
+            if (_item)
+              adapter.apply(_item);
           }
         }
       }
@@ -330,7 +354,7 @@ PanelWindow {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: Style.keyboardHintBottomMargin
-        text: "/ Search  |  ←/→ Navigate  |  Tab/[] Folder  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  Esc Quit"
+        text: "/ Search  |  ←/→ Navigate  |  Tab/[] Folder  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  W Wallhaven  |  Esc Quit"
         color: Color.mOutline
         font.pixelSize: Style.keyboardHintFontSize
         style: Text.Outline
@@ -338,124 +362,135 @@ PanelWindow {
       }
 
       Keys.onPressed: function(event) {
-                        // ===== Escape: context-sensitive =====
-                        if (event.key === Qt.Key_Escape) {
-                          if (root.settingsOpen) {
-                            root.settingsOpen = false;
-                            event.accepted = true;
-                            return;
-                          }
-                          Qt.quit();
-                          event.accepted = true;
-                          return;
-                        }
+        // ===== Escape: context-sensitive =====
+        if (event.key === Qt.Key_Escape) {
+          if (root.settingsOpen) {
+            root.settingsOpen = false;
+            event.accepted = true;
+            return;
+          }
+          Qt.quit();
+          event.accepted = true;
+          return;
+        }
 
-                        // ===== Settings toggle (S) =====
-                        if (event.key === Qt.Key_S && !event.modifiers) {
-                          root.settingsOpen = !root.settingsOpen;
-                          if (root.settingsOpen) {
-                            settingsPanel.forceActiveFocus();
-                          } else {
-                            pathViewContainer.forceActiveFocus();
-                          }
-                          event.accepted = true;
-                          return;
-                        }
+        // ===== Settings toggle (S) =====
+        if (event.key === Qt.Key_S && !event.modifiers) {
+          root.settingsOpen = !root.settingsOpen;
+          if (root.settingsOpen) {
+            settingsPanel.forceActiveFocus();
+          } else {
+            pathViewContainer.forceActiveFocus();
+          }
+          event.accepted = true;
+          return;
+        }
 
-                        // ===== Folder switching (Tab/Shift+Tab or [ / ]) =====
-                        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-                          const model = wallpaperModel;
-                          const fs = model && model.folders ? model.folders : [];
-                          const current = model && model.currentFolder ? model.currentFolder : "";
-                          
-                          if (fs.length > 0) {
-                            const idx = fs.indexOf(current);
-                            const nextIdx = event.key === Qt.Key_Tab 
-                              ? (idx < fs.length - 1 ? idx + 1 : 0)
-                              : (idx > 0 ? idx - 1 : fs.length - 1);
-                            switchFolder(fs[nextIdx]);
-                          } else {
-                            // No folders, toggle settings instead
-                            root.settingsOpen = !root.settingsOpen;
-                            if (root.settingsOpen) {
-                              settingsPanel.forceActiveFocus();
-                            } else {
-                              pathViewContainer.forceActiveFocus();
-                            }
-                          }
-                          event.accepted = true;
-                          return;
-                        }
+        // ===== Wallhaven toggle (W) =====
+        if (event.key === Qt.Key_W && !event.modifiers) {
+          // Toggle filter panel
+          wallhavenFilter.filterVisible = !wallhavenFilter.filterVisible;
+          // If opening, ensure we are in remote mode to search
+          if (wallhavenFilter.filterVisible && adapter)
+            adapter.switchSource("remote");
+          // If closing, revert to local mode
+          if (!wallhavenFilter.filterVisible && adapter)
+            adapter.switchSource("local");
+          pathViewContainer.forceActiveFocus();
+          event.accepted = true;
+          return;
+        }
 
-                        // ===== Search (/, Ctrl+F) =====
-                        if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
-                          statusBar.focusSearch();
-                          event.accepted = true;
-                          return;
-                        }
+        // ===== Folder switching (Tab/Shift+Tab or [ / ]) =====
+        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+          if (adapter.currentSource === "local") {
+            const fs = adapter.folders;
+            if (fs.length > 0) {
+              const idx = fs.indexOf(adapter.currentFolder);
+              const nextIdx = event.key === Qt.Key_Tab
+                ? (idx < fs.length - 1 ? idx + 1 : 0)
+                : (idx > 0 ? idx - 1 : fs.length - 1);
+              switchFolder(fs[nextIdx]);
+            }
+          }
+          event.accepted = true;
+          return;
+        }
 
-                        if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft) {
-                          const fs = wallpaperModel ? wallpaperModel.folders : [];
-                          if (fs.length > 0) {
-                            const idx = fs.indexOf(wallpaperModel ? wallpaperModel.currentFolder : "");
-                            switchFolder(idx > 0 ? fs[idx - 1] : fs[fs.length - 1]);
-                          }
-                          event.accepted = true;
-                          return;
-                        }
-                        if (event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
-                          const fs = wallpaperModel ? wallpaperModel.folders : [];
-                          if (fs.length > 0) {
-                            const idx = fs.indexOf(wallpaperModel ? wallpaperModel.currentFolder : "");
-                            switchFolder(idx >= 0 && idx < fs.length - 1 ? fs[idx + 1] : fs[0]);
-                          }
-                          event.accepted = true;
-                          return;
-                        }
+        // ===== Search (/, Ctrl+F) =====
+        if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
+          statusBar.focusSearch();
+          event.accepted = true;
+          return;
+        }
 
-                        // ===== Apply wallpaper (Enter) =====
-                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                          if (root.count > 0) {
-                            const idx = scrollController.currentIndex;
-                            applyWallpaper(wallpaperModel.list[idx]);
-                          }
-                          event.accepted = true;
-                          return;
-                        }
+        if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft) {
+          if (adapter.currentSource === "local") {
+            const fs = adapter.folders;
+            if (fs.length > 0) {
+              const idx = fs.indexOf(adapter.currentFolder);
+              switchFolder(idx > 0 ? fs[idx - 1] : fs[fs.length - 1]);
+            }
+          }
+          event.accepted = true;
+          return;
+        }
+        if (event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
+          if (adapter.currentSource === "local") {
+            const fs = adapter.folders;
+            if (fs.length > 0) {
+              const idx = fs.indexOf(adapter.currentFolder);
+              switchFolder(idx >= 0 && idx < fs.length - 1 ? fs[idx + 1] : fs[0]);
+            }
+          }
+          event.accepted = true;
+          return;
+        }
 
-                        // ===== Navigation (Left/Right) =====
-                        if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
-                          const dir = (event.key === Qt.Key_Left) ? -1 : 1;
-                          if (event.modifiers & Qt.ShiftModifier) {
-                            dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight();
-                          } else {
-                            dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight();
-                          }
-                          event.accepted = true;
-                          return;
-                        }
+        // ===== Apply wallpaper (Enter) =====
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+          if (root.count > 0) {
+            const idx = scrollController.currentIndex;
+            if (idx < adapter.items.length)
+              adapter.apply(adapter.items[idx]);
+          }
+          event.accepted = true;
+          return;
+        }
 
-                        // ===== Random (R) =====
-                        if (event.key === Qt.Key_R && !event.modifiers) {
-                          scrollController.random();
-                          event.accepted = true;
-                          return;
-                        }
+        // ===== Navigation (Left/Right) =====
+        if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+          const dir = (event.key === Qt.Key_Left) ? -1 : 1;
+          if (event.modifiers & Qt.ShiftModifier) {
+            dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight();
+          } else {
+            dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight();
+          }
+          event.accepted = true;
+          return;
+        }
 
-                        // ===== Refresh (F5) =====
-                        if (event.key === Qt.Key_F5) {
-                          refreshCache();
-                          event.accepted = true;
-                          return;
-                        }
-                      }
+        // ===== Random (R) =====
+        if (event.key === Qt.Key_R && !event.modifiers) {
+          scrollController.random();
+          event.accepted = true;
+          return;
+        }
+
+        // ===== Refresh (F5) =====
+        if (event.key === Qt.Key_F5) {
+          refreshCache();
+          event.accepted = true;
+          return;
+        }
+      }
       Keys.onReleased: function(event) {
-                         if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
-                           const dir = (event.key === Qt.Key_Left) ? -1 : 1;
-                           scrollController.handleKeyRelease(dir);
-                           event.accepted = true;
-                         }
-                       }
+        if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+          const dir = (event.key === Qt.Key_Left) ? -1 : 1;
+          scrollController.handleKeyRelease(dir);
+          event.accepted = true;
+        }
+      }
     }
   }
 
@@ -466,8 +501,8 @@ PanelWindow {
     anchors.horizontalCenter: parent.horizontalCenter
     z: 100
 
-    folders: wallpaperModel ? wallpaperModel.folders : []
-    activeFolder: wallpaperModel ? wallpaperModel.currentFolder : ""
+    folders: adapter && adapter.currentSource === "local" ? adapter.folders : []
+    activeFolder: adapter && adapter.currentSource === "local" ? adapter.currentFolder : ""
     onFolderClicked: function (folder) {
       switchFolder(folder);
     }
@@ -476,10 +511,14 @@ PanelWindow {
     queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
     dominantColor: root.dominantColor
     settingsOpen: root.settingsOpen
+    isWallhaven: wallhavenFilter.filterVisible || (adapter && adapter.currentSource === "remote")
     onSettingsToggled: {
       root.settingsOpen = !root.settingsOpen;
       if (!root.settingsOpen)
         pathViewContainer.forceActiveFocus();
+    }
+    onWallhavenToggled: {
+      wallhavenFilter.filterVisible = !wallhavenFilter.filterVisible;
     }
     searchText: root.searchText
     onSearchInputChanged: function (text) {
@@ -488,25 +527,39 @@ PanelWindow {
     }
     onSearchCleared: {
       root.searchText = "";
-      if (wallpaperModel)
-        wallpaperModel.resetSearch();
+      if (adapter)
+        adapter.resetSearch();
       pathViewContainer.forceActiveFocus();
     }
     onSearchSubmitted: {
-      if (wallpaperModel)
-        wallpaperModel.setSearch(root.searchText);
+      if (adapter)
+        adapter.setSearch(root.searchText);
       if (root.searchText) {
         scrollController.scrollTo(0);
         bgCurrent = 0;
         bgSlideProgress = 1.0;
-        if (wallpaperModel.list.length > 0)
-          colorExtractor.run(wallpaperModel.list[0]);
+        if (adapter.items.length > 0) {
+          const item = adapter.items[0];
+          if (item.type === "local")
+            colorExtractor.run(item.path);
+        }
       } else {
-        wallpaperModel.resetSearch();
+        adapter.resetSearch();
       }
       searchDebounce.stop();
       pathViewContainer.forceActiveFocus();
     }
+  }
+
+  // Wallhaven Filter Panel (Separate from StatusBar)
+  WallhavenFilter {
+    id: wallhavenFilter
+    anchors.bottom: statusBar.top
+    anchors.bottomMargin: Style.spaceM
+    anchors.horizontalCenter: statusBar.horizontalCenter
+    z: 998
+    adapter: root.adapter
+    whService: adapter ? adapter.whService : null
   }
 
   SettingsPanel {
@@ -531,7 +584,6 @@ PanelWindow {
 
     onSettingChanged: function (key, val) {
       Logger.i("AppWindow", "Setting changed:", key, "=", val);
-      // Map dot-paths to flat root property names for immediate UI update
       var propMap = {
         "carousel.itemWidth": "carouselItemWidth",
         "carousel.itemHeight": "carouselItemHeight",
@@ -560,18 +612,22 @@ PanelWindow {
     }
 
     onSwitchToNextFolder: {
-      const fs = wallpaperModel ? wallpaperModel.folders : [];
-      if (fs.length > 0) {
-        const idx = fs.indexOf(wallpaperModel ? wallpaperModel.currentFolder : "");
-        switchFolder(idx >= 0 && idx < fs.length - 1 ? fs[idx + 1] : fs[0]);
+      if (adapter) {
+        const fs = adapter.folders;
+        if (fs.length > 0) {
+          const idx = fs.indexOf(adapter.currentFolder);
+          switchFolder(idx >= 0 && idx < fs.length - 1 ? fs[idx + 1] : fs[0]);
+        }
       }
     }
 
     onSwitchToPrevFolder: {
-      const fs = wallpaperModel ? wallpaperModel.folders : [];
-      if (fs.length > 0) {
-        const idx = fs.indexOf(wallpaperModel ? wallpaperModel.currentFolder : "");
-        switchFolder(idx > 0 ? fs[idx - 1] : fs[fs.length - 1]);
+      if (adapter) {
+        const fs = adapter.folders;
+        if (fs.length > 0) {
+          const idx = fs.indexOf(adapter.currentFolder);
+          switchFolder(idx > 0 ? fs[idx - 1] : fs[fs.length - 1]);
+        }
       }
     }
 

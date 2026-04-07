@@ -5,7 +5,6 @@ import Quickshell
 import Quickshell.Wayland
 import qs.components.settings
 import qs.components.wallpaper
-import qs.models
 import qs.services
 
 ShellRoot {
@@ -72,15 +71,8 @@ ShellRoot {
         cacheDir: Config.data.cacheDir
         debugMode: Config.data.debugMode
         onCacheScanned: {
-          wallpaperModel.load();
+          // Adapter loads its own data
         }
-      }
-
-      WallpaperModel {
-        id: wallpaperModel
-        dirs: Config.data.wallpaperDirs
-        scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
-        debugMode: Config.data.debugMode
       }
 
       WallpaperApplier {
@@ -89,12 +81,22 @@ ShellRoot {
         scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
       }
 
+      // Must be defined BEFORE Variants so it's available for injection
+      WallpaperAdapter {
+        id: wallpaperAdapter
+        wallpaperDirs: Config.data.wallpaperDirs
+        scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
+        debugMode: Config.data.debugMode
+        cacheDir: Config.data.cacheDir
+        cacheService: cacheService
+      }
+
       Variants {
         model: Quickshell.screens
         delegate: AppWindow {
           screen: modelData
           viewModel: bridge.viewModel
-          wallpaperModel: wallpaperModel
+          adapter: wallpaperAdapter
           cacheService: cacheService
           wallpaperApplier: wallpaperApplier
           checkService: checkService

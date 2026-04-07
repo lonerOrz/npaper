@@ -7,10 +7,15 @@ import qs.services
 Item {
   id: root
 
-  required property string wallpaperPath
-  required property string filename
+  property string wallpaperPath: ""
+  property string filename: ""
   property bool isVideo: false
   property bool isGif: false
+
+  // Remote wallpaper properties
+  property bool isRemote: false
+  property string remoteId: ""
+  property string remoteThumb: ""
 
   property real itemWidth: Style.carouselItemWidth
   property real itemHeight: Style.carouselItemHeight
@@ -166,23 +171,47 @@ Item {
       id: staticImage
       anchors.fill: parent
       source: {
+        // Remote wallpaper: use remote thumbnail URL
+        if (root.isRemote)
+          return root.remoteThumb;
+
         const path = root.wallpaperPath;
         if (!path || path.length === 0 || path.endsWith('/'))
           return "";
         if ((root.isGif || root.isVideo) && root.isCenter && animatedGif.status === AnimatedImage.Ready && animatedGif.visible)
           return "";
-        const thumb = CacheUtils.getCachedThumb(root.thumbHashToPath, path);
-        return thumb ? "file://" + thumb : ("file://" + path);
+        const bg = CacheUtils.getCachedBgPreview(root.thumbHashToPath, path);
+        return bg ? "file://" + bg : ("file://" + path);
       }
       fillMode: Image.PreserveAspectCrop
       asynchronous: true
-      smooth: root.isCenter
+      smooth: root.isCenter || root.isRemote
       mipmap: true
       sourceSize: Qt.size(root.itemWidth, root.itemHeight)
       opacity: status === Image.Ready ? 1.0 : 0.0
       Behavior on opacity {
         NumberAnimation {
           duration: Style.animFast
+        }
+      }
+
+      // Download indicator overlay for remote items
+      Rectangle {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: Style.spaceM
+        width: indicatorIcon.implicitWidth + Style.spaceM * 2
+        height: Style.spaceXL * 2
+        radius: height / 2
+        color: Qt.rgba(0, 0, 0, 0.6)
+        visible: root.isRemote
+
+        Text {
+          id: indicatorIcon
+          anchors.centerIn: parent
+          text: "↓"
+          font.pixelSize: Style.cardLabelFontSize
+          color: Color.mPrimary
         }
       }
     }

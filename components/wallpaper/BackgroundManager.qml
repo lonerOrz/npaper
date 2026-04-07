@@ -26,7 +26,7 @@ Item {
     asynchronous: true
     smooth: true
     mipmap: true
-    sourceSize: Qt.size(1920, 1080)
+    sourceSize: Qt.size(parent.width, parent.height)
     cache: true
   }
 
@@ -43,7 +43,7 @@ Item {
     asynchronous: true
     smooth: true
     mipmap: true
-    sourceSize: Qt.size(1920, 1080)
+    sourceSize: Qt.size(parent.width, parent.height)
     cache: true
   }
 

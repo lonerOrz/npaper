@@ -113,6 +113,8 @@ Singleton {
   readonly property real barSettingsGearFontSize: fontM
 
   // Wallpaper Card
+  readonly property int cacheBgWidth: _s(1920)
+  readonly property int cacheBgHeight: _s(1080)
   readonly property int cardBorderWidth: _s(2)
   readonly property int cardImageFrameMargin: _s(3)
   readonly property int cardInnerPadding: _s(10)
