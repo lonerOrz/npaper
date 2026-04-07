@@ -79,7 +79,11 @@ Item {
   function resetSearch() {
     root.searchText = "";
     localSource.resetSearch();
-    remoteSource.clearResults();
+    // Reset to page 1 with cleared query (default results)
+    if (root.currentSource === "remote" && root.whService) {
+      root.whService.query = "";
+      root.whService.search(1);
+    }
   }
 
   function refresh() {
