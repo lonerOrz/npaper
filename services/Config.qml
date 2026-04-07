@@ -57,17 +57,13 @@ Singleton {
   property Timer _saveTimer: Timer {
     interval: 500
     repeat: false
-    onTriggered: {
-      console.log("[npaper][I] Config _saveTimer FIRED — calling _doSave");
-      _doSave();
-    }
+    onTriggered: _doSave()
   }
 
   // ── Boot ─────────────────────────────────────────────────
   Component.onCompleted: {
     // Initialize data to defaults first
     root.data = _deepClone(_defaults);
-    console.log("[npaper][I] Config: initialized with defaults, itemWidth =", root.data.carousel.itemWidth);
     Quickshell.execDetached(["mkdir", "-p", Quickshell.env("HOME") + "/.config/npaper"]);
     _readConfig();
   }
@@ -83,25 +79,23 @@ Singleton {
     stdout: StdioCollector { id: _readStdout }
     stderr: StdioCollector { id: _readStderr }
     onExited: function (code) {
-      console.log("[npaper][I] Config _readProc exited, code =", code);
       var raw = _readStdout.text;
       if (code !== 0 || !raw || String(raw).trim().length === 0) {
         // No file — use defaults (already set)
-        console.log("[npaper][I] Config _readProc: no data, using defaults");
+        Logger.i("Config", "No config file — using defaults");
         root.isLoaded = true;
         root.dataLoaded();
         return;
       }
       try {
         var user = JSON.parse(String(raw).trim());
-        console.log("[npaper][I] Config _readProc: parsed user config");
         root.data = _deepMerge(_deepClone(_defaults), user);
         root.data = _resolvePaths(root.data);
-        console.log("[npaper][I] Config _readProc: merged data, itemWidth =", root.data.carousel.itemWidth);
+        Logger.i("Config", "Loaded user config, itemWidth =", root.data.carousel.itemWidth);
         root.isLoaded = true;
         root.dataLoaded();
       } catch (e) {
-        console.error("Config: parse error", e);
+        Logger.w("Config", "Parse error, using defaults:", e);
         root.data = _deepClone(_defaults);
         root.isLoaded = true;
         root.dataLoaded();
@@ -140,7 +134,7 @@ Singleton {
 
   // Write: Config.update("carousel.itemWidth", 450)
   function update(path, value) {
-    console.log("[npaper][I] Config.update called:", path, "=", value);
+    Logger.i("Config", "update:", path, "=", value);
     var parts = path.split(".");
     var obj = root.data;
     for (var i = 0; i < parts.length - 1; i++) {
@@ -148,15 +142,11 @@ Singleton {
         obj[parts[i]] = {};
       obj = obj[parts[i]];
     }
-    console.log("[npaper][I] Config.update setting", parts[parts.length - 1], "=", value);
     obj[parts[parts.length - 1]] = value;
-    console.log("[npaper][I] Config.update: data =", JSON.stringify(root.data).substring(0, 100));
     if (_saveTimer.running) {
       _saveTimer.restart();
-      console.log("[npaper][I] Config.update: restarting save timer");
     } else {
       _saveTimer.start();
-      console.log("[npaper][I] Config.update: starting save timer");
     }
   }
 
@@ -184,7 +174,7 @@ Singleton {
     onExited: function (code) {
       root._isSaving = false;
       if (code !== 0)
-        console.error("Config: write failed, exit code =", code);
+        Logger.w("Config", "Write failed, exit code =", code);
     }
   }
 

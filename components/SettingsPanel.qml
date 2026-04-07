@@ -23,6 +23,12 @@ Item {
   property bool showShadow: false
   property bool showBgPreview: false
 
+  // Animation properties
+  property int scrollDuration: 280
+  property int scrollContinueInterval: 230
+  property int bgSlideDuration: 250
+  property int bgParallaxFactor: 40
+
   signal closeRequested
   signal settingChanged(string key, variant value)
 
@@ -78,6 +84,7 @@ Item {
     Repeater {
       model: [
         { key: "layout", label: "Layout" },
+        { key: "animation", label: "Animation" },
         { key: "appearance", label: "Appearance" }
       ]
       delegate: MouseArea {
@@ -167,6 +174,52 @@ Item {
         max: 1.0
         step: 0.05
         onCommit: function (n) { root._emit(Style.cfgCarouselPerspective, n); }
+      }
+    }
+
+    // Animation tab
+    Column {
+      anchors.top: parent.top
+      anchors.left: parent.left
+      anchors.right: parent.right
+      spacing: Style.settingsContentSpacing
+      visible: root.activeTab === "animation"
+
+      SettingsInput {
+        width: parent.width
+        label: "Scroll Speed"
+        value: root.scrollDuration
+        min: 100
+        max: 500
+        step: 10
+        onCommit: function (n) { root._emit(Style.cfgScrollDuration, n); }
+      }
+      SettingsInput {
+        width: parent.width
+        label: "Scroll Continue"
+        value: root.scrollContinueInterval
+        min: 100
+        max: 400
+        step: 10
+        onCommit: function (n) { root._emit(Style.cfgScrollContinueInterval, n); }
+      }
+      SettingsInput {
+        width: parent.width
+        label: "Slide Duration"
+        value: root.bgSlideDuration
+        min: 100
+        max: 500
+        step: 10
+        onCommit: function (n) { root._emit(Style.cfgBgSlideDuration, n); }
+      }
+      SettingsInput {
+        width: parent.width
+        label: "Parallax"
+        value: root.bgParallaxFactor
+        min: 10
+        max: 80
+        step: 5
+        onCommit: function (n) { root._emit(Style.cfgBgParallaxFactor, n); }
       }
     }
 

@@ -42,9 +42,14 @@ PanelWindow {
   property real carouselRotation: Style.carouselRotation
   property real carouselPerspective: Style.carouselPerspective
   property real bgOverlayOpacity: Style.bgOverlayOpacity
-  property bool showBgPreview: true
-  property bool showBorderGlow: true
-  property bool showShadow: true
+  property bool showBgPreview: Config.data.appearance.showBgPreview
+  property bool showBorderGlow: Config.data.appearance.showBorderGlow
+  property bool showShadow: Config.data.appearance.showShadow
+
+  property int scrollDuration: Style.scrollDuration
+  property int scrollContinueInterval: Style.scrollContinueInterval
+  property int bgSlideDuration: Style.bgSlideDuration
+  property int bgParallaxFactor: Style.bgParallaxFactor
 
   property string searchText: ""
 
@@ -58,34 +63,8 @@ PanelWindow {
 
   Component.onCompleted: {
     Style.uiScaleRatio = screen.height / 1080;
-    _loadSettings();
     if (wallpaperModel)
       wallpaperModel.dataLoaded.connect(applyFolderSelection);
-  }
-
-  function _loadSettings() {
-    var vm = viewModel;
-    if (!vm) { console.log("[npaper][I] AppWindow _loadSettings skipped, viewModel is null"); return; }
-    console.log("[npaper][I] AppWindow _loadSettings: itemWidth =", vm.layout.carouselItemWidth,
-             "showBorderGlow =", vm.appearance.showBorderGlow);
-    carouselItemWidth   = vm.layout.carouselItemWidth;
-    carouselItemHeight  = vm.layout.carouselItemHeight;
-    carouselSpacing     = vm.layout.carouselSpacing;
-    carouselRotation    = vm.layout.carouselRotation;
-    carouselPerspective = vm.layout.carouselPerspective;
-    showBorderGlow      = vm.appearance.showBorderGlow;
-    showShadow          = vm.appearance.showShadow;
-    showBgPreview       = vm.appearance.showBgPreview;
-    bgOverlayOpacity    = vm.appearance.bgOverlayOpacity;
-  }
-
-  // Initial load: viewModel changes → _loadSettings
-  onViewModelChanged: { _loadSettings(); }
-
-  // Hot-reload: Config dataUpdated → SettingsBridge syncs viewModel
-  Connections {
-    target: Config
-    function onDataUpdated() { _loadSettings(); }
   }
 
   Connections {
@@ -522,9 +501,13 @@ PanelWindow {
     showBorderGlow: root.showBorderGlow
     showShadow: root.showShadow
     showBgPreview: root.showBgPreview
+    scrollDuration: root.scrollDuration
+    scrollContinueInterval: root.scrollContinueInterval
+    bgSlideDuration: root.bgSlideDuration
+    bgParallaxFactor: root.bgParallaxFactor
 
     onSettingChanged: function(key, val) {
-      console.log("[npaper][I] AppWindow Setting changed:", key, "=", val);
+      Logger.i("AppWindow", "Setting changed:", key, "=", val);
       // Map dot-paths to flat root property names for immediate UI update
       var propMap = {
         "carousel.itemWidth": "carouselItemWidth",
@@ -532,6 +515,10 @@ PanelWindow {
         "carousel.spacing": "carouselSpacing",
         "carousel.rotation": "carouselRotation",
         "carousel.perspective": "carouselPerspective",
+        "animation.scrollDuration": "scrollDuration",
+        "animation.scrollContinueInterval": "scrollContinueInterval",
+        "animation.bgSlideDuration": "bgSlideDuration",
+        "animation.bgParallaxFactor": "bgParallaxFactor",
         "appearance.showBorderGlow": "showBorderGlow",
         "appearance.showShadow": "showShadow",
         "appearance.showBgPreview": "showBgPreview",
