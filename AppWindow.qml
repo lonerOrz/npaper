@@ -337,7 +337,7 @@ PanelWindow {
         styleColor: Color.mScrim
       }
 
-      Keys.onPressed: event => {
+      Keys.onPressed: function(event) {
                         // ===== Escape: context-sensitive =====
                         if (event.key === Qt.Key_Escape) {
                           if (root.settingsOpen) {
@@ -350,9 +350,39 @@ PanelWindow {
                           return;
                         }
 
-                        // ===== Settings (S) =====
+                        // ===== Settings toggle (S) =====
                         if (event.key === Qt.Key_S && !event.modifiers) {
-                          root.settingsOpen = true;
+                          root.settingsOpen = !root.settingsOpen;
+                          if (root.settingsOpen) {
+                            settingsPanel.forceActiveFocus();
+                          } else {
+                            pathViewContainer.forceActiveFocus();
+                          }
+                          event.accepted = true;
+                          return;
+                        }
+
+                        // ===== Folder switching (Tab/Shift+Tab or [ / ]) =====
+                        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+                          const model = wallpaperModel;
+                          const fs = model && model.folders ? model.folders : [];
+                          const current = model && model.currentFolder ? model.currentFolder : "";
+                          
+                          if (fs.length > 0) {
+                            const idx = fs.indexOf(current);
+                            const nextIdx = event.key === Qt.Key_Tab 
+                              ? (idx < fs.length - 1 ? idx + 1 : 0)
+                              : (idx > 0 ? idx - 1 : fs.length - 1);
+                            switchFolder(fs[nextIdx]);
+                          } else {
+                            // No folders, toggle settings instead
+                            root.settingsOpen = !root.settingsOpen;
+                            if (root.settingsOpen) {
+                              settingsPanel.forceActiveFocus();
+                            } else {
+                              pathViewContainer.forceActiveFocus();
+                            }
+                          }
                           event.accepted = true;
                           return;
                         }
@@ -364,16 +394,6 @@ PanelWindow {
                           return;
                         }
 
-                        // ===== Folder switching (Tab/Shift+Tab or [ / ]) =====
-                        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-                          const fs = wallpaperModel ? wallpaperModel.folders : [];
-                          if (fs.length > 0) {
-                            const idx = fs.indexOf(wallpaperModel ? wallpaperModel.currentFolder : "");
-                            switchFolder(event.key === Qt.Key_Tab ? (idx < fs.length - 1 ? idx + 1 : 0) : (idx > 0 ? idx - 1 : fs.length - 1));
-                          }
-                          event.accepted = true;
-                          return;
-                        }
                         if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft) {
                           const fs = wallpaperModel ? wallpaperModel.folders : [];
                           if (fs.length > 0) {
@@ -429,7 +449,7 @@ PanelWindow {
                           return;
                         }
                       }
-      Keys.onReleased: event => {
+      Keys.onReleased: function(event) {
                          if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
                            const dir = (event.key === Qt.Key_Left) ? -1 : 1;
                            scrollController.handleKeyRelease(dir);
@@ -537,6 +557,31 @@ PanelWindow {
     onCloseRequested: {
       root.settingsOpen = false;
       pathViewContainer.forceActiveFocus();
+    }
+
+    onSwitchToNextFolder: {
+      const fs = wallpaperModel ? wallpaperModel.folders : [];
+      if (fs.length > 0) {
+        const idx = fs.indexOf(wallpaperModel ? wallpaperModel.currentFolder : "");
+        switchFolder(idx >= 0 && idx < fs.length - 1 ? fs[idx + 1] : fs[0]);
+      }
+    }
+
+    onSwitchToPrevFolder: {
+      const fs = wallpaperModel ? wallpaperModel.folders : [];
+      if (fs.length > 0) {
+        const idx = fs.indexOf(wallpaperModel ? wallpaperModel.currentFolder : "");
+        switchFolder(idx > 0 ? fs[idx - 1] : fs[fs.length - 1]);
+      }
+    }
+
+    onToggleSettings: {
+      root.settingsOpen = !root.settingsOpen;
+      if (root.settingsOpen) {
+        settingsPanel.forceActiveFocus();
+      } else {
+        pathViewContainer.forceActiveFocus();
+      }
     }
   }
 }

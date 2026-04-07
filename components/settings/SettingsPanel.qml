@@ -36,6 +36,9 @@ Item {
   property int bgParallaxFactor: 40
 
   signal closeRequested
+  signal switchToNextFolder
+  signal switchToPrevFolder
+  signal toggleSettings
   signal settingChanged(string key, variant value)
 
   function _emit(key, val) {
@@ -68,6 +71,20 @@ Item {
   }
 
   Keys.onEscapePressed: closeRequested()
+
+  Keys.onPressed: {
+    if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+      event.key === Qt.Key_Tab ? switchToNextFolder() : switchToPrevFolder();
+      event.accepted = true;
+      return;
+    }
+    if (event.key === Qt.Key_S && !event.modifiers) {
+      toggleSettings();
+      event.accepted = true;
+      return;
+    }
+  }
+
   focus: settingsOpen
 
   // ── Background ───────────────────────────────────────────
