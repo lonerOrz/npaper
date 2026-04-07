@@ -35,11 +35,13 @@ Item {
   signal cacheRefreshed
   signal thumbnailGenerated(string path, string thumbPath, string bgPath, string animPath)
 
+  // ── Cache directory creation ──────────────────────────────
   Process {
     id: createCacheDirProcess
     command: ["mkdir", "-p", root.cacheDir]
   }
 
+  // ── Cache scanning ────────────────────────────────────────
   Process {
     id: scanCacheProcess
     command: ["sh", "-c", `find "${root.cacheDir}" -mindepth 2 -maxdepth 2 \\( -name '*.png' -o -name '*_anim.gif' \\) -printf '%P\\n' 2>/dev/null`]
@@ -47,8 +49,8 @@ Item {
       onStreamFinished: {
         const files = text.trim().split('\n').filter(f => f.length > 0 && f.indexOf('/') > 0);
         files.forEach(f => {
-                        root.thumbHashToPath[f] = root.cacheDir + '/' + f;
-                      });
+          root.thumbHashToPath[f] = root.cacheDir + '/' + f;
+        });
         root.cachedFileCount = files.length;
         root.thumbCacheVersion++;
         if (root.debugMode)
@@ -58,125 +60,167 @@ Item {
     }
   }
 
+  // ── Cache cleanup ─────────────────────────────────────────
   Process {
     id: cleanupCacheProcess
     command: ["rm", "-f"]
-    onExited: function (exitCode, exitStatus) {
+    onExited: function (exitCode) {
       if (root.debugMode)
         Logger.d("Cleanup:", exitCode === 0 ? "OK" : "Failed");
       root.cacheRefreshed();
     }
   }
 
+  // ── Worker component ──────────────────────────────────────
   Component {
     id: thumbWorkerComponent
     Process {
+      // ── Per-worker state ──
       property int _workerId: 0
-      property string _targetPath: ""
-      property string _thumbPath: ""
-      property string _bgPath: ""
-      property string _animPath: ""
-      property string _folder: ""
-      property var _ssArgs: []
-      property int _step: 0
-      property bool _needAnim: false
+      property string _path: ""       // source wallpaper path
+      property string _thumbPath: ""  // output thumbnail
+      property string _bgPath: ""     // output background preview
+      property string _animPath: ""   // output animated gif
+      property string _folder: ""     // folder name for cache keys
+      property var _ssArgs: []        // ffmpeg seek args for video
+      property int _step: 0           // current step index
       property bool busy: false
 
-      function runNext() {
+      // ── Step definitions (declarative) ──
+      // Each step returns a command array or null (skip)
+      function _buildCommand(step) {
         const tw = root.thumbWidth;
         const th = root.thumbHeight;
         const bw = root.bgWidth;
         const bh = root.bgHeight;
-        if (_step === 0) {
-          if (_needAnim) {
-            command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-vframes", "1", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-q:v", "5", _thumbPath];
-          } else {
-            command = ["ffmpeg", "-y", "-i", _targetPath, "-vframes", "1", "-filter_complex", `[0:v]split=2[a][b];[a]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}[thumb];[b]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}[bg]`, "-map", "[thumb]", "-q:v", "5", "-update", "1", _thumbPath, "-map", "[bg]", "-q:v", "2",
-                       _bgPath];
-          }
-        } else if (_step === 1 && _needAnim) {
-          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-r", "30", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-t", "10", _animPath];
+        const target = _path;
+
+        if (!_path) return [];  // idle
+
+        if (!_needAnim()) {
+          // Static image: single ffmpeg with split filter (thumb + bg)
+          return step === 0 ? [
+            "ffmpeg", "-y", "-i", target, "-vframes", "1",
+            "-filter_complex",
+            `[0:v]split=2[a][b];[a]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}[thumb];[b]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}[bg]`,
+            "-map", "[thumb]", "-q:v", "5", "-update", "1", _thumbPath,
+            "-map", "[bg]", "-q:v", "2", _bgPath
+          ] : [];
         }
-        if (command.length > 0) {
-          exec({});
+
+        // Animated: multi-step
+        switch (step) {
+        case 0: // thumbnail frame
+          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-vframes", "1",
+                  "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`,
+                  "-q:v", "5", _thumbPath];
+        case 1: // background frame
+          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-vframes", "1",
+                  "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`,
+                  "-q:v", "2", _bgPath];
+        case 2: // animated gif
+          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-r", "30",
+                  "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`,
+                  "-t", "10", _animPath];
+        default:
+          return [];
         }
       }
 
-      onExited: function (exitCode, exitStatus) {
-        root.thumbnailJobRunning = Math.max(0, root.thumbnailJobRunning - 1);
+      function _needAnim() {
+        return _animPath !== "";
+      }
 
+      function _totalSteps() {
+        return _needAnim() ? 3 : 1;
+      }
+
+      // ── Run current step ──
+      function runNext() {
+        if (_step >= _totalSteps()) {
+          _finish();
+          return;
+        }
+        command = _buildCommand(_step);
+        if (command.length > 0) {
+          exec({});
+        } else {
+          _step++;
+          runNext();  // skip empty step
+        }
+      }
+
+      // ── Step completed ──
+      onExited: function (exitCode, exitStatus) {
         if (exitCode !== 0) {
           if (root.debugMode)
-            Logger.d("Failed:", _targetPath, "exitCode:", exitCode);
-          busy = false;
-          const failedPath = _targetPath;
-          _targetPath = "";
-          _thumbPath = "";
-          _bgPath = "";
-          _animPath = "";
-          _folder = "";
-          _ssArgs = [];
-          _step = 0;
-          _needAnim = false;
-          delete root.queuedSet[failedPath];
+            Logger.d("Worker", _workerId, "failed at step", _step, ":", _path, "code:", exitCode);
+          _reset();
           root.processQueue();
           return;
         }
 
         _step++;
-
-        if (_step === 1 && _needAnim) {
-          busy = true;
-          root.thumbnailJobRunning++;
-          const bw = root.bgWidth;
-          const bh = root.bgHeight;
-          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-vframes", "1", "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`, "-q:v", "2", _bgPath];
-          exec({});
-          return;
+        if (_step >= _totalSteps()) {
+          _finish();
+        } else {
+          runNext();
         }
+      }
 
-        if (_step === 2 && _needAnim) {
-          busy = true;
-          root.thumbnailJobRunning++;
-          const tw = root.thumbWidth;
-          const th = root.thumbHeight;
-          command = ["ffmpeg", "-y", ..._ssArgs, "-i", _targetPath, "-r", "30", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-t", "10", _animPath];
-          exec({});
-          return;
-        }
-
-        root.thumbnailGenerated(_targetPath, _thumbPath, _bgPath, _animPath);
+      // ── All steps done ──
+      function _finish() {
+        root.thumbnailGenerated(_path, _thumbPath, _bgPath, _animPath);
 
         if (_thumbPath) {
-          root.thumbHashToPath[_folder + '/' + HashUtils.getThumbnailHash(_targetPath) + '.png'] = _thumbPath;
+          root.thumbHashToPath[_folder + '/' + HashUtils.getThumbnailHash(_path) + '.png'] = _thumbPath;
         }
         if (_bgPath) {
-          root.thumbHashToPath[_folder + '/' + HashUtils.getThumbnailHash(_targetPath) + '_bg.png'] = _bgPath;
+          root.thumbHashToPath[_folder + '/' + HashUtils.getThumbnailHash(_path) + '_bg.png'] = _bgPath;
         }
         if (_animPath) {
-          root.thumbHashToPath[_folder + '/' + HashUtils.getThumbnailHash(_targetPath) + '_anim.gif'] = _animPath;
+          root.thumbHashToPath[_folder + '/' + HashUtils.getThumbnailHash(_path) + '_anim.gif'] = _animPath;
         }
         root.thumbCacheVersion++;
         root.cachedFileCount++;
 
+        _reset();
+        root.processQueue();
+      }
+
+      // ── Reset worker state ──
+      function _reset() {
+        root.thumbnailJobRunning = Math.max(0, root.thumbnailJobRunning - 1);
         busy = false;
-        const completedPath = _targetPath;
-        _targetPath = "";
+        delete root.queuedSet[_path];
+        _path = "";
         _thumbPath = "";
         _bgPath = "";
         _animPath = "";
         _folder = "";
         _ssArgs = [];
         _step = 0;
-        _needAnim = false;
-        delete root.queuedSet[completedPath];
-        root.processQueue();
+      }
+
+      // ── Initialize with item data ──
+      function setup(item) {
+        _path = item.path;
+        _thumbPath = item.thumbPath;
+        _bgPath = item.bgPath;
+        _animPath = item.animPath;
+        _folder = item.folder;
+        _ssArgs = item.isVideo ? ["-ss", "00:00:01"] : [];
+        _step = 0;
+        busy = true;
+        root.thumbnailJobRunning++;
       }
     }
   }
 
+  // ── Public API ────────────────────────────────────────────
+
   function initialize() {
-    if (root.thumbnailWorkers && root.thumbnailWorkers.length > 0) {
+    if (root.thumbnailWorkers.length > 0) {
       Logger.d("CacheService already initialized");
       return;
     }
@@ -187,9 +231,7 @@ Item {
   function initWorkers() {
     var workers = [];
     for (let i = 0; i < root.thumbnailConcurrency; i++) {
-      workers.push(thumbWorkerComponent.createObject(root, {
-                                                       _workerId: i
-                                                     }));
+      workers.push(thumbWorkerComponent.createObject(root, { _workerId: i }));
     }
     root.thumbnailWorkers = workers;
     if (root.debugMode)
@@ -206,19 +248,19 @@ Item {
 
     const validKeys = {};
     wallpaperList.forEach(path => {
-                            const hash = HashUtils.getThumbnailHash(path);
-                            validKeys[folder + '/' + hash + '.png'] = true;
-                            validKeys[folder + '/' + hash + '_bg.png'] = true;
-                            validKeys[folder + '/' + hash + '_anim.gif'] = true;
-                          });
+      const hash = HashUtils.getThumbnailHash(path);
+      validKeys[folder + '/' + hash + '.png'] = true;
+      validKeys[folder + '/' + hash + '_bg.png'] = true;
+      validKeys[folder + '/' + hash + '_anim.gif'] = true;
+    });
 
     const invalidFiles = [];
     Object.keys(root.thumbHashToPath).forEach(key => {
-                                                if (key.startsWith(folder + '/') && !validKeys[key]) {
-                                                  invalidFiles.push(root.thumbHashToPath[key]);
-                                                  delete root.thumbHashToPath[key];
-                                                }
-                                              });
+      if (key.startsWith(folder + '/') && !validKeys[key]) {
+        invalidFiles.push(root.thumbHashToPath[key]);
+        delete root.thumbHashToPath[key];
+      }
+    });
 
     if (invalidFiles.length > 0) {
       root.cachedFileCount = Math.max(0, root.cachedFileCount - invalidFiles.length);
@@ -232,8 +274,8 @@ Item {
     }
 
     wallpaperList.forEach(path => {
-                            queueThumbnail(path, FileTypes.isVideoFile(path), FileTypes.isGifFile(path));
-                          });
+      queueThumbnail(path, FileTypes.isVideoFile(path), FileTypes.isGifFile(path));
+    });
     if (root.debugMode)
       Logger.d("Queue length:", root.queueLength);
   }
@@ -260,11 +302,11 @@ Item {
 
     root.queuedSet[wallpaperPath] = true;
     root.thumbnailQueue.push({
-                               path: wallpaperPath,
-                               hash: HashUtils.getThumbnailHash(wallpaperPath),
-                               isVideo: isVideo,
-                               isGif: isGif
-                             });
+      path: wallpaperPath,
+      hash: HashUtils.getThumbnailHash(wallpaperPath),
+      isVideo: isVideo,
+      isGif: isGif
+    });
     root.queueLength = root.thumbnailQueue.length;
 
     processQueue();
@@ -279,6 +321,7 @@ Item {
     while (root.thumbnailJobRunning < root.thumbnailConcurrency && root.thumbnailQueue.length > 0) {
       const item = root.thumbnailQueue.shift();
       root.queueLength = root.thumbnailQueue.length;
+
       const folder = CacheHelpers.getFolderName(item.path);
       const thumbPath = CacheHelpers.getThumbnailPath(root.cacheDir, item.path);
       const hash = HashUtils.getThumbnailHash(item.path);
@@ -288,16 +331,15 @@ Item {
       for (let i = 0; i < root.thumbnailWorkers.length; i++) {
         const worker = root.thumbnailWorkers[i];
         if (worker && !worker.busy) {
-          worker.busy = true;
-          worker._targetPath = item.path;
-          worker._thumbPath = thumbPath;
-          worker._bgPath = bgPath;
-          worker._animPath = animPath;
-          worker._folder = folder;
-          worker._ssArgs = item.isVideo ? ["-ss", "00:00:01"] : [];
-          worker._needAnim = item.isVideo || item.isGif;
-          worker._step = 0;
-          root.thumbnailJobRunning++;
+          worker.setup({
+            path: item.path,
+            thumbPath: thumbPath,
+            bgPath: bgPath,
+            animPath: item.isVideo || item.isGif ? animPath : "",
+            folder: folder,
+            isVideo: item.isVideo,
+            isGif: item.isGif
+          });
           worker.runNext();
           break;
         }
