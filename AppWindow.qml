@@ -7,7 +7,10 @@ import Quickshell.Io
 import Quickshell.Wayland
 import "utils/CacheUtils.js" as CacheUtils
 import "utils/FileTypes.js" as FileTypes
-import qs.components
+import qs.components.common
+import qs.components.wallpaper
+import qs.components.bar
+import qs.components.settings
 import qs.services
 
 PanelWindow {

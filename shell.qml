@@ -3,7 +3,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import qs.components
+import qs.components.settings
+import qs.components.wallpaper
 import qs.models
 import qs.services
 

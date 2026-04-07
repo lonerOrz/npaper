@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import qs.services
+import qs.components.settings
 
 /*
  * SettingsPanel — mirrors values from AppWindow, writes back to AppWindow.

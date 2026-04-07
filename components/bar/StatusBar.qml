@@ -3,6 +3,8 @@ import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
 import qs.services
+import qs.components.wallpaper
+import qs.components.bar
 
 Item {
   id: root
@@ -54,7 +56,7 @@ Item {
       Layout.preferredWidth: Style.barLogoSize
       Layout.preferredHeight: Style.barLogoSize
       Layout.alignment: Qt.AlignVCenter
-      source: Qt.resolvedUrl("../assets/nixos-logo.svg")
+      source: Qt.resolvedUrl("../../assets/nixos-logo.svg")
       sourceSize.width: Style.barLogoSize
       sourceSize.height: Style.barLogoSize
       fillMode: Image.PreserveAspectFit

@@ -1,5 +1,5 @@
 import QtQuick
-import "../utils/CacheUtils.js" as CacheUtils
+import "../../utils/CacheUtils.js" as CacheUtils
 import qs.services
 
 Item {
@@ -73,7 +73,7 @@ Item {
       running: root.isCenter && root.showBorderGlow
     }
 
-    fragmentShader: Qt.resolvedUrl("../shaders/borderGlow.frag.qsb")
+    fragmentShader: Qt.resolvedUrl("../../shaders/borderGlow.frag.qsb")
   }
 
   Rectangle {
