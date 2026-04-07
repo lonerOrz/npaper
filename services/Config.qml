@@ -12,8 +12,8 @@ import Quickshell.Io
 *   2. Read config.json via Process → deepMerge into data
 *   3. UI reads:  Config.data.carousel.itemWidth
 *   4. UI writes: Config.update("carousel.itemWidth", 450) → modifies data → debounced save
-*   5. Hot-reload: FileView watches config.json → re-read → merge → dataUpdated
-*/
+*   5. Hot-reload: FileView watches config.json → re-read → merge → QML bindings auto-update
+*   */
 Singleton {
   id: root
 
