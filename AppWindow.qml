@@ -306,7 +306,7 @@ PanelWindow {
               opacity: abs > 6 ? 0 : Math.pow(Math.max(0, 1 - abs * 0.12), 2.5),
               rotationY: metrics.raw * -root.carouselRotation,
               z: 100 - abs * 50,
-              spacingFactor: 0.55 + metrics.cos * 0.30,
+              spacingFactor: 0.85 - metrics.abs * 0.06,
               yOffset: abs * 8,
               shadowOpacity: abs < 0.6 ? 0.25 : 0
             };

@@ -33,7 +33,7 @@ Singleton {
                                         "itemWidth": 400,
                                         "itemHeight": 280,
                                         "spacing": 20,
-                                        "rotation": 22,
+                                        "rotation": 25,
                                         "perspective": 0.3
                                       },
                                       "animation": {
