@@ -152,7 +152,9 @@ Item {
 
       Connections {
         target: root
-        function onActiveFolderChanged() { Qt.callLater(folderTabs._updatePill); }
+        function onActiveFolderChanged() {
+          Qt.callLater(folderTabs._updatePill);
+        }
       }
 
       // Sliding capsule indicator
@@ -218,7 +220,8 @@ Item {
             onClicked: root.folderClicked(modelData)
 
             Component.onCompleted: {
-              if (isActive) Qt.callLater(folderTabs._updatePill);
+              if (isActive)
+                Qt.callLater(folderTabs._updatePill);
             }
           }
         }

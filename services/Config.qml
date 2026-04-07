@@ -117,7 +117,7 @@ Singleton {
 
     onFileChanged: {
       if (root._isSaving)
-        return;
+      return;
       _readConfig();
     }
   }

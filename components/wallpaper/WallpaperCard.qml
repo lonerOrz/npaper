@@ -1,4 +1,6 @@
 import QtQuick
+import QtQuick.Effects
+import QtQuick.Shapes
 import "../../utils/CacheUtils.js" as CacheUtils
 import qs.services
 
@@ -28,12 +30,21 @@ Item {
 
   signal clicked(string path)
 
+  property bool _isHovered: false
+
   width: itemWidth
   height: itemHeight
-  scale: visualScale
+  scale: visualScale * (_isHovered ? 1.02 : 1.0)
   opacity: visualOpacity
-  z: visualZ
+  z: visualZ + (_isHovered ? 10 : 0)
   transformOrigin: Item.Center
+
+  Behavior on scale {
+    NumberAnimation {
+      duration: Style.animFast
+      easing.type: Easing.OutCubic
+    }
+  }
 
   transform: Rotation {
     axis {
@@ -46,25 +57,266 @@ Item {
     origin.y: height / 2
   }
 
-  Rectangle {
-    anchors.fill: parent
-    anchors.margins: Style.cardInnerPadding
-    anchors.topMargin: Style.cardTopPadding
-    radius: itemRadius
-    color: Color.mScrim
-    opacity: root.showShadow && visualShadowOpacity > 0 ? visualShadowOpacity : 0
-    z: -1
+  // ── Rounded rect mask ──────────────────────────────────────
+  Item {
+    id: roundMask
+    width: itemWidth
+    height: itemHeight
+    visible: false
+    layer.enabled: true
+
+    Shape {
+      anchors.fill: parent
+      antialiasing: true
+      preferredRendererType: Shape.CurveRenderer
+      ShapePath {
+        fillColor: "white"
+        strokeColor: "transparent"
+        strokeWidth: 0
+        startX: root.itemRadius
+        startY: 0
+        PathLine {
+          x: root.itemWidth - root.itemRadius
+          y: 0
+        }
+        PathArc {
+          x: root.itemWidth
+          y: root.itemRadius
+          radiusX: root.itemRadius
+          radiusY: root.itemRadius
+        }
+        PathLine {
+          x: root.itemWidth
+          y: root.itemHeight - root.itemRadius
+        }
+        PathArc {
+          x: root.itemWidth - root.itemRadius
+          y: root.itemHeight
+          radiusX: root.itemRadius
+          radiusY: root.itemRadius
+        }
+        PathLine {
+          x: root.itemRadius
+          y: root.itemHeight
+        }
+        PathArc {
+          x: 0
+          y: root.itemHeight - root.itemRadius
+          radiusX: root.itemRadius
+          radiusY: root.itemRadius
+        }
+        PathLine {
+          x: 0
+          y: root.itemRadius
+        }
+        PathArc {
+          x: root.itemRadius
+          y: 0
+          radiusX: root.itemRadius
+          radiusY: root.itemRadius
+        }
+      }
+    }
   }
 
+  // ── Shadow (sibling, NO transform) ─────────────────────────
+  Rectangle {
+    id: shadowItem
+    anchors.fill: parent
+    radius: itemRadius
+    color: Color.mShadow
+    opacity: root.showShadow ? visualShadowOpacity : 0
+    z: -1
+    x: Style.spaceXS
+    y: Style.spaceS
+    visible: root.showShadow && visualShadowOpacity > 0
+  }
+
+  // ── Card content (clipped via MultiEffect mask) ────────────
+  Item {
+    id: cardContent
+    anchors.fill: parent
+    visible: visualOpacity > 0.01
+    layer.enabled: true
+    layer.smooth: true
+    layer.effect: MultiEffect {
+      maskEnabled: true
+      maskSource: roundMask
+      maskThresholdMin: 0.3
+      maskSpreadAtMin: 0.3
+    }
+
+    Rectangle {
+      anchors.fill: parent
+      color: {
+        if (root.isCenter)
+          return "transparent";
+        if (root._isHovered)
+          return Qt.rgba(0, 0, 0, 0.15);
+        return Qt.rgba(0, 0, 0, 0.4);
+      }
+      Behavior on color {
+        ColorAnimation {
+          duration: Style.animNormal
+        }
+      }
+    }
+
+    Image {
+      id: staticImage
+      anchors.fill: parent
+      source: {
+        const path = root.wallpaperPath;
+        if (!path || path.length === 0 || path.endsWith('/'))
+          return "";
+        if ((root.isGif || root.isVideo) && root.isCenter && animatedGif.status === AnimatedImage.Ready && animatedGif.visible)
+          return "";
+        const thumb = CacheUtils.getCachedThumb(root.thumbHashToPath, path);
+        return thumb ? "file://" + thumb : ("file://" + path);
+      }
+      fillMode: Image.PreserveAspectCrop
+      asynchronous: true
+      smooth: root.isCenter
+      mipmap: true
+      sourceSize: Qt.size(root.itemWidth, root.itemHeight)
+      opacity: status === Image.Ready ? 1.0 : 0.0
+      Behavior on opacity {
+        NumberAnimation {
+          duration: Style.animFast
+        }
+      }
+    }
+
+    AnimatedImage {
+      id: animatedGif
+      anchors.fill: parent
+      visible: (root.isGif || root.isVideo) && root.isCenter
+      source: {
+        const c = CacheUtils.getCachedAnimatedGif(root.thumbHashToPath, root.wallpaperPath);
+        return c ? "file://" + c : "";
+      }
+      fillMode: Image.PreserveAspectCrop
+      asynchronous: true
+      smooth: true
+      mipmap: true
+      playing: visible
+      sourceSize: Qt.size(root.itemWidth, root.itemHeight)
+    }
+
+    Item {
+      anchors.bottom: parent.bottom
+      anchors.left: parent.left
+      anchors.right: parent.right
+      height: Style.cardLabelHeight + Style.spaceM * 2
+      Rectangle {
+        anchors.fill: parent
+        gradient: Gradient {
+          GradientStop {
+            position: 0.0
+            color: "transparent"
+          }
+          GradientStop {
+            position: 0.3
+            color: Qt.rgba(0, 0, 0, 0.05)
+          }
+          GradientStop {
+            position: 1.0
+            color: Qt.rgba(0, 0, 0, 0.55)
+          }
+        }
+      }
+      Text {
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Style.spaceM
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: Style.cardLabelMargins
+        text: root.filename
+        color: Color.mInverseSurface
+        font.pixelSize: Style.cardLabelFontSize
+        font.weight: Font.Medium
+        elide: Text.ElideMiddle
+        horizontalAlignment: Text.AlignHCenter
+      }
+    }
+  }
+
+  // ── Border (on top, NOT clipped) ───────────────────────────
+  Shape {
+    anchors.fill: parent
+    antialiasing: true
+    preferredRendererType: Shape.CurveRenderer
+    visible: !(root.isCenter && root.showBorderGlow)
+
+    ShapePath {
+      fillColor: "transparent"
+      strokeColor: {
+        if (root.isCenter)
+          return Color.mPrimary;
+        if (root._isHovered)
+          return Color.mPrimaryContainer;
+        return "transparent";
+      }
+      Behavior on strokeColor {
+        ColorAnimation {
+          duration: Style.animFast
+        }
+      }
+      strokeWidth: root.isCenter ? Style.borderM : (root._isHovered ? Style.borderS : 0)
+      startX: root.itemRadius
+      startY: 0
+      PathLine {
+        x: root.itemWidth - root.itemRadius
+        y: 0
+      }
+      PathArc {
+        x: root.itemWidth
+        y: root.itemRadius
+        radiusX: root.itemRadius
+        radiusY: root.itemRadius
+      }
+      PathLine {
+        x: root.itemWidth
+        y: root.itemHeight - root.itemRadius
+      }
+      PathArc {
+        x: root.itemWidth - root.itemRadius
+        y: root.itemHeight
+        radiusX: root.itemRadius
+        radiusY: root.itemRadius
+      }
+      PathLine {
+        x: root.itemRadius
+        y: root.itemHeight
+      }
+      PathArc {
+        x: 0
+        y: root.itemHeight - root.itemRadius
+        radiusX: root.itemRadius
+        radiusY: root.itemRadius
+      }
+      PathLine {
+        x: 0
+        y: root.itemRadius
+      }
+      PathArc {
+        x: root.itemRadius
+        y: 0
+        radiusX: root.itemRadius
+        radiusY: root.itemRadius
+      }
+    }
+  }
+
+  // ── Glow shader ────────────────────────────────────────────
   ShaderEffect {
     anchors.fill: parent
-    z: 4
+    z: 5
     visible: root.isCenter && root.showBorderGlow
     property real time: 0
     property real innerWidth: width
     property real innerHeight: height
     property real innerRadius: itemRadius
-
     NumberAnimation on time {
       from: 0
       to: 1000
@@ -72,112 +324,13 @@ Item {
       loops: Animation.Infinite
       running: root.isCenter && root.showBorderGlow
     }
-
     fragmentShader: Qt.resolvedUrl("../../shaders/borderGlow.frag.qsb")
   }
 
-  Rectangle {
-    id: cardFrame
+  MouseArea {
     anchors.fill: parent
-    anchors.margins: Style.cardInnerPadding
-    color: "transparent"
-    radius: itemRadius
-    border.color: (root.isCenter && !root.showBorderGlow) ? Color.mPrimary : "transparent"
-    border.width: Style.borderM
-
-    Rectangle {
-      id: imageFrame
-      anchors.fill: parent
-      anchors.margins: Style.cardImageFrameMargin
-      radius: Style.radiusS
-      color: Color.mSurfaceContainerLowest
-      opacity: Style.cardImageFrameOpacity
-      clip: true
-      layer.enabled: true
-      layer.smooth: true
-      layer.mipmap: true
-
-      Item {
-        anchors.fill: parent
-        anchors.margins: root.isCenter ? Math.ceil(imageFrame.radius * 0.3) : 0
-
-        Rectangle {
-          anchors.fill: parent
-          color: Color.mSurfaceContainerLow
-          visible: !root.isVideo && !root.isGif && staticImage.status !== Image.Ready && animatedGif.status !== AnimatedImage.Ready
-        }
-
-        AnimatedImage {
-          id: animatedGif
-          anchors.fill: parent
-          visible: (root.isGif || root.isVideo) && root.isCenter
-          source: {
-            const cached = CacheUtils.getCachedAnimatedGif(root.thumbHashToPath, root.wallpaperPath);
-            return cached ? "file://" + cached : "";
-          }
-          fillMode: Image.PreserveAspectCrop
-          asynchronous: true
-          smooth: true
-          mipmap: true
-          playing: visible
-          sourceSize: Qt.size(root.itemWidth, root.itemHeight)
-        }
-
-        Image {
-          id: staticImage
-          anchors.fill: parent
-          source: {
-            const path = root.wallpaperPath;
-            if (!path || path.length === 0 || path.endsWith('/'))
-              return "";
-            if ((root.isGif || root.isVideo) && root.isCenter && animatedGif.status === AnimatedImage.Ready && animatedGif.visible)
-              return "";
-            const thumb = CacheUtils.getCachedThumb(root.thumbHashToPath, path);
-            if (thumb)
-              return "file://" + thumb;
-            if (root.isVideo)
-              return "";
-            return "file://" + path;
-          }
-          fillMode: Image.PreserveAspectCrop
-          asynchronous: true
-          smooth: root.isCenter
-          mipmap: true
-          opacity: status === Image.Ready ? 1 : 0
-          sourceSize: Qt.size(root.itemWidth, root.itemHeight)
-        }
-
-        Text {
-          anchors.centerIn: parent
-          text: "🎬"
-          font.pixelSize: Style.cardVideoIconSize
-          visible: (root.isVideo || root.isGif) && !root.isCenter && staticImage.status !== Image.Ready
-        }
-
-        MouseArea {
-          anchors.fill: parent
-          hoverEnabled: true
-          onClicked: root.clicked(root.wallpaperPath)
-        }
-      }
-
-      Rectangle {
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.margins: Style.cardLabelMargins
-        height: Style.cardLabelHeight
-        color: "transparent"
-
-        Text {
-          anchors.centerIn: parent
-          text: root.filename
-          color: Color.mInverseSurface
-          font.pixelSize: Style.cardLabelFontSize
-          font.weight: Font.Medium
-          elide: Text.ElideMiddle
-        }
-      }
-    }
+    hoverEnabled: true
+    onContainsMouseChanged: root._isHovered = containsMouse
+    onClicked: root.clicked(root.wallpaperPath)
   }
 }

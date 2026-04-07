@@ -2,11 +2,11 @@ import QtQuick
 import qs.services
 
 /*
- * FolderTabs — folder switching tabs with capsule indicator.
- *
- * The active tab is highlighted by a rounded pill that slides
- * between tabs with an elastic OutBack bounce animation.
- */
+* FolderTabs — folder switching tabs with capsule indicator.
+*
+* The active tab is highlighted by a rounded pill that slides
+* between tabs with an elastic OutBack bounce animation.
+*/
 Item {
   id: root
 
@@ -24,7 +24,9 @@ Item {
 
   Connections {
     target: root
-    function onActiveFolderChanged() { tabsRow.updatePill(); }
+    function onActiveFolderChanged() {
+      tabsRow.updatePill();
+    }
   }
 
   // ── Capsule indicator with elastic bounce ──────────────────
