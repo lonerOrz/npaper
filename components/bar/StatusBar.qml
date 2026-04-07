@@ -91,6 +91,7 @@ Item {
         onTextChanged: root.searchInputChanged(text)
         color: Color.mOnSurface
         font.pixelSize: Style.barSearchInputFontSize
+        verticalAlignment: TextInput.AlignVCenter
         cursorVisible: activeFocus
         selectByMouse: true
         property real baseWidth: Style.barSearchWidthBase

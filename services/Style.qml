@@ -126,6 +126,9 @@ Singleton {
   readonly property real cardShadowOpacity: 0.25
   readonly property real cardImageFrameOpacity: 0.9
 
+  // Filter Panel
+  readonly property int filterFlowWidth: _s(900)
+
   // Settings Panel
   readonly property int settingsWidth: _s(380)
   readonly property int settingsMaxHeight: _s(320)

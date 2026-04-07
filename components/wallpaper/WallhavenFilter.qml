@@ -1,11 +1,13 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import qs.components.common
 import qs.services
 
 /*
- * WallhavenFilter — Filter bar overlay (similar to SettingsPanel).
- * Opens upward from the status bar when Wallhaven mode is active.
+ * WallhavenFilter — Staggered filter panel (npaper pill style).
+ * Each filter group is an independent pill bar, arranged in a
+ * natural flow layout with horizontal stagger.
  */
 Item {
   id: root
@@ -23,10 +25,13 @@ Item {
       _initialSearchDone = true;
       root.whService.search(1);
     }
+    if (filterVisible)
+      root.visible = true;
+    _animTarget = filterVisible ? 1.0 : 0.0;
+    _anim.restart();
   }
 
   function _triggerSearch() {
-    // Prevent rapid-fire requests (500ms cooldown)
     var now = new Date().getTime();
     if (now - root._lastSearchMs < 500)
       return;
@@ -35,10 +40,27 @@ Item {
       root.whService.search(1);
   }
 
-  // Simple show/hide — no animation for now
-  visible: filterVisible
-  width: filterRow.implicitWidth + Style.spaceXXXL * 2
-  height: Style.barSearchHeight + Style.spaceS
+  // ── Animated open/close ─────────────────────────────────
+  z: 998
+  width: Style.filterFlowWidth
+  clip: true
+
+  property real _animTarget: 0.0
+  property real _animProgress: 0.0
+  height: (filterFlow.implicitHeight + Style.spaceL) * _animProgress
+
+  NumberAnimation {
+    id: _anim
+    target: root
+    properties: "_animProgress"
+    from: _animProgress
+    to: _animTarget
+    duration: filterVisible ? Style.animNormal : Style.animFast
+    easing.type: Style.easingOutCubic
+    onFinished: root.visible = _animProgress > 0.01
+  }
+
+  Component.onCompleted: visible = filterVisible
 
   // ── Background ──────────────────────────────────────────
   Rectangle {
@@ -47,222 +69,83 @@ Item {
     color: Color.mSurfaceContainerLowest
   }
 
-  RowLayout {
-    id: filterRow
-    anchors.verticalCenter: parent.verticalCenter
-    anchors.horizontalCenter: parent.horizontalCenter
-    spacing: Style.spaceS
+  // ── Flow Layout: groups stagger naturally ───────────────
+  Flow {
+    id: filterFlow
+    x: (parent.width - implicitWidth) / 2
+    anchors.top: parent.top
+    anchors.topMargin: Style.spaceM
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.margins: Style.spaceM
+    spacing: Style.spaceM
+    layoutDirection: Qt.LeftToRight
 
-    // Categories
-    Text {
-      Layout.alignment: Qt.AlignVCenter
-      text: "CAT"
-      font.pixelSize: Style.fontXXS
-      font.weight: Font.Bold
-      color: Color.mOutline
+    // ── Group: Categories ─────────────────────────────────
+    FilterGroup { label: "CAT"
+      FilterPill { label: "General";  active: root.whService && root.whService.categories[0] === "1"; onClicked: { _toggleBit(root.whService, "categories", 0); root._triggerSearch(); } }
+      FilterPill { label: "Anime";    active: root.whService && root.whService.categories[1] === "1"; onClicked: { _toggleBit(root.whService, "categories", 1); root._triggerSearch(); } }
+      FilterPill { label: "People";   active: root.whService && root.whService.categories[2] === "1"; onClicked: { _toggleBit(root.whService, "categories", 2); root._triggerSearch(); } }
     }
 
-    Repeater {
-      model: ["General", "Anime", "People"]
-      delegate: MouseArea {
-        width: filterText.implicitWidth + Style.spaceXXXL
-        height: Style.barSearchHeight
-        cursorShape: Qt.PointingHandCursor
-        property int bit: index
-        property bool active: root.whService && root.whService.categories[bit] === "1"
+    // ── Group: Purity ─────────────────────────────────────
+    FilterGroup { label: "PUR"
+      FilterPill { label: "SFW";     active: root.whService && root.whService.purity[0] === "1"; onClicked: { _toggleBit(root.whService, "purity", 0); root._triggerSearch(); } }
+      FilterPill { label: "Sketchy"; active: root.whService && root.whService.purity[1] === "1"; onClicked: { _toggleBit(root.whService, "purity", 1); root._triggerSearch(); } }
+      FilterPill { label: "NSFW";    active: root.whService && root.whService.purity[2] === "1"; onClicked: { _toggleBit(root.whService, "purity", 2); root._triggerSearch(); } }
+    }
 
-        Rectangle {
-          anchors.fill: parent
-          radius: height / 2
-          color: parent.active ? Color.mPrimary : Color.mSurfaceContainer
-          Behavior on color { ColorAnimation { duration: Style.animFast } }
-        }
+    // ── Group: Sort ───────────────────────────────────────
+    FilterGroup { label: "SORT"
+      FilterPill { label: "Top";    active: root.whService && root.whService.sorting === "toplist";    onClicked: { if (root.whService) root.whService.sorting = "toplist";    root._triggerSearch(); } }
+      FilterPill { label: "New";    active: root.whService && root.whService.sorting === "date_added"; onClicked: { if (root.whService) root.whService.sorting = "date_added"; root._triggerSearch(); } }
+      FilterPill { label: "Views";  active: root.whService && root.whService.sorting === "views";      onClicked: { if (root.whService) root.whService.sorting = "views";      root._triggerSearch(); } }
+      FilterPill { label: "Random"; active: root.whService && root.whService.sorting === "random";     onClicked: { if (root.whService) root.whService.sorting = "random";     root._triggerSearch(); } }
+    }
 
-        Text {
-          id: filterText
-          anchors.centerIn: parent
-          text: modelData
-          color: parent.parent.active ? Color.mSurfaceContainerLowest : Color.mOutlineVariant
-          font.pixelSize: Style.barTabFontSize
-          font.weight: Font.Medium
-        }
+    // ── Group: Top Range ──────────────────────────────────
+    FilterGroup { label: "RANGE"
+      FilterPill { label: "1M"; active: root.whService && root.whService.topRange === "1M"; onClicked: { if (root.whService) root.whService.topRange = "1M"; root._triggerSearch(); } }
+      FilterPill { label: "3M"; active: root.whService && root.whService.topRange === "3M"; onClicked: { if (root.whService) root.whService.topRange = "3M"; root._triggerSearch(); } }
+      FilterPill { label: "6M"; active: root.whService && root.whService.topRange === "6M"; onClicked: { if (root.whService) root.whService.topRange = "6M"; root._triggerSearch(); } }
+      FilterPill { label: "1Y"; active: root.whService && root.whService.topRange === "1Y"; onClicked: { if (root.whService) root.whService.topRange = "1Y"; root._triggerSearch(); } }
+    }
 
-        onClicked: {
-          if (!root.whService) return;
-          var c = root.whService.categories.split("");
-          c[bit] = c[bit] === "1" ? "0" : "1";
-          if (c.join("") === "000") return;
-          root.whService.categories = c.join("");
-          root._triggerSearch();
+    // ── Group: Resolution ─────────────────────────────────
+    FilterGroup { label: "MIN RES"
+      FilterPill { label: "Any";   active: root.whService && root.whService.atleast === "";           onClicked: { if (root.whService) root.whService.atleast = "";           root._triggerSearch(); } }
+      FilterPill { label: "1080p"; active: root.whService && root.whService.atleast === "1920x1080";  onClicked: { if (root.whService) root.whService.atleast = "1920x1080";  root._triggerSearch(); } }
+      FilterPill { label: "2K";    active: root.whService && root.whService.atleast === "2560x1440";  onClicked: { if (root.whService) root.whService.atleast = "2560x1440";  root._triggerSearch(); } }
+      FilterPill { label: "4K";    active: root.whService && root.whService.atleast === "3840x2160";  onClicked: { if (root.whService) root.whService.atleast = "3840x2160";  root._triggerSearch(); } }
+    }
+
+    // ── Results indicator ─────────────────────────────────
+    Item {
+      height: Style.barSearchHeight + Style.spaceM
+      width: resText.implicitWidth + Style.spaceXXXL
+      Rectangle { anchors.fill: parent; radius: Style.barRadius; color: Color.mSurfaceContainerLow }
+      Text {
+        id: resText
+        anchors.centerIn: parent
+        text: {
+          if (!root.whService) return "";
+          if (root.whService.loading) return "Searching…";
+          if (root.whService.errorText) return root.whService.errorText;
+          return root.whService.results.length + " results";
         }
+        color: root.whService && root.whService.errorText ? "#ff5555" : Color.mOutline
+        font.pixelSize: Style.barTabFontSize
+        font.weight: Font.Medium
       }
     }
+  }
 
-    // Divider
-    Rectangle {
-      Layout.preferredWidth: Style.borderS
-      Layout.preferredHeight: Style.barDividerHeight
-      color: Color.mOutlineVariant
-      opacity: Style.opacityDivider
-    }
-
-    // Purity
-    Text {
-      Layout.alignment: Qt.AlignVCenter
-      text: "PUR"
-      font.pixelSize: Style.fontXXS
-      font.weight: Font.Bold
-      color: Color.mOutline
-    }
-
-    Repeater {
-      model: [{ label: "SFW", bit: 0 }, { label: "Sketchy", bit: 1 }, { label: "NSFW", bit: 2 }]
-      delegate: MouseArea {
-        width: purText.implicitWidth + Style.spaceXXXL
-        height: Style.barSearchHeight
-        cursorShape: Qt.PointingHandCursor
-        property bool active: root.whService && root.whService.purity[modelData.bit] === "1"
-
-        Rectangle {
-          anchors.fill: parent
-          radius: height / 2
-          color: parent.active ? Color.mPrimary : Color.mSurfaceContainer
-          Behavior on color { ColorAnimation { duration: Style.animFast } }
-        }
-
-        Text {
-          id: purText
-          anchors.centerIn: parent
-          text: modelData.label
-          color: parent.parent.active ? Color.mSurfaceContainerLowest : Color.mOutlineVariant
-          font.pixelSize: Style.barTabFontSize
-          font.weight: Font.Medium
-        }
-
-        onClicked: {
-          if (!root.whService) return;
-          var c = root.whService.purity.split("");
-          c[modelData.bit] = c[modelData.bit] === "1" ? "0" : "1";
-          if (c.join("") === "000") return;
-          root.whService.purity = c.join("");
-          root._triggerSearch();
-        }
-      }
-    }
-
-    // Divider
-    Rectangle {
-      Layout.preferredWidth: Style.borderS
-      Layout.preferredHeight: Style.barDividerHeight
-      color: Color.mOutlineVariant
-      opacity: Style.opacityDivider
-    }
-
-    // Sort
-    Text {
-      Layout.alignment: Qt.AlignVCenter
-      text: "SORT"
-      font.pixelSize: Style.fontXXS
-      font.weight: Font.Bold
-      color: Color.mOutline
-    }
-
-    Repeater {
-      model: [{ key: "toplist", label: "Top" }, { key: "date_added", label: "New" }, { key: "views", label: "Views" }, { key: "random", label: "Random" }]
-      delegate: MouseArea {
-        width: sortText.implicitWidth + Style.spaceXXXL
-        height: Style.barSearchHeight
-        cursorShape: Qt.PointingHandCursor
-        property bool active: root.whService && root.whService.sorting === modelData.key
-
-        Rectangle {
-          anchors.fill: parent
-          radius: height / 2
-          color: parent.active ? Color.mPrimary : Color.mSurfaceContainer
-          Behavior on color { ColorAnimation { duration: Style.animFast } }
-        }
-
-        Text {
-          id: sortText
-          anchors.centerIn: parent
-          text: modelData.label
-          color: parent.parent.active ? Color.mSurfaceContainerLowest : Color.mOutlineVariant
-          font.pixelSize: Style.barTabFontSize
-          font.weight: Font.Medium
-        }
-
-        onClicked: {
-          if (!root.whService) return;
-          root.whService.sorting = modelData.key;
-          root._triggerSearch();
-        }
-      }
-    }
-
-    // Divider
-    Rectangle {
-      Layout.preferredWidth: Style.borderS
-      Layout.preferredHeight: Style.barDividerHeight
-      color: Color.mOutlineVariant
-      opacity: Style.opacityDivider
-    }
-
-    // Resolution
-    Text {
-      Layout.alignment: Qt.AlignVCenter
-      text: "MIN RES"
-      font.pixelSize: Style.fontXXS
-      font.weight: Font.Bold
-      color: Color.mOutline
-    }
-
-    Repeater {
-      model: [{ label: "Any", value: "" }, { label: "1080p", value: "1920x1080" }, { label: "2K", value: "2560x1440" }, { label: "4K", value: "3840x2160" }]
-      delegate: MouseArea {
-        width: resText.implicitWidth + Style.spaceXXXL
-        height: Style.barSearchHeight
-        cursorShape: Qt.PointingHandCursor
-        property bool active: root.whService && root.whService.atleast === modelData.value
-
-        Rectangle {
-          anchors.fill: parent
-          radius: height / 2
-          color: parent.active ? Color.mPrimary : Color.mSurfaceContainer
-          Behavior on color { ColorAnimation { duration: Style.animFast } }
-        }
-
-        Text {
-          id: resText
-          anchors.centerIn: parent
-          text: modelData.label
-          color: parent.parent.active ? Color.mSurfaceContainerLowest : Color.mOutlineVariant
-          font.pixelSize: Style.barTabFontSize
-          font.weight: Font.Medium
-        }
-
-        onClicked: {
-          if (!root.whService) return;
-          root.whService.atleast = modelData.value;
-          root._triggerSearch();
-        }
-      }
-    }
-
-    // Results indicator
-    Text {
-      Layout.alignment: Qt.AlignVCenter
-      text: {
-        if (!root.whService) return "";
-        if (root.whService.loading) return "Searching...";
-        if (root.whService.errorText) return root.whService.errorText;
-        return root.whService.results.length + " results";
-      }
-      color: {
-        if (!root.whService) return Color.mOutlineVariant;
-        if (root.whService.errorText) return "#ff5555";
-        return Color.mOutlineVariant;
-      }
-      font.pixelSize: Style.fontS
-    }
+  // ── Helper ──────────────────────────────────────────────
+  function _toggleBit(service, prop, bit) {
+    if (!service) return;
+    var c = service[prop].split("");
+    c[bit] = c[bit] === "1" ? "0" : "1";
+    if (c.join("") === "000") return;
+    service[prop] = c.join("");
   }
 }
