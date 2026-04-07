@@ -36,13 +36,19 @@ Singleton {
   readonly property real fontL: 13
   readonly property real fontXL: 16
 
-  // ==================== Radii ====================
-  readonly property int radiusXS: _s(5)
-  readonly property int radiusS: _s(8)
-  readonly property int radiusM: _s(10)
-  readonly property int radiusL: _s(12)
-  readonly property int radiusXL: _s(15)
+  // ==================== Radii (configurable) ====================
+  readonly property int radiusTiny: _s(2)
+  readonly property int radiusXS: _s(4)
+  readonly property int radiusS: _s(6)
+  readonly property int radiusM: _s(8)
+  readonly property int radiusL: _s(10)
+  readonly property int radiusXL: _s(14)
   readonly property int radiusXXL: _s(18)
+  readonly property int radiusRound: _s(24)
+  readonly property int radiusCircle: _s(50)
+
+  // Used by capsule indicators and card elements
+  readonly property int settingsRadius: _s(12)
 
   // ==================== Margins & Spacing ====================
   readonly property int spaceXXS: _s(1)
@@ -79,6 +85,9 @@ Singleton {
   readonly property int bgSlideDuration: Config.data.animation.bgSlideDuration
   readonly property int bgParallaxFactor: Config.data.animation.bgParallaxFactor
   readonly property real bgOverlayOpacity: Config.data.appearance.bgOverlayOpacity
+  readonly property bool showBorderGlow: Config.data.appearance.showBorderGlow
+  readonly property bool showShadow: Config.data.appearance.showShadow
+  readonly property bool showBgPreview: Config.data.appearance.showBgPreview
 
   // ==================== Pure Constants ====================
   // Status Bar
@@ -118,13 +127,13 @@ Singleton {
   // Settings Panel
   readonly property int settingsWidth: _s(380)
   readonly property int settingsMaxHeight: _s(320)
-  readonly property int settingsRadius: _s(10)
   readonly property int settingsPadding: _s(12)
   readonly property int settingsInnerSpacing: _s(10)
-  readonly property int settingsTabHeight: _s(24)
-  readonly property int settingsTabSidePadding: _s(16)
-  readonly property int settingsTabSpacing: _s(4)
-  readonly property int settingsContentSpacing: _s(8)
+  readonly property int settingsTabHeight: _s(26)
+  readonly property int settingsTabPadding: _s(4)
+  readonly property int settingsTabSidePadding: _s(14)
+  readonly property int settingsTabSpacing: _s(6)
+  readonly property int settingsContentSpacing: _s(10)
   readonly property real settingsTabFontSize: fontXS
 
   // Keyboard Hint

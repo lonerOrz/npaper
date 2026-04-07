@@ -1,6 +1,12 @@
 import QtQuick
 import qs.services
 
+/*
+ * FolderTabs — folder switching tabs with capsule indicator.
+ *
+ * The active tab is highlighted by a rounded pill that slides
+ * between tabs with an elastic OutBack bounce animation.
+ */
 Item {
   id: root
 
@@ -16,6 +22,12 @@ Item {
   property real _pillX: 0
   property real _pillW: 0
 
+  Connections {
+    target: root
+    function onActiveFolderChanged() { tabsRow.updatePill(); }
+  }
+
+  // ── Capsule indicator with elastic bounce ──────────────────
   Rectangle {
     anchors.verticalCenter: parent.verticalCenter
     height: root.tabHeight - 4
@@ -27,16 +39,19 @@ Item {
     x: root._pillX
     width: root._pillW
 
+    // OutBack easing gives the elastic overshoot/bounce feel
     Behavior on x {
       NumberAnimation {
-        duration: 280
-        easing.type: Easing.OutCubic
+        duration: Style.animEnter
+        easing.type: Easing.OutBack
+        easing.overshoot: 1.2
       }
     }
     Behavior on width {
       NumberAnimation {
-        duration: 280
-        easing.type: Easing.OutCubic
+        duration: Style.animEnter
+        easing.type: Easing.OutBack
+        easing.overshoot: 1.2
       }
     }
   }
@@ -72,7 +87,7 @@ Item {
           font.weight: parent.active ? Font.Medium : Font.Normal
           Behavior on color {
             ColorAnimation {
-              duration: 200
+              duration: Style.animFast
             }
           }
         }

@@ -5,9 +5,14 @@ import qs.components.settings
 import qs.services
 
 /*
-* SettingsPanel — mirrors values from AppWindow, writes back to AppWindow.
-* Persistence is AppWindow's responsibility via viewModel.
-*/
+ * SettingsPanel — mirrors values from AppWindow, writes back to AppWindow.
+ * Persistence is AppWindow's responsibility via viewModel.
+ *
+ * Features:
+ *   - Sliding capsule tab indicator with elastic OutBack bounce
+ *   - Animated open/close
+ *   - 3 tabs: Layout, Animation, Appearance (12 settings total)
+ */
 Item {
   id: root
 
@@ -73,63 +78,97 @@ Item {
     opacity: root._animProgress
   }
 
-  // ── Tab bar ──────────────────────────────────────────────
-  Row {
+  // ── Tab bar with sliding capsule ─────────────────────────
+  Item {
     id: tabBar
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
+    height: Style.settingsTabHeight + Style.settingsTabPadding * 2
     anchors.margins: Style.settingsPadding
-    spacing: Style.settingsTabSpacing
 
-    Repeater {
-      model: [
-        {
-          key: "layout",
-          label: "Layout"
-        },
-        {
-          key: "animation",
-          label: "Animation"
-        },
-        {
-          key: "appearance",
-          label: "Appearance"
+    property real _pillX: 0
+    property real _pillW: 0
+
+    Connections {
+      target: root
+      function onActiveTabChanged() { tabBar._updatePill(); }
+    }
+
+    // Sliding capsule indicator
+    Rectangle {
+      anchors.verticalCenter: parent.verticalCenter
+      height: Style.settingsTabHeight
+      radius: height / 2
+      color: Color.mPrimary
+
+      x: tabBar._pillX
+      width: tabBar._pillW
+
+      Behavior on x {
+        NumberAnimation {
+          duration: Style.animEnter
+          easing.type: Easing.OutBack
+          easing.overshoot: 1.2
         }
-      ]
-      delegate: MouseArea {
-        required property var modelData
-        property bool isActive: root.activeTab === modelData.key
-        width: _label.implicitWidth + Style.settingsTabSidePadding
-        height: Style.settingsTabHeight
-        cursorShape: Qt.PointingHandCursor
+      }
+      Behavior on width {
+        NumberAnimation {
+          duration: Style.animEnter
+          easing.type: Easing.OutBack
+          easing.overshoot: 1.2
+        }
+      }
+    }
 
-        Rectangle {
-          anchors.fill: parent
-          radius: Style.radiusXL
-          color: parent.isActive ? Color.mPrimary : "transparent"
-          Behavior on color {
-            ColorAnimation {
-              duration: Style.animFast
+    Row {
+      id: tabsRow
+      anchors.verticalCenter: parent.verticalCenter
+      spacing: Style.settingsTabSpacing
+
+      Repeater {
+        model: [
+          { key: "layout", label: "Layout" },
+          { key: "animation", label: "Animation" },
+          { key: "appearance", label: "Appearance" }
+        ]
+        delegate: MouseArea {
+          required property var modelData
+          property bool isActive: root.activeTab === modelData.key
+          width: _label.implicitWidth + Style.settingsTabSidePadding * 2
+          height: Style.settingsTabHeight
+          cursorShape: Qt.PointingHandCursor
+
+          Text {
+            id: _label
+            anchors.centerIn: parent
+            text: modelData.label
+            color: parent.isActive ? Color.mSurfaceContainerLowest : Color.mOutlineVariant
+            font.pixelSize: Style.settingsTabFontSize
+            font.weight: parent.isActive ? Font.Bold : Font.Normal
+            Behavior on color {
+              ColorAnimation { duration: Style.animFast }
             }
           }
-        }
 
-        Text {
-          id: _label
-          anchors.centerIn: parent
-          text: modelData.label
-          color: parent.isActive ? Color.mSurfaceContainerLowest : Color.mOutlineVariant
-          font.pixelSize: Style.settingsTabFontSize
-          font.weight: parent.isActive ? Font.Bold : Font.Normal
-          Behavior on color {
-            ColorAnimation {
-              duration: Style.animFast
-            }
+          onClicked: root.activeTab = modelData.key
+
+          Component.onCompleted: {
+            if (isActive) tabBar._updatePill();
           }
         }
+      }
 
-        onClicked: root.activeTab = modelData.key
+      Component.onCompleted: tabBar._updatePill()
+    }
+
+    function _updatePill() {
+      for (let i = 0; i < tabsRow.children.length; i++) {
+        const item = tabsRow.children[i];
+        if (item && item.isActive) {
+          _pillX = item.x;
+          _pillW = item.width;
+        }
       }
     }
   }
@@ -158,9 +197,7 @@ Item {
         value: root.carouselItemWidth
         min: 200
         max: 600
-        onCommit: function (n) {
-          root._emit(Style.cfgCarouselItemWidth, n);
-        }
+        onCommit: function (n) { root._emit(Style.cfgCarouselItemWidth, n); }
       }
       SettingsInput {
         width: parent.width
@@ -168,9 +205,7 @@ Item {
         value: root.carouselItemHeight
         min: 150
         max: 450
-        onCommit: function (n) {
-          root._emit(Style.cfgCarouselItemHeight, n);
-        }
+        onCommit: function (n) { root._emit(Style.cfgCarouselItemHeight, n); }
       }
       SettingsInput {
         width: parent.width
@@ -178,9 +213,7 @@ Item {
         value: root.carouselSpacing
         min: 0
         max: 60
-        onCommit: function (n) {
-          root._emit(Style.cfgCarouselSpacing, n);
-        }
+        onCommit: function (n) { root._emit(Style.cfgCarouselSpacing, n); }
       }
       SettingsInput {
         width: parent.width
@@ -188,9 +221,7 @@ Item {
         value: root.carouselRotation
         min: 0
         max: 90
-        onCommit: function (n) {
-          root._emit(Style.cfgCarouselRotation, n);
-        }
+        onCommit: function (n) { root._emit(Style.cfgCarouselRotation, n); }
       }
       SettingsInput {
         width: parent.width
@@ -199,9 +230,7 @@ Item {
         min: 0.1
         max: 1.0
         step: 0.05
-        onCommit: function (n) {
-          root._emit(Style.cfgCarouselPerspective, n);
-        }
+        onCommit: function (n) { root._emit(Style.cfgCarouselPerspective, n); }
       }
     }
 
@@ -220,9 +249,7 @@ Item {
         min: 100
         max: 500
         step: 10
-        onCommit: function (n) {
-          root._emit(Style.cfgScrollDuration, n);
-        }
+        onCommit: function (n) { root._emit(Style.cfgScrollDuration, n); }
       }
       SettingsInput {
         width: parent.width
@@ -231,9 +258,7 @@ Item {
         min: 100
         max: 400
         step: 10
-        onCommit: function (n) {
-          root._emit(Style.cfgScrollContinueInterval, n);
-        }
+        onCommit: function (n) { root._emit(Style.cfgScrollContinueInterval, n); }
       }
       SettingsInput {
         width: parent.width
@@ -242,9 +267,7 @@ Item {
         min: 100
         max: 500
         step: 10
-        onCommit: function (n) {
-          root._emit(Style.cfgBgSlideDuration, n);
-        }
+        onCommit: function (n) { root._emit(Style.cfgBgSlideDuration, n); }
       }
       SettingsInput {
         width: parent.width
@@ -253,9 +276,7 @@ Item {
         min: 10
         max: 80
         step: 5
-        onCommit: function (n) {
-          root._emit(Style.cfgBgParallaxFactor, n);
-        }
+        onCommit: function (n) { root._emit(Style.cfgBgParallaxFactor, n); }
       }
     }
 
@@ -271,25 +292,19 @@ Item {
         width: parent.width
         text: "Border Glow"
         checked: root.showBorderGlow
-        onToggled: function (val) {
-          root._emit(Style.cfgShowBorderGlow, val);
-        }
+        onToggled: function (val) { root._emit(Style.cfgShowBorderGlow, val); }
       }
       SettingsToggle {
         width: parent.width
         text: "Card Shadow"
         checked: root.showShadow
-        onToggled: function (val) {
-          root._emit(Style.cfgShowShadow, val);
-        }
+        onToggled: function (val) { root._emit(Style.cfgShowShadow, val); }
       }
       SettingsToggle {
         width: parent.width
         text: "Background Preview"
         checked: root.showBgPreview
-        onToggled: function (val) {
-          root._emit(Style.cfgShowBgPreview, val);
-        }
+        onToggled: function (val) { root._emit(Style.cfgShowBgPreview, val); }
       }
     }
   }

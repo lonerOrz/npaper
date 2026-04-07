@@ -45,9 +45,9 @@ PanelWindow {
   property real carouselRotation: Style.carouselRotation
   property real carouselPerspective: Style.carouselPerspective
   property real bgOverlayOpacity: Style.bgOverlayOpacity
-  property bool showBgPreview: Config.data.appearance.showBgPreview
-  property bool showBorderGlow: Config.data.appearance.showBorderGlow
-  property bool showShadow: Config.data.appearance.showShadow
+  property bool showBgPreview: Style.showBgPreview
+  property bool showBorderGlow: Style.showBorderGlow
+  property bool showShadow: Style.showShadow
 
   property int scrollDuration: Style.scrollDuration
   property int scrollContinueInterval: Style.scrollContinueInterval

@@ -140,56 +140,102 @@ Item {
       opacity: Style.opacityDivider
     }
 
-    // Folder Tabs
-    Repeater {
-      model: root.folders
-      delegate: MouseArea {
-        required property string modelData
-        property bool isActive: root.activeFolder === modelData
-        width: tabLabel.implicitWidth + Style.barTabSidePadding
-        height: Style.barTabHeight
+    // Folder Tabs with sliding capsule
+    Item {
+      id: folderTabs
+      Layout.preferredWidth: tabsRow.implicitWidth + Style.spaceM
+      Layout.preferredHeight: Style.barTabHeight
+      Layout.alignment: Qt.AlignVCenter
 
-        Rectangle {
-          anchors.fill: parent
-          radius: Style.barTabHeight / 2
-          color: parent.isActive ? Color.mPrimary : "transparent"
-          opacity: parent.isActive ? Style.opacityLight : Style.opacityFull
-          Behavior on color {
-            ColorAnimation {
-              duration: Style.animFast
-            }
-          }
-          Behavior on opacity {
-            NumberAnimation {
-              duration: Style.animFast
-            }
-          }
-        }
+      property real _pillX: 0
+      property real _pillW: 0
 
-        Text {
-          id: tabLabel
-          anchors.centerIn: parent
-          text: modelData
-          color: parent.isActive ? Color.mOnPrimaryContainer : Color.mOutlineVariant
-          font.pixelSize: Style.barTabFontSize
-          font.weight: parent.isActive ? Font.Bold : Font.Normal
-          Behavior on color {
-            ColorAnimation {
-              duration: Style.animFast
-            }
-          }
-        }
-        onClicked: root.folderClicked(modelData)
+      Connections {
+        target: root
+        function onActiveFolderChanged() { Qt.callLater(folderTabs._updatePill); }
       }
-    }
 
-    // Divider
-    Rectangle {
-      Layout.preferredWidth: Style.borderS
-      Layout.preferredHeight: Style.barDividerHeight
-      color: Color.mOutlineVariant
-      opacity: Style.opacityDivider
-      visible: root.folders.length > 0
+      // Sliding capsule indicator
+      Rectangle {
+        anchors.verticalCenter: parent.verticalCenter
+        height: Style.barTabHeight
+        radius: height / 2
+        color: Color.mPrimary
+        opacity: Style.opacityLight
+
+        x: folderTabs._pillX
+        width: folderTabs._pillW
+
+        Behavior on x {
+          NumberAnimation {
+            duration: Style.animEnter
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.2
+          }
+        }
+        Behavior on width {
+          NumberAnimation {
+            duration: Style.animEnter
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.2
+          }
+        }
+      }
+
+      Row {
+        id: tabsRow
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: Style.spaceS
+
+        Repeater {
+          model: root.folders
+          delegate: MouseArea {
+            required property string modelData
+            property bool isActive: root.activeFolder === modelData
+            width: tabLabel.implicitWidth + Style.barTabSidePadding * 2
+            height: Style.barTabHeight
+            cursorShape: Qt.PointingHandCursor
+
+            Text {
+              id: tabLabel
+              text: modelData
+              color: parent.isActive ? Color.mPrimary : Color.mOutlineVariant
+              font.pixelSize: Style.barTabFontSize
+              font.weight: parent.isActive ? Font.Bold : Font.Normal
+
+              // Explicit centering calculation avoids anchor rounding errors
+              x: (parent.width - implicitWidth) / 2
+              anchors.verticalCenter: parent.verticalCenter
+
+              Behavior on color {
+                ColorAnimation {
+                  duration: Style.animFast
+                }
+              }
+            }
+
+            onClicked: root.folderClicked(modelData)
+
+            Component.onCompleted: {
+              if (isActive) Qt.callLater(folderTabs._updatePill);
+            }
+          }
+        }
+
+        Component.onCompleted: Qt.callLater(folderTabs._updatePill)
+      }
+
+      function _updatePill() {
+        for (let i = 0; i < tabsRow.children.length; i++) {
+          const item = tabsRow.children[i];
+          if (item && item.isActive) {
+            _pillX = item.x;
+            // Ensure capsule always has a pill shape (1.4x width:height)
+            _pillW = Math.max(item.width, Style.barTabHeight * 1.4);
+          }
+        }
+      }
     }
 
     // Info Text

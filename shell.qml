@@ -20,9 +20,6 @@ ShellRoot {
       configLoaded = true;
       Logger.applyDebug(Config.data.debugMode);
     }
-    function onDataUpdated() {
-      // Hot-reload: SettingsBridge handles viewModel sync internally
-    }
   }
 
   Loader {

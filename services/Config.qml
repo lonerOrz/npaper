@@ -22,7 +22,6 @@ Singleton {
   property bool _isSaving: false
 
   signal dataLoaded
-  signal dataUpdated
 
   // ── Hardcoded defaults ──────────────────────────────────
   readonly property var _defaults: ({
@@ -118,7 +117,7 @@ Singleton {
 
     onFileChanged: {
       if (root._isSaving)
-      return;
+        return;
       _readConfig();
     }
   }
