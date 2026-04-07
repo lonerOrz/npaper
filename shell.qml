@@ -90,6 +90,7 @@ ShellRoot {
         model: Quickshell.screens
         delegate: AppWindow {
           screen: modelData
+          viewModel: bridge.viewModel
           wallpaperModel: wallpaperModel
           cacheService: cacheService
           wallpaperApplier: wallpaperApplier

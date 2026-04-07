@@ -14,6 +14,7 @@ PanelWindow {
   id: root
 
   property var modelData
+  property var viewModel
   property var wallpaperModel
   property var cacheService
   property var wallpaperApplier
@@ -63,8 +64,10 @@ PanelWindow {
   }
 
   function _loadSettings() {
-    var vm = SettingsBridge.viewModel;
-    if (!vm) return;
+    var vm = viewModel;
+    if (!vm) { console.log("[npaper][I] AppWindow _loadSettings skipped, viewModel is null"); return; }
+    console.log("[npaper][I] AppWindow _loadSettings: itemWidth =", vm.layout.carouselItemWidth,
+             "showBorderGlow =", vm.appearance.showBorderGlow);
     carouselItemWidth   = vm.layout.carouselItemWidth;
     carouselItemHeight  = vm.layout.carouselItemHeight;
     carouselSpacing     = vm.layout.carouselSpacing;
@@ -76,13 +79,10 @@ PanelWindow {
     bgOverlayOpacity    = vm.appearance.bgOverlayOpacity;
   }
 
-  // Initial load: SettingsBridge builds viewModel → triggers this
-  Connections {
-    target: SettingsBridge
-    function onViewModelChanged() { _loadSettings(); }
-  }
+  // Initial load: viewModel changes → _loadSettings
+  onViewModelChanged: { _loadSettings(); }
 
-  // Hot-reload: Config dataUpdated → SettingsBridge syncs → re-trigger
+  // Hot-reload: Config dataUpdated → SettingsBridge syncs viewModel
   Connections {
     target: Config
     function onDataUpdated() { _loadSettings(); }
@@ -175,9 +175,9 @@ PanelWindow {
     count: root.count
     visibleRange: Style.visibleRange
     preloadRange: Style.preloadRange
-    animationDuration: SettingsBridge.viewModel ? SettingsBridge.viewModel.timing.scrollDuration : 280
-    scrollContinueInterval: SettingsBridge.viewModel ? SettingsBridge.viewModel.timing.scrollContinueInterval : 230
-    parallaxFactor: SettingsBridge.viewModel ? SettingsBridge.viewModel.timing.bgParallaxFactor : 40
+    animationDuration: viewModel ? viewModel.timing.scrollDuration : 280
+    scrollContinueInterval: viewModel ? viewModel.timing.scrollContinueInterval : 230
+    parallaxFactor: viewModel ? viewModel.timing.bgParallaxFactor : 40
   }
 
   PropertyAnimation {
@@ -186,7 +186,7 @@ PanelWindow {
     properties: "bgSlideProgress"
     from: 0
     to: 1.0
-    duration: SettingsBridge.viewModel ? SettingsBridge.viewModel.timing.bgSlideDuration : 250
+    duration: viewModel ? viewModel.timing.bgSlideDuration : 250
     easing.type: Style.easingOutQuad
   }
 
@@ -524,6 +524,7 @@ PanelWindow {
     showBgPreview: root.showBgPreview
 
     onSettingChanged: function(key, val) {
+      console.log("[npaper][I] AppWindow Setting changed:", key, "=", val);
       // Map dot-paths to flat root property names for immediate UI update
       var propMap = {
         "carousel.itemWidth": "carouselItemWidth",
@@ -538,7 +539,7 @@ PanelWindow {
       };
       var prop = propMap[key] || key;
       root[prop] = val;
-      var vm = SettingsBridge.viewModel;
+      var vm = viewModel;
       if (vm) vm.set(key, val);
     }
 

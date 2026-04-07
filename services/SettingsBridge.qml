@@ -2,13 +2,10 @@ import QtQuick
 import qs.services
 
 /*
- * SettingsBridge — bridges Config JsonAdapter → plain JS viewModel for UI.
+ * SettingsBridge — bridges Config (pure JS) → flat viewModel for UI.
  *
  * UI reads:  SettingsBridge.viewModel.layout.carouselItemWidth
  * UI writes: SettingsBridge.viewModel.set("carousel.itemWidth", 450)
- *
- * viewModel is a plain JS object. _syncViewModel() manually updates all
- * properties on hot-reload.
  */
 Item {
   id: root
@@ -55,13 +52,7 @@ Item {
         debugMode:    d.debugMode,
         previewStyle: d.previewStyle
       },
-      set: function(key, value) {
-        var parts = key.split(".");
-        var obj = Config.data;
-        for (var i = 0; i < parts.length - 1; i++)
-          obj = obj[parts[i]];
-        obj[parts[parts.length - 1]] = value;
-      }
+      set: function(key, value) { Config.update(key, value); }
     };
   }
 
