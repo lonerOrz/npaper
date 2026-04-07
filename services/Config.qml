@@ -10,8 +10,8 @@ import Quickshell.Io
 * Flow:
 *   1. Component.onCompleted → start with _defaults
 *   2. Read config.json via Process → deepMerge into data
-*   3. UI reads:  Config.data.carousel.itemWidth
-*   4. UI writes: Config.update("carousel.itemWidth", 450) → modifies data → debounced save
+*   3. UI reads:  Config.data.carousel.spacing
+*   4. UI writes: Config.update("carousel.spacing", 25) → modifies data → debounced save
 *   5. Hot-reload: FileView watches config.json → re-read → merge → QML bindings auto-update
 *   */
 Singleton {
@@ -37,8 +37,6 @@ Singleton {
                                         "sorting": "toplist"
                                       },
                                       "carousel": {
-                                        "itemWidth": 400,
-                                        "itemHeight": 280,
                                         "spacing": 20,
                                         "rotation": 25,
                                         "perspective": 0.3
@@ -103,7 +101,7 @@ Singleton {
         var user = JSON.parse(String(raw).trim());
         root.data = _deepMerge(_deepClone(_defaults), user);
         root.data = _resolvePaths(root.data);
-        Logger.i("Config", "Loaded user config, itemWidth =", root.data.carousel.itemWidth);
+        Logger.i("Config", "Loaded user config");
         root.isLoaded = true;
         root.dataLoaded();
       } catch (e) {
@@ -131,7 +129,7 @@ Singleton {
 
   // ── Public API ───────────────────────────────────────────
 
-  // Safe read: Config.get("carousel.itemWidth", 400)
+  // Safe read: Config.get("carousel.spacing", 20)
   function get(path, def) {
     var parts = path.split(".");
     var obj = root.data;
@@ -145,7 +143,7 @@ Singleton {
     return obj;
   }
 
-  // Write: Config.update("carousel.itemWidth", 450)
+  // Write: Config.update("carousel.spacing", 25)
   function update(path, value) {
     Logger.i("Config", "update:", path, "=", value);
     var parts = path.split(".");
@@ -174,7 +172,7 @@ Singleton {
       "debugMode": resolvedData.debugMode,
       "previewStyle": resolvedData.previewStyle,
       "wallhaven": _pick(resolvedData.wallhaven, ["apiKey", "defaultAtleast", "categories", "purity", "sorting"]),
-      "carousel": _pick(resolvedData.carousel, ["itemWidth", "itemHeight", "spacing", "rotation", "perspective"]),
+      "carousel": _pick(resolvedData.carousel, ["spacing", "rotation", "perspective"]),
       "animation": _pick(resolvedData.animation, ["scrollDuration", "scrollContinueInterval", "bgSlideDuration", "bgParallaxFactor"]),
       "appearance": _pick(resolvedData.appearance, ["showBorderGlow", "showShadow", "showBgPreview", "bgOverlayOpacity"])
     };

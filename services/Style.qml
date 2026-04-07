@@ -72,8 +72,8 @@ Singleton {
 
   // ==================== Config-Derived Values ====================
   // These auto-update when Config.data changes (QML binding)
-  readonly property int carouselItemWidth: _s(Config.data.carousel.itemWidth)
-  readonly property int carouselItemHeight: _s(Config.data.carousel.itemHeight)
+  readonly property int carouselItemWidth: _s(480)    // Fixed 16:9 ratio
+  readonly property int carouselItemHeight: _s(270)   // Fixed 16:9 ratio
   readonly property int carouselSpacing: _s(Config.data.carousel.spacing)
   readonly property int carouselRotation: Config.data.carousel.rotation
   readonly property real carouselPerspective: Config.data.carousel.perspective
@@ -115,6 +115,8 @@ Singleton {
   // Wallpaper Card
   readonly property int cacheBgWidth: _s(1920)
   readonly property int cacheBgHeight: _s(1080)
+  readonly property int cacheAnimWidth: _s(640)    // GIF preview (16:9)
+  readonly property int cacheAnimHeight: _s(360)   // GIF preview (16:9)
   readonly property int cardBorderWidth: _s(2)
   readonly property int cardImageFrameMargin: _s(3)
   readonly property int cardInnerPadding: _s(10)
@@ -185,8 +187,6 @@ Singleton {
   readonly property int borderM: _s(2)
 
   // ==================== Config Keys (dot-paths for Config.update) ====================
-  readonly property string cfgCarouselItemWidth: "carousel.itemWidth"
-  readonly property string cfgCarouselItemHeight: "carousel.itemHeight"
   readonly property string cfgCarouselSpacing: "carousel.spacing"
   readonly property string cfgCarouselRotation: "carousel.rotation"
   readonly property string cfgCarouselPerspective: "carousel.perspective"

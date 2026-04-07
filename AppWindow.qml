@@ -39,8 +39,6 @@ PanelWindow {
   readonly property int centerIndex: scrollController.currentIndex
   property string dominantColor: Color.mPrimary
 
-  property real carouselItemWidth: Style.carouselItemWidth
-  property real carouselItemHeight: Style.carouselItemHeight
   property real carouselSpacing: Style.carouselSpacing
   property real carouselRotation: Style.carouselRotation
   property real carouselPerspective: Style.carouselPerspective
@@ -273,8 +271,8 @@ PanelWindow {
       focus: true
       clip: true
 
-      property int itemWidth: root.carouselItemWidth
-      property int itemHeight: root.carouselItemHeight
+      property int itemWidth: Style.carouselItemWidth
+      property int itemHeight: Style.carouselItemHeight
       property real spacing: root.carouselSpacing
       property real centerX: width / 2
       property real centerY: height / 2
@@ -519,8 +517,6 @@ PanelWindow {
     anchors.horizontalCenter: statusBar.horizontalCenter
     z: 999
     settingsOpen: root.settingsOpen
-    carouselItemWidth: root.carouselItemWidth
-    carouselItemHeight: root.carouselItemHeight
     carouselSpacing: root.carouselSpacing
     carouselRotation: root.carouselRotation
     carouselPerspective: root.carouselPerspective
@@ -535,8 +531,6 @@ PanelWindow {
     onSettingChanged: function (key, val) {
       Logger.i("AppWindow", "Setting changed:", key, "=", val);
       var propMap = {
-        "carousel.itemWidth": "carouselItemWidth",
-        "carousel.itemHeight": "carouselItemHeight",
         "carousel.spacing": "carouselSpacing",
         "carousel.rotation": "carouselRotation",
         "carousel.perspective": "carouselPerspective",

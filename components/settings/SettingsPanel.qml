@@ -20,8 +20,6 @@ Item {
   property string activeTab: "layout"
 
   // Mirrored from AppWindow — updated by AppWindow bindings
-  property real carouselItemWidth: 0
-  property real carouselItemHeight: 0
   property real carouselSpacing: 0
   property real carouselRotation: 0
   property real carouselPerspective: 0
@@ -222,26 +220,6 @@ Item {
       spacing: Style.settingsContentSpacing
       visible: root.activeTab === "layout"
 
-      SettingsInput {
-        width: parent.width
-        label: "Card Width"
-        value: root.carouselItemWidth
-        min: 200
-        max: 600
-        onCommit: function (n) {
-          root._emit(Style.cfgCarouselItemWidth, n);
-        }
-      }
-      SettingsInput {
-        width: parent.width
-        label: "Card Height"
-        value: root.carouselItemHeight
-        min: 150
-        max: 450
-        onCommit: function (n) {
-          root._emit(Style.cfgCarouselItemHeight, n);
-        }
-      }
       SettingsInput {
         width: parent.width
         label: "Spacing"

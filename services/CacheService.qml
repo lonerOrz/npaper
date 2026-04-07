@@ -15,6 +15,8 @@ Item {
 
   property int bgWidth: Style.cacheBgWidth
   property int bgHeight: Style.cacheBgHeight
+  property int animWidth: Style.cacheAnimWidth
+  property int animHeight: Style.cacheAnimHeight
 
   property var thumbHashToPath: ({})
   property int cachedFileCount: 0
@@ -112,8 +114,8 @@ Item {
           return ["mkdir", "-p", outDir];
         case 1: // background frame
           return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-vframes", "1", "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`, "-q:v", "2", _bgPath];
-        case 2: // animated gif (at bg resolution)
-          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-r", "30", "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`, "-t", "10", _animPath];
+        case 2: // animated gif (at anim resolution)
+          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-r", "30", "-vf", `scale=${root.animWidth}:${root.animHeight}:force_original_aspect_ratio=increase,crop=${root.animWidth}:${root.animHeight}`, "-t", "10", _animPath];
         default:
           return [];
         }

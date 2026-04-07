@@ -229,7 +229,7 @@ Item {
       smooth: true
       mipmap: true
       playing: visible
-      sourceSize: Qt.size(root.itemWidth, root.itemHeight)
+      sourceSize: Qt.size(Style.cacheAnimWidth, Style.cacheAnimHeight)
     }
 
     Item {

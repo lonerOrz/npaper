@@ -7,8 +7,8 @@ import qs.services
 * Uses QtObject hierarchy so QML bindings automatically track changes.
 * No manual _syncViewModel needed — QML re-evaluates when Config.data changes.
 *
-* UI reads:  SettingsBridge.viewModel.layout.carouselItemWidth
-* UI writes: SettingsBridge.viewModel.set("carousel.itemWidth", 450)
+* UI reads:  SettingsBridge.viewModel.layout.carouselSpacing
+* UI writes: SettingsBridge.viewModel.set("carousel.spacing", 25)
 */
 Item {
   id: root
@@ -18,8 +18,6 @@ Item {
   // QtObject hierarchy — QML bindings auto-track Config.data changes
   property QtObject viewModel: QtObject {
     readonly property var layout: QtObject {
-      property real carouselItemWidth: Config.data.carousel.itemWidth
-      property real carouselItemHeight: Config.data.carousel.itemHeight
       property real carouselSpacing: Config.data.carousel.spacing
       property real carouselRotation: Config.data.carousel.rotation
       property real carouselPerspective: Config.data.carousel.perspective
