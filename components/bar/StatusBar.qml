@@ -177,8 +177,10 @@ Item {
 
       Text {
         anchors.centerIn: parent
-        text: "🌐"
-        font.pixelSize: 14
+        // fa-globe when on Wallhaven, fa-picture when local
+        text: root.isWallhaven ? "\uf0ac" : "\uf03e"
+        font.pixelSize: Style.barSettingsIconSize
+        font.family: "Symbols Nerd Font"
         color: root.isWallhaven ? Color.mPrimary : Color.mOutlineVariant
       }
     }
@@ -194,9 +196,10 @@ Item {
     // Queue Count
     Text {
       Layout.alignment: Qt.AlignVCenter
-      text: root.queueCount > 0 ? "⏳ " + root.queueCount : ""
+      text: root.queueCount > 0 ? "\uf251 " + root.queueCount : ""
       color: Color.mPrimary
       font.pixelSize: Style.barInfoFontSize
+      font.family: "Symbols Nerd Font"
       visible: root.queueCount > 0
     }
 
@@ -222,8 +225,9 @@ Item {
 
       Text {
         anchors.centerIn: parent
-        text: "⚙"
-        font.pixelSize: Style.barSettingsGearFontSize
+        text: "\uf013"
+        font.pixelSize: Style.barSettingsIconSize
+        font.family: "Symbols Nerd Font"
         color: root.settingsOpen ? Color.mPrimary : Color.mOutlineVariant
         Behavior on color {
           ColorAnimation {
