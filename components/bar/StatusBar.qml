@@ -1,8 +1,8 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
 import qs.services
+import qs.components.common
 
 Item {
   id: root
@@ -127,70 +127,12 @@ Item {
     }
 
     // View Mode Pill
-    Rectangle {
-      Layout.preferredWidth: viewModeRow.implicitWidth + Style.spaceM
-      Layout.preferredHeight: Style.barTabHeight
-      Layout.alignment: Qt.AlignVCenter
-      radius: Style.barTabHeight / 2
-      color: Color.mSurfaceContainer
-      visible: !root.isWallhaven
-
-      Row {
-        id: viewModeRow
-        anchors.centerIn: parent
-        anchors.margins: Style.spaceXS
-        spacing: Style.spaceXS
-
-        MouseArea {
-          id: carouselModeBtn
-          width: carouselLabel.implicitWidth + Style.spaceM
-          height: Style.barTabHeight
-          cursorShape: Qt.PointingHandCursor
-          hoverEnabled: true
-
-          Text {
-            id: carouselLabel
-            anchors.centerIn: parent
-            text: "Carousel"
-            color: Config.previewStyle === "carousel" ? Color.mPrimary : Color.mOutlineVariant
-            font.pixelSize: Style.barTabFontSize
-            font.weight: Config.previewStyle === "carousel" ? Font.Bold : Font.Normal
-            Behavior on color { ColorAnimation { duration: Style.animFast } }
-          }
-          Rectangle {
-            anchors.fill: parent
-            radius: parent.height / 2
-            color: parent.containsMouse ? Color.mSurfaceContainerHigh : "transparent"
-            Behavior on color { ColorAnimation { duration: Style.animFast } }
-          }
-          onClicked: Config.update("previewStyle", "carousel")
-        }
-
-        MouseArea {
-          id: gridModeBtn
-          width: gridLabel.implicitWidth + Style.spaceM
-          height: Style.barTabHeight
-          cursorShape: Qt.PointingHandCursor
-          hoverEnabled: true
-
-          Text {
-            id: gridLabel
-            anchors.centerIn: parent
-            text: "Grid"
-            color: Config.previewStyle === "grid" ? Color.mPrimary : Color.mOutlineVariant
-            font.pixelSize: Style.barTabFontSize
-            font.weight: Config.previewStyle === "grid" ? Font.Bold : Font.Normal
-            Behavior on color { ColorAnimation { duration: Style.animFast } }
-          }
-          Rectangle {
-            anchors.fill: parent
-            radius: parent.height / 2
-            color: parent.containsMouse ? Color.mSurfaceContainerHigh : "transparent"
-            Behavior on color { ColorAnimation { duration: Style.animFast } }
-          }
-          onClicked: Config.update("previewStyle", "grid")
-        }
-      }
+    SelectorPill {
+        Layout.alignment: Qt.AlignVCenter
+        visible: !root.isWallhaven
+        model: ["Carousel", "Grid"]
+        activeIndex: Config.previewStyle === "grid" ? 1 : 0
+        onSelected: function(index, label) { Config.update("previewStyle", label.toLowerCase()) }
     }
 
     // Divider
@@ -202,94 +144,12 @@ Item {
     }
 
     // Folder Tabs
-    Item {
-      id: folderTabs
-      Layout.preferredWidth: tabsRow.implicitWidth + Style.spaceM
-      Layout.preferredHeight: Style.barTabHeight
-      Layout.alignment: Qt.AlignVCenter
+    SelectorPill {
       visible: !root.isWallhaven
-
-      property real _pillX: 0
-      property real _pillW: 0
-
-      Connections {
-        target: root
-        function onActiveFolderChanged() {
-          Qt.callLater(folderTabs._updatePill);
-        }
-      }
-
-      Rectangle {
-        anchors.verticalCenter: parent.verticalCenter
-        height: Style.barTabHeight
-        radius: height / 2
-        color: Color.mPrimary
-        opacity: Style.opacityLight
-        x: folderTabs._pillX
-        width: folderTabs._pillW
-        Behavior on x {
-          NumberAnimation {
-            duration: Style.animEnter
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.2
-          }
-        }
-        Behavior on width {
-          NumberAnimation {
-            duration: Style.animEnter
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.2
-          }
-        }
-      }
-
-      Row {
-        id: tabsRow
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.verticalCenter: parent.verticalCenter
-        spacing: Style.spaceS
-
-        Repeater {
-          model: root.folders
-          delegate: MouseArea {
-            required property string modelData
-            property bool isActive: root.activeFolder === modelData
-            width: tabLabel.implicitWidth + Style.barTabSidePadding * 2
-            height: Style.barTabHeight
-            cursorShape: Qt.PointingHandCursor
-            Text {
-              id: tabLabel
-              text: modelData
-              color: parent.isActive ? Color.mPrimary : Color.mOutlineVariant
-              font.pixelSize: Style.barTabFontSize
-              font.weight: parent.isActive ? Font.Bold : Font.Normal
-              x: (parent.width - implicitWidth) / 2
-              anchors.verticalCenter: parent.verticalCenter
-              Behavior on color {
-                ColorAnimation {
-                  duration: Style.animFast
-                }
-              }
-            }
-            onClicked: root.folderClicked(modelData)
-            Component.onCompleted: {
-              if (isActive)
-                Qt.callLater(folderTabs._updatePill);
-            }
-          }
-        }
-        Component.onCompleted: Qt.callLater(folderTabs._updatePill)
-      }
-
-      function _updatePill() {
-        for (let i = 0; i < tabsRow.children.length; i++) {
-          const item = tabsRow.children[i];
-          if (item && item.isActive) {
-            _pillX = item.x;
-            _pillW = Math.max(item.width, Style.barTabHeight * 1.4);
-          }
-        }
-      }
+      model: root.folders
+      activeIndex: root.folders.indexOf(root.activeFolder)
+      activeColor: Color.mPrimary
+      onSelected: function(index, label) { root.folderClicked(label) }
     }
 
     // Wallhaven Button
