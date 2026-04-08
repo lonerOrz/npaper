@@ -293,7 +293,7 @@ PanelWindow {
     sourceA: _bgSourceA
     sourceB: _bgSourceB
     crossfadeProgress: bgSlideProgress
-    parallaxX: (displayManager.scrollTarget - displayManager.currentIndex) * bgParallaxFactor
+    parallaxX: displayManager.contentOffset * bgParallaxFactor
     dominantColor: root.dominantColor
     overlayOpacity: root.bgOverlayOpacity
     showPreview: root.showBgPreview

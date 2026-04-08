@@ -38,6 +38,7 @@ FocusScope {
         : (gridLoader.item || null)
     readonly property int currentIndex: _activeView ? _activeView.currentIndex : 0
     readonly property real scrollTarget: _activeView ? _activeView.scrollTarget : 0
+    readonly property real contentOffset: _activeView ? _activeView.scrollTarget - _activeView.currentIndex : 0
 
     signal requestQuit()
     signal requestSettings()

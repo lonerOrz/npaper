@@ -117,6 +117,12 @@ Singleton {
   readonly property int cacheBgHeight: _s(1080)
   readonly property int cacheAnimWidth: _s(640)    // GIF preview (16:9)
   readonly property int cacheAnimHeight: _s(360)   // GIF preview (16:9)
+
+  // Grid View
+  readonly property int gridCellWidth: _s(400)
+  readonly property int gridCellHeight: _s(225)
+  readonly property int gridCellSpacing: _s(12)
+  readonly property int gridCellPadding: _s(32)
   readonly property int cardBorderWidth: _s(2)
   readonly property int cardImageFrameMargin: _s(3)
   readonly property int cardInnerPadding: _s(10)
