@@ -66,9 +66,6 @@ Item {
 
   function switchFolder(folder) {
     localSource.switchFolder(folder);
-    if (root.cacheService && root.currentFolder && localSource.wallpaperMap[root.currentFolder]) {
-      root.cacheService.refreshAndQueue(localSource.wallpaperMap[root.currentFolder], root.currentFolder);
-    }
   }
 
   function setSearch(text) {

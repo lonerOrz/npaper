@@ -77,8 +77,12 @@ Item {
   function refresh(cacheService) {
     if (root.debugMode)
       Logger.d("LocalSource: Refresh — re-scanning all directories");
+    const prevFolder = root.currentFolder;  // save current folder
     var _cs = cacheService; // capture reference for callback
     var _onDone = function () {
+      // Restore previously selected folder
+      if (prevFolder && root.folders.includes(prevFolder))
+        root.currentFolder = prevFolder;
       // Refresh thumbnail cache for current folder after re-scan
       if (_cs && root.currentFolder && root.wallpaperMap[root.currentFolder]) {
         _cs.refreshAndQueue(root.wallpaperMap[root.currentFolder], root.currentFolder);
@@ -108,7 +112,8 @@ Item {
       onStreamFinished: {
         const f = text.trim().split('\n').filter(s => s.length > 0);
         root.folders = f;
-        if (f.length > 0)
+        // Only switch to first folder if current is gone
+        if (f.length > 0 && !f.includes(root.currentFolder))
           root.currentFolder = f[0];
         if (root.debugMode)
           Logger.d("LocalSource: Folders:", f);

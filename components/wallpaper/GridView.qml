@@ -384,7 +384,16 @@ FocusScope {
           smooth: true
           mipmap: true
           sourceSize: Qt.size(root._gridCellW, root._gridCellH)
-          opacity: status === Image.Ready ? 1.0 : 0.0
+          opacity: status === Image.Ready ? 1.0 : (status === Image.Error ? 0.3 : 0.0)
+
+          onStatusChanged: {
+            if (status === Image.Error && source !== "") {
+              // Corrupted cache file — try fallback to original image
+              const item = gridItem.modelData;
+              if (item && item.path && !item.isVideo && !item.isGif)
+                source = "file://" + item.path;
+            }
+          }
           Behavior on opacity {
             NumberAnimation {
               duration: Style.animFast
