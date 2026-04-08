@@ -65,9 +65,13 @@ FocusScope {
       return;
     var cols = Math.max(1, Math.ceil(thumbGridView.width / thumbGridView.cellWidth));
     var rows = Math.max(1, Math.ceil(thumbGridView.height / thumbGridView.cellHeight));
-    var visibleCount = rows * cols;
-    var startIdx = Math.floor(thumbGridView.contentY / thumbGridView.cellHeight) * cols;
-    for (let i = startIdx; i < startIdx + visibleCount && i < adapter.items.length; i++) {
+    // Preload extra rows above/below visible area
+    var preloadRows = 2;
+    var startRow = Math.max(0, Math.floor(thumbGridView.contentY / thumbGridView.cellHeight) - preloadRows);
+    var endRow = Math.min(Math.ceil((thumbGridView.contentY + thumbGridView.height) / thumbGridView.cellHeight) + preloadRows, Math.ceil(model.length / cols));
+    var startIdx = startRow * cols;
+    var endIdx = endRow * cols;
+    for (let i = startIdx; i < endIdx && i < adapter.items.length; i++) {
       const item = adapter.items[i];
       if (item && item.type === "local")
         cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
@@ -129,6 +133,13 @@ FocusScope {
     onContentYChanged: {
       if (!_gridScrollAnim.running)
         _scrollTarget = contentY;
+      _thumbQueueTimer.restart();
+    }
+
+    Timer {
+      id: _thumbQueueTimer
+      interval: 150
+      onTriggered: queueVisibleThumbnails()
     }
 
     NumberAnimation {
@@ -369,6 +380,7 @@ FocusScope {
           visible: source !== ""
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
+          cache: true
           smooth: true
           mipmap: true
           sourceSize: Qt.size(root._gridCellW, root._gridCellH)

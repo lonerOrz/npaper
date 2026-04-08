@@ -51,8 +51,12 @@ function getCachedThumb(thumbHashToPath, wallpaperPath) {
         return "";
     const hash = Hash.getThumbnailHash(wallpaperPath);
     const folder = getFolderName(wallpaperPath);
-    const key = folder + '/' + hash + '.png';
-    return thumbHashToPath[key] || "";
+    // Try new format first
+    const newKey = folder + '/' + hash + '_thumb.png';
+    if (thumbHashToPath[newKey]) return thumbHashToPath[newKey];
+    // Fall back to old format for backward compatibility
+    const oldKey = folder + '/' + hash + '.png';
+    return thumbHashToPath[oldKey] || "";
 }
 
 // Check if background preview exists in cache map
@@ -74,10 +78,15 @@ function getStaticThumbSource(thumbHashToPath, item) {
     if (item.type === "remote") return item.thumb;
     const path = item.path;
     if (!path || path.length === 0 || path.endsWith('/')) return "";
+    // Try small thumbnail first (fast decode, 400x225)
+    const thumb = getCachedThumb(thumbHashToPath, path);
+    if (thumb) return "file://" + thumb;
+    // Fall back to large background preview if thumb not ready
     const bg = getCachedBgPreview(thumbHashToPath, path);
     if (bg) return "file://" + bg;
     // Video/GIF without cache: return empty to avoid loading .mp4
     if (item.isVideo || item.isGif) return "";
+    // Final fallback: original image (Qt sourceSize limits decode)
     return "file://" + path;
 }
 

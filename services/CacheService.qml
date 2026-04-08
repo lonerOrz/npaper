@@ -29,6 +29,8 @@ Item {
 
   readonly property int thumbnailQueueMax: 50
   readonly property int thumbnailConcurrency: 2
+  readonly property int thumbWidth: Style.gridCellWidth
+  readonly property int thumbHeight: Style.gridCellHeight
   property var thumbnailWorkers: []
 
   signal cacheScanned
@@ -44,7 +46,7 @@ Item {
   // ── Cache scanning ────────────────────────────────────────
   Process {
     id: scanCacheProcess
-    command: ["sh", "-c", `find "${root.cacheDir}" -mindepth 2 -maxdepth 2 \\( -name '*_bg.png' -o -name '*_anim.gif' \\) -printf '%P\\n' 2>/dev/null`]
+    command: ["sh", "-c", `find "${root.cacheDir}" -mindepth 2 -maxdepth 2 \\( \\( -name '*.png' ! -name '*_bg.png' ! -name '*_thumb.png' \\) -o -name '*_bg.png' -o -name '*_thumb.png' -o -name '*_anim.gif' \\) -printf '%P\\n' 2>/dev/null`]
     stdout: StdioCollector {
       onStreamFinished: {
         const files = text.trim().split('\n').filter(f => f.length > 0 && f.indexOf('/') > 0);
@@ -81,7 +83,8 @@ Item {
       // ── Per-worker state ──
       property int _workerId: 0
       property string _path: ""       // source wallpaper path
-      property string _bgPath: ""     // output background preview
+      property string _bgPath: ""     // output background preview (large)
+      property string _thumbPath: ""  // output thumbnail (small, for grid)
       property string _animPath: ""   // output animated gif
       property string _folder: ""     // folder name for cache keys
       property var _ssArgs: []        // ffmpeg seek args for video
@@ -93,6 +96,8 @@ Item {
       function _buildCommand(step) {
         const bw = root.bgWidth;
         const bh = root.bgHeight;
+        const tw = root.thumbWidth;
+        const th = root.thumbHeight;
         const target = _path;
         const outDir = _bgPath.substring(0, _bgPath.lastIndexOf('/'));
 
@@ -100,12 +105,14 @@ Item {
           return [];  // idle
 
         if (!_needAnim()) {
-          // Static image: mkdir + ffmpeg
+          // Static image: generate bg then thumb
           switch (step) {
           case 0: // create output directory
             return ["mkdir", "-p", outDir];
-          case 1: // generate bg preview
+          case 1: // generate bg preview (large)
             return ["ffmpeg", "-y", "-i", target, "-vframes", "1", "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`, "-q:v", "2", _bgPath];
+          case 2: // generate thumb preview (small)
+            return ["ffmpeg", "-y", "-i", target, "-vframes", "1", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-q:v", "4", _thumbPath];
           default:
             return [];
           }
@@ -115,9 +122,11 @@ Item {
         switch (step) {
         case 0: // create output directory
           return ["mkdir", "-p", outDir];
-        case 1: // background frame
+        case 1: // background frame (large)
           return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-vframes", "1", "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`, "-q:v", "2", _bgPath];
-        case 2: // animated gif (at anim resolution)
+        case 2: // thumbnail frame (small)
+          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-vframes", "1", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-q:v", "4", _thumbPath];
+        case 3: // animated gif
           return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-r", "30", "-vf", `scale=${root.animWidth}:${root.animHeight}:force_original_aspect_ratio=increase,crop=${root.animWidth}:${root.animHeight}`, "-t", "10", _animPath];
         default:
           return [];
@@ -129,7 +138,7 @@ Item {
       }
 
       function _totalSteps() {
-        return _needAnim() ? 3 : 2;
+        return _needAnim() ? 4 : 3;
       }
 
       // ── Run current step ──
@@ -167,19 +176,10 @@ Item {
 
       // ── All steps done ──
       function _finish() {
-        root.thumbnailGenerated(_path, "", _bgPath, _animPath);
+        root.thumbnailGenerated(_path, _thumbPath, _bgPath, _animPath);
 
-        // Replace entire object to trigger QML binding updates
-        var newMap = Object.assign({}, root.thumbHashToPath);
-        if (_bgPath) {
-          newMap[_folder + '/' + HashUtils.getThumbnailHash(_path) + '_bg.png'] = _bgPath;
-        }
-        if (_animPath) {
-          newMap[_folder + '/' + HashUtils.getThumbnailHash(_path) + '_anim.gif'] = _animPath;
-        }
-        root.thumbHashToPath = newMap;
-        root.thumbCacheVersion++;
-        root.cachedFileCount++;
+        // No QML binding update here — cache map is only updated during scanCache
+        // This prevents GridView from refreshing on every thumbnail generation
 
         _reset();
         root.processQueue();
@@ -192,6 +192,7 @@ Item {
         delete root.queuedSet[_path];
         _path = "";
         _bgPath = "";
+        _thumbPath = "";
         _animPath = "";
         _folder = "";
         _ssArgs = [];
@@ -202,6 +203,7 @@ Item {
       function setup(item) {
         _path = item.path;
         _bgPath = item.bgPath;
+        _thumbPath = item.thumbPath;
         _animPath = item.animPath;
         _folder = item.folder;
         _ssArgs = item.isVideo ? ["-ss", "00:00:01"] : [];
@@ -247,6 +249,7 @@ Item {
     wallpaperList.forEach(path => {
                             const hash = HashUtils.getThumbnailHash(path);
                             validKeys[folder + '/' + hash + '_bg.png'] = true;
+                            validKeys[folder + '/' + hash + '_thumb.png'] = true;
                             validKeys[folder + '/' + hash + '_anim.gif'] = true;
                           });
 
@@ -288,7 +291,8 @@ Item {
       if (CacheHelpers.getCachedAnimatedGif(root.thumbHashToPath, wallpaperPath))
         return;
     } else {
-      if (CacheHelpers.getCachedBgPreview(root.thumbHashToPath, wallpaperPath))
+      // Only skip if small thumbnail already exists
+      if (CacheHelpers.getCachedThumb(root.thumbHashToPath, wallpaperPath))
         return;
     }
     if (root.queuedSet[wallpaperPath])
@@ -324,6 +328,7 @@ Item {
       const folder = CacheHelpers.getFolderName(item.path);
       const hash = HashUtils.getThumbnailHash(item.path);
       const bgPath = root.cacheDir + '/' + folder + '/' + hash + '_bg.png';
+      const thumbPath = root.cacheDir + '/' + folder + '/' + hash + '_thumb.png';
       const animPath = root.cacheDir + '/' + folder + '/' + hash + '_anim.gif';
 
       for (let i = 0; i < root.thumbnailWorkers.length; i++) {
@@ -332,6 +337,7 @@ Item {
           worker.setup({
                          path: item.path,
                          bgPath: bgPath,
+                         thumbPath: thumbPath,
                          animPath: item.isVideo || item.isGif ? animPath : "",
                          folder: folder,
                          isVideo: item.isVideo,

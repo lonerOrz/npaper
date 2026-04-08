@@ -78,6 +78,10 @@ FocusScope {
     animationDuration: root.scrollDuration
     scrollContinueInterval: root.scrollContinueInterval
     parallaxFactor: root.parallaxFactor
+
+    onScrollTargetChanged: {
+      queueVisibleThumbnails();
+    }
   }
 
   Item {
