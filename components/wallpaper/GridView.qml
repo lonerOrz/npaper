@@ -87,9 +87,8 @@ FocusScope {
         id: thumbGridView
         width: Math.min(root._gridWidth, root._availableWidth)
         anchors.top: parent.top
-        anchors.topMargin: root._gridCellPadding
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: root._gridCellPadding
+        anchors.topMargin: Style.spaceXXXL
+        anchors.bottom: keybindsText.top
         anchors.horizontalCenter: parent.horizontalCenter
         model: root.adapter ? root.adapter.items : null
         clip: false
@@ -471,5 +470,18 @@ FocusScope {
                 return;
             }
         }
+    }
+
+    // Keybinds hint
+    Text {
+        id: keybindsText
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Style.keyboardHintBottomMargin
+        anchors.horizontalCenter: parent.horizontalCenter
+        text: "↑/↓/←/→ Navigate  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  Esc Quit"
+        color: Color.mOutline
+        font.pixelSize: Style.keyboardHintFontSize
+        style: Text.Outline
+        styleColor: Color.mScrim
     }
 }
