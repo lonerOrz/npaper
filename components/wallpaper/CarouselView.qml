@@ -235,15 +235,27 @@ FocusScope {
       }
     }
 
-    Text {
+    // Enhanced keybinds hint with pill design
+    Rectangle {
       anchors.bottom: parent.bottom
-      anchors.horizontalCenter: parent.horizontalCenter
       anchors.bottomMargin: Style.keyboardHintBottomMargin
-      text: "/ Search  |  ←/→ Navigate  |  Tab/[] Folder  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  W Wallhaven  |  Esc Quit"
-      color: Color.mOutline
-      font.pixelSize: Style.keyboardHintFontSize
-      style: Text.Outline
-      styleColor: Color.mScrim
+      anchors.horizontalCenter: parent.horizontalCenter
+      radius: Style.radiusRound
+      color: Color.mSurfaceContainer
+      opacity: 0.85
+      
+      Text {
+        anchors.centerIn: parent
+        anchors.leftMargin: Style.spaceXL
+        anchors.rightMargin: Style.spaceXL
+        text: "/ Search  •  ←/→ Navigate  •  Tab/[] Folder  •  Enter Apply  •  R Random  •  F5 Refresh  •  S Settings  •  W Wallhaven  •  Esc Quit"
+        color: Color.mOnSurface
+        font.pixelSize: Style.keyboardHintFontSize
+        font.weight: Font.Medium
+        style: Text.Outline
+        styleColor: Color.mScrim
+        opacity: 0.9
+      }
     }
   }
 }

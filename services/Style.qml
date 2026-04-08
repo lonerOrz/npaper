@@ -88,7 +88,7 @@ Singleton {
 
   readonly property int gridCellWidth: _s(400)
   readonly property int gridCellHeight: _s(225)
-  readonly property int gridCellSpacing: _s(12)
+  readonly property int gridCellSpacing: _s(20)
   readonly property int gridCellPadding: _s(32)
 
   // ==================== Pure Constants ====================
@@ -158,6 +158,7 @@ Singleton {
   readonly property int animFast: 150
   readonly property int animNormal: 250
   readonly property int animEnter: 300
+  readonly property int animSlow: 400
 
   // Easing Types (Integer values)
   readonly property int easingOutCubic: 6

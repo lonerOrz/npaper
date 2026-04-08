@@ -19,7 +19,7 @@ Item {
 
   property real itemWidth: Style.carouselItemWidth > 0 ? Style.carouselItemWidth : 480
   property real itemHeight: Style.carouselItemHeight > 0 ? Style.carouselItemHeight : 270
-  property real itemRadius: Style.radiusM
+  property real itemRadius: Style.radiusL
 
   property real visualScale: 1.0
   property real visualOpacity: 1.0
@@ -39,15 +39,23 @@ Item {
 
   width: itemWidth
   height: itemHeight
-  scale: visualScale * (_isHovered ? 1.02 : 1.0)
+  scale: visualScale * (_isHovered ? 1.03 : 1.0)
   opacity: visualOpacity
-  z: visualZ + (_isHovered ? 10 : 0)
+  z: visualZ + (_isHovered ? 15 : 0)
   transformOrigin: Item.Center
 
+  // Smoother scale animation
   Behavior on scale {
     NumberAnimation {
-      duration: Style.animFast
+      duration: Style.animNormal
       easing.type: Easing.OutCubic
+    }
+  }
+  
+  // Smooth z-index transition
+  Behavior on z {
+    NumberAnimation {
+      duration: Style.animFast
     }
   }
 
@@ -128,13 +136,22 @@ Item {
   Rectangle {
     id: shadowItem
     anchors.fill: parent
-    radius: itemRadius
+    anchors.topMargin: -Style.spaceS
+    anchors.leftMargin: -Style.spaceS
+    anchors.rightMargin: -Style.spaceS
+    anchors.bottomMargin: -Style.spaceS
+    radius: Style.radiusL
     color: Color.mShadow
     opacity: root.showShadow ? visualShadowOpacity : 0
     z: -1
-    x: Style.spaceXS
-    y: Style.spaceS
-    visible: root.showShadow && visualShadowOpacity > 0
+    visible: root.showShadow && visualShadowOpacity > 0.01
+
+    Behavior on opacity {
+      NumberAnimation {
+        duration: Style.animNormal
+        easing.type: Easing.OutCubic
+      }
+    }
   }
 
   // ── Card content (clipped via MultiEffect mask) ────────────
@@ -157,12 +174,13 @@ Item {
         if (root.isCenter)
           return "transparent";
         if (root._isHovered)
-          return Qt.rgba(0, 0, 0, 0.15);
-        return Qt.rgba(0, 0, 0, 0.4);
+          return Qt.rgba(0, 0, 0, 0.10);
+        return Qt.rgba(0, 0, 0, 0.30);
       }
       Behavior on color {
         ColorAnimation {
           duration: Style.animNormal
+          easing.type: Easing.OutCubic
         }
       }
     }
@@ -268,15 +286,16 @@ Item {
         if (root.isCenter)
           return Color.mPrimary;
         if (root._isHovered)
-          return Color.mPrimaryContainer;
+          return Qt.lighter(Color.mPrimaryContainer, 1.15);
         return "transparent";
       }
       Behavior on strokeColor {
         ColorAnimation {
-          duration: Style.animFast
+          duration: Style.animNormal
+          easing.type: Easing.OutCubic
         }
       }
-      strokeWidth: root.isCenter ? Style.borderM : (root._isHovered ? Style.borderS : 0)
+      strokeWidth: root.isCenter ? Style.borderM + 1 : (root._isHovered ? Style.borderS : 0)
       startX: root.itemRadius
       startY: 0
       PathLine {

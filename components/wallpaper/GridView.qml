@@ -25,6 +25,9 @@ FocusScope {
   property var adapter: null
   property var cacheService: null
 
+  // Scrollbar state (at root level, not inside Flickable)
+  property bool gridScrollActive: false
+
   readonly property int currentIndex: thumbGridView.currentIndex
   readonly property real scrollTarget: thumbGridView.currentIndex
   readonly property int baseIndex: 0
@@ -87,7 +90,8 @@ FocusScope {
     width: Math.min(root._gridWidth, root._availableWidth)
     anchors.top: parent.top
     anchors.topMargin: Style.spaceXXXL
-    anchors.bottom: keybindsText.top
+    anchors.bottom: parent.bottom
+    anchors.bottomMargin: Style.keyboardHintBottomMargin + 40
     anchors.horizontalCenter: parent.horizontalCenter
     model: root.adapter ? root.adapter.items : null
     clip: false
@@ -167,46 +171,51 @@ FocusScope {
         _snapScrollTo(rowBottom - height);
     }
 
+    // Enhanced entry transition
     add: Transition {
-      NumberAnimation {
-        property: "opacity"
-        from: 0
-        to: 1
-        duration: Style.animEnter
-        easing.type: Easing.OutCubic
-      }
-      NumberAnimation {
-        property: "scale"
-        from: 0.85
-        to: 1
-        duration: Style.animEnter
-        easing.type: Easing.OutBack
-        easing.overshoot: 1.2
+      ParallelAnimation {
+        NumberAnimation {
+          property: "opacity"
+          from: 0
+          to: 1
+          duration: Style.animEnter
+          easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+          property: "scale"
+          from: 0.8
+          to: 1.0
+          duration: Style.animEnter
+          easing.type: Easing.OutBack
+          easing.overshoot: 1.5
+        }
       }
     }
+    
+    // Smooth exit transition
     remove: Transition {
-      NumberAnimation {
-        property: "opacity"
-        to: 0
-        duration: Style.animVeryFast
-        easing.type: Easing.InCubic
+      ParallelAnimation {
+        NumberAnimation {
+          property: "opacity"
+          to: 0
+          duration: Style.animFast
+          easing.type: Easing.InCubic
+        }
+        NumberAnimation {
+          property: "scale"
+          to: 0.95
+          duration: Style.animFast
+          easing.type: Easing.InCubic
+        }
       }
     }
+    
+    // Refined displaced transition
     displaced: Transition {
       NumberAnimation {
         properties: "x,y"
-        duration: Style.animFast
+        duration: Style.animNormal
         easing.type: Easing.OutCubic
-      }
-    }
-
-    ScrollBar.vertical: ScrollBar {
-      policy: ScrollBar.AsNeeded
-      width: 4
-      contentItem: Rectangle {
-        radius: 2
-        color: Color.mPrimary
-        opacity: 0.4
       }
     }
 
@@ -216,6 +225,8 @@ FocusScope {
       propagateComposedEvents: true
       onWheel: function (wheel) {
         thumbGridView._snapScroll(wheel.angleDelta.y);
+        root.gridScrollActive = true;
+        gridScrollFadeTimer.restart();
         thumbGridView.forceActiveFocus();
       }
       onPressed: mouse => mouse.accepted = false
@@ -233,28 +244,35 @@ FocusScope {
       readonly property bool isCurrent: GridView.isCurrentItem
       readonly property bool isHovered: itemMouse.containsMouse
 
-      scale: isCurrent ? 1.03 : (isHovered ? 1.01 : 1.0)
-      z: isCurrent ? 10 : (isHovered ? 5 : 0)
+      // Enhanced scale animation with smoother transitions
+      scale: isCurrent ? 1.04 : (isHovered ? 1.02 : 1.0)
+      z: isCurrent ? 20 : (isHovered ? 10 : 0)
 
       Behavior on scale {
         NumberAnimation {
-          duration: Style.animFast
+          duration: Style.animNormal
           easing.type: Easing.OutCubic
         }
       }
 
-      // Card shadow
+      // Enhanced card shadow with depth
       Rectangle {
         anchors.fill: parent
-        anchors.topMargin: Style.spaceXS
-        anchors.leftMargin: Style.spaceXS
-        radius: Style.radiusM
+        anchors.margins: gridItem.isCurrent ? Style.spaceM : Style.spaceS
+        radius: Style.radiusL
         color: Color.mShadow
-        opacity: gridItem.isCurrent ? 0.4 : (gridItem.isHovered ? 0.2 : 0)
+        opacity: gridItem.isCurrent ? 0.35 : (gridItem.isHovered ? 0.25 : 0.15)
         z: -1
+
+        Behavior on opacity {
+          NumberAnimation {
+            duration: Style.animNormal
+            easing.type: Easing.OutCubic
+          }
+        }
       }
 
-      // Rounded mask
+      // Rounded mask - refined corners
       Item {
         id: cardMask
         anchors.fill: parent
@@ -269,47 +287,47 @@ FocusScope {
             fillColor: "white"
             strokeColor: "transparent"
             strokeWidth: 0
-            startX: Style.radiusM
+            startX: Style.radiusL
             startY: 0
             PathLine {
-              x: width - Style.radiusM
+              x: width - Style.radiusL
               y: 0
             }
             PathArc {
               x: width
-              y: Style.radiusM
-              radiusX: Style.radiusM
-              radiusY: Style.radiusM
+              y: Style.radiusL
+              radiusX: Style.radiusL
+              radiusY: Style.radiusL
             }
             PathLine {
               x: width
-              y: height - Style.radiusM
+              y: height - Style.radiusL
             }
             PathArc {
-              x: width - Style.radiusM
+              x: width - Style.radiusL
               y: height
-              radiusX: Style.radiusM
-              radiusY: Style.radiusM
+              radiusX: Style.radiusL
+              radiusY: Style.radiusL
             }
             PathLine {
-              x: Style.radiusM
+              x: Style.radiusL
               y: height
             }
             PathArc {
               x: 0
-              y: height - Style.radiusM
-              radiusX: Style.radiusM
-              radiusY: Style.radiusM
+              y: height - Style.radiusL
+              radiusX: Style.radiusL
+              radiusY: Style.radiusL
             }
             PathLine {
               x: 0
-              y: Style.radiusM
+              y: Style.radiusL
             }
             PathArc {
-              x: Style.radiusM
+              x: Style.radiusL
               y: 0
-              radiusX: Style.radiusM
-              radiusY: Style.radiusM
+              radiusX: Style.radiusL
+              radiusY: Style.radiusL
             }
           }
         }
@@ -333,12 +351,13 @@ FocusScope {
             if (gridItem.isCurrent)
               return "transparent";
             if (gridItem.isHovered)
-              return Qt.rgba(0, 0, 0, 0.15);
-            return Qt.rgba(0, 0, 0, 0.4);
+              return Qt.rgba(0, 0, 0, 0.12);
+            return Qt.rgba(0, 0, 0, 0.35);
           }
           Behavior on color {
             ColorAnimation {
               duration: Style.animNormal
+              easing.type: Easing.OutCubic
             }
           }
         }
@@ -383,67 +402,29 @@ FocusScope {
         }
       }
 
-      // Border
-      Shape {
+      // Border with smooth animation (Rectangle instead of Shape for performance)
+      Rectangle {
         anchors.fill: parent
-        antialiasing: true
-        preferredRendererType: Shape.CurveRenderer
-        ShapePath {
-          fillColor: "transparent"
-          strokeColor: {
-            if (gridItem.isCurrent)
-              return Color.mPrimary;
-            if (gridItem.isHovered)
-              return Color.mPrimaryContainer;
-            return "transparent";
+        radius: Style.radiusL
+        color: "transparent"
+        border.color: {
+          if (gridItem.isCurrent)
+            return Color.mPrimary;
+          if (gridItem.isHovered)
+            return Qt.lighter(Color.mPrimaryContainer, 1.1);
+          return "transparent";
+        }
+        Behavior on border.color {
+          ColorAnimation {
+            duration: Style.animNormal
+            easing.type: Easing.OutCubic
           }
-          Behavior on strokeColor {
-            ColorAnimation {
-              duration: Style.animFast
-            }
-          }
-          strokeWidth: gridItem.isCurrent ? Style.borderM : (gridItem.isHovered ? Style.borderS : 0)
-          startX: Style.radiusM
-          startY: 0
-          PathLine {
-            x: width - Style.radiusM
-            y: 0
-          }
-          PathArc {
-            x: width
-            y: Style.radiusM
-            radiusX: Style.radiusM
-            radiusY: Style.radiusM
-          }
-          PathLine {
-            x: width
-            y: height - Style.radiusM
-          }
-          PathArc {
-            x: width - Style.radiusM
-            y: height
-            radiusX: Style.radiusM
-            radiusY: Style.radiusM
-          }
-          PathLine {
-            x: Style.radiusM
-            y: height
-          }
-          PathArc {
-            x: 0
-            y: height - Style.radiusM
-            radiusX: Style.radiusM
-            radiusY: Style.radiusM
-          }
-          PathLine {
-            x: 0
-            y: Style.radiusM
-          }
-          PathArc {
-            x: Style.radiusM
-            y: 0
-            radiusX: Style.radiusM
-            radiusY: Style.radiusM
+        }
+        border.width: gridItem.isCurrent ? Style.borderM : (gridItem.isHovered ? Style.borderS : 0)
+        Behavior on border.width {
+          NumberAnimation {
+            duration: Style.animNormal
+            easing.type: Easing.OutCubic
           }
         }
       }
@@ -522,16 +503,59 @@ FocusScope {
     }
   }
 
-  // Keybinds hint
-  Text {
-    id: keybindsText
+  // Scroll fade timer (sibling of GridView, not inside Flickable)
+  Timer {
+    id: gridScrollFadeTimer
+    interval: 800
+    onTriggered: root.gridScrollActive = false
+  }
+
+  // Custom scrollbar (sibling of GridView, stays fixed in viewport)
+  Rectangle {
+    anchors.right: parent.right
+    anchors.top: thumbGridView.top
+    anchors.bottom: parent.bottom
+    anchors.rightMargin: Style.spaceS
+    width: 4
+    radius: 2
+    color: Color.mPrimary
+    opacity: root.gridScrollActive ? 0.5 : 0
+
+    property real scrollProgress: thumbGridView.visibleArea.heightRatio < 1.0 ?
+      thumbGridView.visibleArea.yPosition / (1.0 - thumbGridView.visibleArea.heightRatio) : 0
+    property real scrollHeight: thumbGridView.visibleArea.heightRatio < 1.0 ?
+      thumbGridView.visibleArea.heightRatio * (height) : 20
+
+    y: scrollProgress * (parent.height - scrollHeight)
+    height: Math.max(20, scrollHeight)
+
+    Behavior on opacity {
+      NumberAnimation {
+        duration: root.gridScrollActive ? Style.animVeryFast : Style.animSlow
+      }
+    }
+  }
+
+  // Enhanced keybinds hint with pill design
+  Rectangle {
     anchors.bottom: parent.bottom
     anchors.bottomMargin: Style.keyboardHintBottomMargin
     anchors.horizontalCenter: parent.horizontalCenter
-    text: "↑/↓/←/→ Navigate  |  Enter Apply  |  R Random  |  F5 Refresh  |  S Settings  |  Esc Quit"
-    color: Color.mOutline
-    font.pixelSize: Style.keyboardHintFontSize
-    style: Text.Outline
-    styleColor: Color.mScrim
+    radius: Style.radiusRound
+    color: Color.mSurfaceContainer
+    opacity: 0.85
+    
+    Text {
+      anchors.centerIn: parent
+      anchors.leftMargin: Style.spaceXL
+      anchors.rightMargin: Style.spaceXL
+      text: "↑/↓/←/→ Navigate  •  Enter Apply  •  R Random  •  F5 Refresh  •  S Settings  •  Esc Quit"
+      color: Color.mOnSurface
+      font.pixelSize: Style.keyboardHintFontSize
+      font.weight: Font.Medium
+      style: Text.Outline
+      styleColor: Color.mScrim
+      opacity: 0.9
+    }
   }
 }
