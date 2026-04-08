@@ -1,37 +1,30 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
 import qs.components.settings
 import qs.services
 
 /*
-* SettingsPanel — mirrors values from AppWindow, writes back to AppWindow.
-* Persistence is AppWindow's responsibility via viewModel.
+* SettingsPanel — core configuration only.
 *
-* Features:
-*   - Sliding capsule tab indicator with elastic OutBack bounce
-*   - Animated open/close
-*   - 3 tabs: Layout, Animation, Appearance (12 settings total)
+* Tabs:
+*   - Paths: wallpaper directories, cache directory
+*   - Wallhaven: API key, categories, purity, sorting
 */
 Item {
   id: root
 
   property bool settingsOpen: false
-  property string activeTab: "layout"
+  property string activeTab: "paths"
 
-  // Mirrored from AppWindow — updated by AppWindow bindings
-  property real carouselSpacing: 0
-  property real carouselRotation: 0
-  property real carouselPerspective: 0
-  property bool showBorderGlow: false
-  property bool showShadow: false
-  property bool showBgPreview: false
-
-  // Animation properties
-  property int scrollDuration: 280
-  property int scrollContinueInterval: 230
-  property int bgSlideDuration: 250
-  property int bgParallaxFactor: 40
+  // Mirrored from AppWindow
+  property var wallpaperDirs: []
+  property string cacheDir: ""
+  property bool showBorderGlow: true
+  property bool showShadow: true
+  property bool showBgPreview: true
+  property real bgOverlayOpacity: 0.4
+  property string wallhavenApiKey: ""
+  property string wallhavenCategories: "111"
+  property string wallhavenPurity: "100"
 
   signal closeRequested
   signal switchToNextFolder
@@ -112,7 +105,6 @@ Item {
       }
     }
 
-    // Sliding capsule indicator
     Rectangle {
       anchors.verticalCenter: parent.verticalCenter
       height: Style.settingsTabHeight
@@ -146,12 +138,12 @@ Item {
       Repeater {
         model: [
           {
-            key: "layout",
-            label: "Layout"
+            key: "paths",
+            label: "Paths"
           },
           {
-            key: "animation",
-            label: "Animation"
+            key: "wallhaven",
+            label: "Wallhaven"
           },
           {
             key: "appearance",
@@ -212,102 +204,159 @@ Item {
     anchors.margins: Style.settingsPadding
     clip: true
 
-    // Layout tab
+    // ── Paths tab ─────────────────────────────────────────
     Column {
       anchors.top: parent.top
       anchors.left: parent.left
       anchors.right: parent.right
       spacing: Style.settingsContentSpacing
-      visible: root.activeTab === "layout"
+      visible: root.activeTab === "paths"
 
-      SettingsInput {
+      Text {
         width: parent.width
-        label: "Spacing"
-        value: root.carouselSpacing
-        min: 0
-        max: 60
-        onCommit: function (n) {
-          root._emit(Style.cfgCarouselSpacing, n);
+        text: "STORAGE"
+        color: Color.mOutline
+        font.pixelSize: Style.fontXS
+        font.weight: Font.Bold
+        font.letterSpacing: 1.5
+      }
+
+      SettingsTextInput {
+        width: parent.width
+        label: "Wallpaper Directories"
+        value: root.wallpaperDirs.join(";")
+        placeholder: "/path/to/wallpapers;/path/to/more"
+        onCommit: function (v) {
+          var dirs = v.split(";").map(s => s.trim()).filter(s => s.length > 0);
+          root._emit("wallpaperDirs", dirs);
         }
       }
-      SettingsInput {
+
+      SettingsTextInput {
         width: parent.width
-        label: "Rotation"
-        value: root.carouselRotation
-        min: 0
-        max: 90
-        onCommit: function (n) {
-          root._emit(Style.cfgCarouselRotation, n);
-        }
-      }
-      SettingsInput {
-        width: parent.width
-        label: "Depth"
-        value: root.carouselPerspective
-        min: 0.1
-        max: 1.0
-        step: 0.05
-        onCommit: function (n) {
-          root._emit(Style.cfgCarouselPerspective, n);
+        label: "Cache Directory"
+        value: root.cacheDir
+        placeholder: "/path/to/cache"
+        onCommit: function (v) {
+          root._emit("cacheDir", v.trim());
         }
       }
     }
 
-    // Animation tab
+    // ── Wallhaven tab ────────────────────────────────────
     Column {
       anchors.top: parent.top
       anchors.left: parent.left
       anchors.right: parent.right
       spacing: Style.settingsContentSpacing
-      visible: root.activeTab === "animation"
+      visible: root.activeTab === "wallhaven"
 
-      SettingsInput {
+      Text {
         width: parent.width
-        label: "Scroll Speed"
-        value: root.scrollDuration
-        min: 100
-        max: 500
-        step: 10
-        onCommit: function (n) {
-          root._emit(Style.cfgScrollDuration, n);
+        text: "API"
+        color: Color.mOutline
+        font.pixelSize: Style.fontXS
+        font.weight: Font.Bold
+        font.letterSpacing: 1.5
+      }
+
+      SettingsTextInput {
+        width: parent.width
+        label: "API Key"
+        value: root.wallhavenApiKey
+        placeholder: "your-wallhaven-api-key"
+        onCommit: function (v) {
+          root._emit("wallhaven.apiKey", v.trim());
         }
       }
-      SettingsInput {
+
+      Rectangle {
         width: parent.width
-        label: "Scroll Continue"
-        value: root.scrollContinueInterval
-        min: 100
-        max: 400
-        step: 10
-        onCommit: function (n) {
-          root._emit(Style.cfgScrollContinueInterval, n);
+        height: 1
+        color: Color.mOutlineVariant
+        opacity: Style.opacityDivider
+      }
+
+      Text {
+        width: parent.width
+        text: "FILTERS"
+        color: Color.mOutline
+        font.pixelSize: Style.fontXS
+        font.weight: Font.Bold
+        font.letterSpacing: 1.5
+      }
+
+      SettingsToggle {
+        width: parent.width
+        text: "General"
+        checked: root.wallhavenCategories[0] === "1"
+        onToggled: function (val) {
+          var c = root.wallhavenCategories.split("");
+          c[0] = val ? "1" : "0";
+          root._emit("wallhaven.categories", c.join(""));
         }
       }
-      SettingsInput {
+      SettingsToggle {
         width: parent.width
-        label: "Slide Duration"
-        value: root.bgSlideDuration
-        min: 100
-        max: 500
-        step: 10
-        onCommit: function (n) {
-          root._emit(Style.cfgBgSlideDuration, n);
+        text: "Anime"
+        checked: root.wallhavenCategories[1] === "1"
+        onToggled: function (val) {
+          var c = root.wallhavenCategories.split("");
+          c[1] = val ? "1" : "0";
+          root._emit("wallhaven.categories", c.join(""));
         }
       }
-      SettingsInput {
+      SettingsToggle {
         width: parent.width
-        label: "Parallax"
-        value: root.bgParallaxFactor
-        min: 10
-        max: 80
-        step: 5
-        onCommit: function (n) {
-          root._emit(Style.cfgBgParallaxFactor, n);
+        text: "People"
+        checked: root.wallhavenCategories[2] === "1"
+        onToggled: function (val) {
+          var c = root.wallhavenCategories.split("");
+          c[2] = val ? "1" : "0";
+          root._emit("wallhaven.categories", c.join(""));
+        }
+      }
+
+      Rectangle {
+        width: parent.width
+        height: 1
+        color: Color.mOutlineVariant
+        opacity: Style.opacityDivider
+      }
+
+      SettingsToggle {
+        width: parent.width
+        text: "Safe"
+        checked: root.wallhavenPurity[0] === "1"
+        onToggled: function (val) {
+          var p = root.wallhavenPurity.split("");
+          p[0] = val ? "1" : "0";
+          root._emit("wallhaven.purity", p.join(""));
+        }
+      }
+      SettingsToggle {
+        width: parent.width
+        text: "Sketchy"
+        checked: root.wallhavenPurity[1] === "1"
+        onToggled: function (val) {
+          var p = root.wallhavenPurity.split("");
+          p[1] = val ? "1" : "0";
+          root._emit("wallhaven.purity", p.join(""));
+        }
+      }
+      SettingsToggle {
+        width: parent.width
+        text: "NSFW"
+        checked: root.wallhavenPurity[2] === "1"
+        onToggled: function (val) {
+          var p = root.wallhavenPurity.split("");
+          p[2] = val ? "1" : "0";
+          root._emit("wallhaven.purity", p.join(""));
         }
       }
     }
 
-    // Appearance tab
+    // ── Appearance tab ──────────────────────────────────
     Column {
       anchors.top: parent.top
       anchors.left: parent.left
@@ -315,12 +364,49 @@ Item {
       spacing: Style.settingsContentSpacing
       visible: root.activeTab === "appearance"
 
+      Text {
+        width: parent.width
+        text: "OVERLAY"
+        color: Color.mOutline
+        font.pixelSize: Style.fontXS
+        font.weight: Font.Bold
+        font.letterSpacing: 1.5
+      }
+
+      SettingsSlider {
+        width: parent.width
+        label: "Opacity"
+        value: root.bgOverlayOpacity
+        min: 0.0
+        max: 1.0
+        step: 0.05
+        onCommit: function (v) {
+          root._emit("appearance.bgOverlayOpacity", v);
+        }
+      }
+
+      Rectangle {
+        width: parent.width
+        height: 1
+        color: Color.mOutlineVariant
+        opacity: Style.opacityDivider
+      }
+
+      Text {
+        width: parent.width
+        text: "EFFECTS"
+        color: Color.mOutline
+        font.pixelSize: Style.fontXS
+        font.weight: Font.Bold
+        font.letterSpacing: 1.5
+      }
+
       SettingsToggle {
         width: parent.width
         text: "Border Glow"
         checked: root.showBorderGlow
         onToggled: function (val) {
-          root._emit(Style.cfgShowBorderGlow, val);
+          root._emit("appearance.showBorderGlow", val);
         }
       }
       SettingsToggle {
@@ -328,7 +414,7 @@ Item {
         text: "Card Shadow"
         checked: root.showShadow
         onToggled: function (val) {
-          root._emit(Style.cfgShowShadow, val);
+          root._emit("appearance.showShadow", val);
         }
       }
       SettingsToggle {
@@ -336,7 +422,7 @@ Item {
         text: "Background Preview"
         checked: root.showBgPreview
         onToggled: function (val) {
-          root._emit(Style.cfgShowBgPreview, val);
+          root._emit("appearance.showBgPreview", val);
         }
       }
     }

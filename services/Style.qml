@@ -61,33 +61,35 @@ Singleton {
   readonly property int spaceXXXL: _s(16)
   readonly property int space4XL: _s(20)
 
-  readonly property int space2XXS: spaceXXS * 2
   readonly property int space2XS: spaceXS * 2
-  readonly property int space2S: spaceS * 2
   readonly property int space2M: spaceM * 2
   readonly property int space2L: spaceL * 2
-  readonly property int space2XL: spaceXL * 2
-  readonly property int space2XXL: space2XL * 2
-  readonly property int space2XXXL: spaceXXXL * 2
 
-  // ==================== Config-Derived Values ====================
-  // These auto-update when Config.data changes (QML binding)
-  readonly property int carouselItemWidth: _s(480)    // Fixed 16:9 ratio
-  readonly property int carouselItemHeight: _s(270)   // Fixed 16:9 ratio
-  readonly property int carouselSpacing: _s(Config.data.carousel.spacing)
-  readonly property int carouselRotation: Config.data.carousel.rotation
-  readonly property real carouselPerspective: Config.data.carousel.perspective
+  // ==================== Fixed Values (not user-configurable) ====================
+  readonly property int carouselItemWidth: _s(480)
+  readonly property int carouselItemHeight: _s(270)
   readonly property int carouselTopMargin: _s(440)
   readonly property int carouselSideMargin: _s(10)
 
-  readonly property int scrollDuration: Config.data.animation.scrollDuration
-  readonly property int scrollContinueInterval: Config.data.animation.scrollContinueInterval
-  readonly property int bgSlideDuration: Config.data.animation.bgSlideDuration
-  readonly property int bgParallaxFactor: Config.data.animation.bgParallaxFactor
-  readonly property real bgOverlayOpacity: Config.data.appearance.bgOverlayOpacity
-  readonly property bool showBorderGlow: Config.data.appearance.showBorderGlow
-  readonly property bool showShadow: Config.data.appearance.showShadow
-  readonly property bool showBgPreview: Config.data.appearance.showBgPreview
+  // Defaults — read by AppWindow, overridable via Config
+  readonly property int defaultCarouselSpacing: _s(24)
+  readonly property int defaultCarouselRotation: 41
+  readonly property real defaultCarouselPerspective: 0.45
+
+  readonly property int defaultScrollDuration: 170
+  readonly property int defaultScrollContinueInterval: 160
+  readonly property int defaultBgSlideDuration: 250
+  readonly property int defaultBgParallaxFactor: 40
+
+  readonly property int cacheBgWidth: _s(1920)
+  readonly property int cacheBgHeight: _s(1080)
+  readonly property int cacheAnimWidth: _s(640)
+  readonly property int cacheAnimHeight: _s(360)
+
+  readonly property int gridCellWidth: _s(400)
+  readonly property int gridCellHeight: _s(225)
+  readonly property int gridCellSpacing: _s(12)
+  readonly property int gridCellPadding: _s(32)
 
   // ==================== Pure Constants ====================
   // Status Bar
@@ -113,16 +115,6 @@ Singleton {
   readonly property real barSettingsGearFontSize: fontM
 
   // Wallpaper Card
-  readonly property int cacheBgWidth: _s(1920)
-  readonly property int cacheBgHeight: _s(1080)
-  readonly property int cacheAnimWidth: _s(640)    // GIF preview (16:9)
-  readonly property int cacheAnimHeight: _s(360)   // GIF preview (16:9)
-
-  // Grid View
-  readonly property int gridCellWidth: _s(400)
-  readonly property int gridCellHeight: _s(225)
-  readonly property int gridCellSpacing: _s(12)
-  readonly property int gridCellPadding: _s(32)
   readonly property int cardBorderWidth: _s(2)
   readonly property int cardImageFrameMargin: _s(3)
   readonly property int cardInnerPadding: _s(10)
@@ -158,30 +150,22 @@ Singleton {
   readonly property int logoBottomMargin: _s(120)
 
   // ==================== Opacity ====================
-  readonly property real opacityNone: 0.0
   readonly property real opacityLight: 0.15
   readonly property real opacityDivider: 0.3
-  readonly property real opacityMedium: 0.5
-  readonly property real opacityHeavy: 0.75
-  readonly property real opacityAlmost: 0.95
-  readonly property real opacityFull: 1.0
 
   // ==================== Animation Duration (ms) ====================
   readonly property int animVeryFast: 100
   readonly property int animFast: 150
   readonly property int animNormal: 250
   readonly property int animEnter: 300
-  readonly property int animSlow: 400
 
   // Easing Types (Integer values)
   readonly property int easingOutCubic: 6
   readonly property int easingOutQuad: 2
   readonly property int easingOutBack: 14
-  readonly property int easingInCubic: 7
 
   // Tunable Timers
   readonly property int searchDebounceMs: 150
-  readonly property int bgFadeDuration: 400
   readonly property int logoRotationMs: 30000
 
   // Layout Constants
@@ -191,21 +175,4 @@ Singleton {
   // ==================== Border ====================
   readonly property int borderS: _s(1)
   readonly property int borderM: _s(2)
-
-  // ==================== Config Keys (dot-paths for Config.update) ====================
-  readonly property string cfgCarouselSpacing: "carousel.spacing"
-  readonly property string cfgCarouselRotation: "carousel.rotation"
-  readonly property string cfgCarouselPerspective: "carousel.perspective"
-  readonly property string cfgShowBorderGlow: "appearance.showBorderGlow"
-  readonly property string cfgShowShadow: "appearance.showShadow"
-  readonly property string cfgShowBgPreview: "appearance.showBgPreview"
-  readonly property string cfgBgOverlayOpacity: "appearance.bgOverlayOpacity"
-  readonly property string cfgScrollDuration: "animation.scrollDuration"
-  readonly property string cfgScrollContinueInterval: "animation.scrollContinueInterval"
-  readonly property string cfgBgSlideDuration: "animation.bgSlideDuration"
-  readonly property string cfgBgParallaxFactor: "animation.bgParallaxFactor"
-  readonly property string cfgDebugMode: "debugMode"
-  readonly property string cfgWallpaperDirs: "wallpaperDirs"
-  readonly property string cfgCacheDir: "cacheDir"
-  readonly property string cfgPreviewStyle: "previewStyle"
 }

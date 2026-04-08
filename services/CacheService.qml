@@ -254,11 +254,11 @@ Item {
     var newMap = Object.assign({}, root.thumbHashToPath);
     const invalidFiles = [];
     Object.keys(newMap).forEach(key => {
-                                    if (key.startsWith(folder + '/') && !validKeys[key]) {
-                                      invalidFiles.push(newMap[key]);
-                                      delete newMap[key];
-                                    }
-                                  });
+                                  if (key.startsWith(folder + '/') && !validKeys[key]) {
+                                    invalidFiles.push(newMap[key]);
+                                    delete newMap[key];
+                                  }
+                                });
     root.thumbHashToPath = newMap;
 
     if (invalidFiles.length > 0) {

@@ -1,61 +1,76 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
 import qs.services
 
-Item {
+/*
+* SettingsToggle — labeled toggle switch with animated knob.
+*
+* Usage:
+*   SettingsToggle {
+*     width: parent.width
+*     text: "Border Glow"
+*     checked: root.showBorderGlow
+*     onToggled: function (val) { root._emit("showBorderGlow", val) }
+*   }
+*/
+Row {
   id: root
-  height: 40
   width: parent ? parent.width : 300
+  height: Style.settingsTabHeight
+  spacing: Style.spaceM
 
-  property alias text: label.text
+  property string text: ""
   property bool checked: false
   signal toggled(bool val)
 
-  RowLayout {
-    anchors.fill: parent
-    spacing: 12
+  Text {
+    width: parent.width - 48
+    text: root.text
+    color: Color.mOnSurface
+    font.pixelSize: Style.fontS
+    verticalAlignment: Text.AlignVCenter
+    elide: Text.ElideRight
+  }
 
-    Text {
-      id: label
-      Layout.fillWidth: true
-      color: Color.mOnSurface
-      font.pixelSize: 13
+  Item {
+    width: 40
+    height: 20
+    anchors.verticalCenter: parent.verticalCenter
+
+    // Track
+    Rectangle {
+      anchors.fill: parent
+      radius: height / 2
+      color: root.checked ? Color.mPrimary : Color.mSurfaceContainerHighest
+      border.width: 1
+      border.color: root.checked ? Color.mPrimary : Color.mOutline
+      opacity: root.checked ? 1.0 : 0.6
+      Behavior on color {
+        ColorAnimation {
+          duration: Style.animFast
+        }
+      }
+    }
+
+    // Knob
+    Rectangle {
+      width: 16
+      height: 14
+      anchors.verticalCenter: parent.verticalCenter
+      x: root.checked ? parent.width - width - 2 : 2
+      radius: height / 2
+      color: Color.mInverseSurface
+      Behavior on x {
+        NumberAnimation {
+          duration: Style.animFast
+          easing.type: Easing.OutCubic
+        }
+      }
     }
 
     MouseArea {
-      Layout.alignment: Qt.AlignRight
-      width: 40
-      height: 22
+      anchors.fill: parent
+      cursorShape: Qt.PointingHandCursor
       onClicked: root.toggled(!root.checked)
-
-      Rectangle {
-        anchors.fill: parent
-        radius: 11
-        color: root.checked ? Color.mPrimary : Color.mSurfaceContainerHighest
-        Behavior on color {
-          ColorAnimation {
-            duration: 200
-          }
-        }
-      }
-
-      Rectangle {
-        id: toggle
-        x: root.checked ? 20 : 2
-        y: 2
-        width: 18
-        height: 18
-        radius: 9
-        color: Color.mInverseSurface
-        Behavior on x {
-          NumberAnimation {
-            duration: 200
-            easing.type: Easing.OutBack
-            easing.overshoot: 2.0
-          }
-        }
-      }
     }
   }
 }

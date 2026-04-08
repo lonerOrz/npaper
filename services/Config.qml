@@ -39,17 +39,6 @@ Singleton {
                                         "purity": "100",
                                         "sorting": "toplist"
                                       },
-                                      "carousel": {
-                                        "spacing": 20,
-                                        "rotation": 25,
-                                        "perspective": 0.3
-                                      },
-                                      "animation": {
-                                        "scrollDuration": 280,
-                                        "scrollContinueInterval": 230,
-                                        "bgSlideDuration": 250,
-                                        "bgParallaxFactor": 40
-                                      },
                                       "appearance": {
                                         "showBorderGlow": true,
                                         "showShadow": true,
@@ -159,6 +148,8 @@ Singleton {
       obj = obj[parts[i]];
     }
     obj[parts[parts.length - 1]] = value;
+    // Re-assign to trigger QML binding re-evaluation
+    root.data = JSON.parse(JSON.stringify(root.data));
     // Sync QML property for trackable bindings
     if (path === "previewStyle")
       root.previewStyle = value;
@@ -180,8 +171,6 @@ Singleton {
       "debugMode": resolvedData.debugMode,
       "previewStyle": resolvedData.previewStyle,
       "wallhaven": _pick(resolvedData.wallhaven, ["apiKey", "defaultAtleast", "categories", "purity", "sorting"]),
-      "carousel": _pick(resolvedData.carousel, ["spacing", "rotation", "perspective"]),
-      "animation": _pick(resolvedData.animation, ["scrollDuration", "scrollContinueInterval", "bgSlideDuration", "bgParallaxFactor"]),
       "appearance": _pick(resolvedData.appearance, ["showBorderGlow", "showShadow", "showBgPreview", "bgOverlayOpacity"])
     };
     var jsonStr = JSON.stringify(ordered, null, 2);

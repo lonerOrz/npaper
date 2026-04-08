@@ -17,8 +17,8 @@ Item {
   property string remoteId: ""
   property string remoteThumb: ""
 
-  property real itemWidth: Style.carouselItemWidth
-  property real itemHeight: Style.carouselItemHeight
+  property real itemWidth: Style.carouselItemWidth > 0 ? Style.carouselItemWidth : 480
+  property real itemHeight: Style.carouselItemHeight > 0 ? Style.carouselItemHeight : 270
   property real itemRadius: Style.radiusM
 
   property real visualScale: 1.0
@@ -170,14 +170,7 @@ Item {
     Image {
       id: staticImage
       anchors.fill: parent
-      source: CacheUtils.getWallpaperStaticSource(
-        root.thumbHashToPath,
-        root.wallpaperPath,
-        root.isVideo,
-        root.isGif,
-        root.isRemote,
-        root.remoteThumb
-      )
+      source: CacheUtils.getWallpaperStaticSource(root.thumbHashToPath, root.wallpaperPath, root.isVideo, root.isGif, root.isRemote, root.remoteThumb)
       fillMode: Image.PreserveAspectCrop
       asynchronous: true
       smooth: root.isCenter || root.isRemote
@@ -214,13 +207,7 @@ Item {
     AnimatedImage {
       id: animatedGif
       anchors.fill: parent
-      source: CacheUtils.getWallpaperAnimatedSource(
-        root.thumbHashToPath,
-        root.wallpaperPath,
-        root.isVideo,
-        root.isGif,
-        root.isCenter
-      )
+      source: CacheUtils.getWallpaperAnimatedSource(root.thumbHashToPath, root.wallpaperPath, root.isVideo, root.isGif, root.isCenter)
       visible: source !== ""
       fillMode: Image.PreserveAspectCrop
       asynchronous: true

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
-import qs.services
 import qs.components.common
+import qs.services
 
 Item {
   id: root
@@ -128,11 +128,12 @@ Item {
 
     // View Mode Pill
     SelectorPill {
-        Layout.alignment: Qt.AlignVCenter
-        visible: !root.isWallhaven
-        model: ["Carousel", "Grid"]
-        activeIndex: Config.previewStyle === "grid" ? 1 : 0
-        onSelected: function(index, label) { Config.update("previewStyle", label.toLowerCase()) }
+      visible: !root.isWallhaven
+      model: ["Carousel", "Grid"]
+      activeIndex: Config.previewStyle === "grid" ? 1 : 0
+      onSelected: function (index, label) {
+        Config.update("previewStyle", label.toLowerCase());
+      }
     }
 
     // Divider
@@ -149,7 +150,9 @@ Item {
       model: root.folders
       activeIndex: root.folders.indexOf(root.activeFolder)
       activeColor: Color.mPrimary
-      onSelected: function(index, label) { root.folderClicked(label) }
+      onSelected: function (index, label) {
+        root.folderClicked(label);
+      }
     }
 
     // Wallhaven Button

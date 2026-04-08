@@ -1,46 +1,52 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
 import Quickshell
-import "../../utils/CacheUtils.js" as CacheUtils
 import qs.components.common
 import qs.services
 
 /*
- * CarouselView — 3D perspective carousel of wallpaper cards.
- *
- * Inputs:
- *   adapter, cacheService, checkService
- *
- * Outputs (properties):
- *   currentIndex, scrollTarget, ready, baseIndex, maxIndex
- *
- * Outputs (signals):
- *   All 7 request* signals + toggleWallhaven + refresh
- *
- * Note: requestApplyItem emits adapter.items[N] with path field guaranteed.
- */
+* CarouselView — 3D perspective carousel of wallpaper cards.
+*
+* Inputs:
+*   adapter, cacheService, checkService
+*
+* Outputs (properties):
+*   currentIndex, scrollTarget, ready, baseIndex, maxIndex
+*
+* Outputs (signals):
+*   All 7 request* signals + toggleWallhaven + refresh
+*
+* Note: requestApplyItem emits adapter.items[N] with path field guaranteed.
+*/
 FocusScope {
   id: root
 
   property var adapter: null
   property var cacheService: null
 
+  // Config-derived values (passed from DisplayManager)
+  property int carouselSpacing: 20
+  property int carouselRotation: 25
+  property real carouselPerspective: 0.3
+  property int scrollDuration: 280
+  property int scrollContinueInterval: 230
+  property int parallaxFactor: 40
+  property bool showBorderGlow: true
+  property bool showShadow: true
+
   readonly property int currentIndex: scrollController.currentIndex
   readonly property real scrollTarget: scrollController.scrollTarget
-  readonly property bool ready: true
   readonly property int baseIndex: scrollController.baseIndex
   readonly property int maxIndex: scrollController.maxIndex
 
-  signal requestQuit()
-  signal requestSettings()
-  signal requestPrevFolder()
-  signal requestNextFolder()
-  signal requestFocusSearch()
+  signal requestQuit
+  signal requestSettings
+  signal requestPrevFolder
+  signal requestNextFolder
+  signal requestFocusSearch
   signal requestApplyItem(var item)
-  signal requestRandom()
-  signal requestToggleWallhaven()
-  signal requestRefresh()
+  signal requestRandom
+  signal requestToggleWallhaven
+  signal requestRefresh
 
   function reset() {
     scrollController.reset();
@@ -69,9 +75,9 @@ FocusScope {
     count: root.adapter ? root.adapter.count : 0
     visibleRange: Style.visibleRange
     preloadRange: Style.preloadRange
-    animationDuration: Config.data.animation.scrollDuration
-    scrollContinueInterval: Config.data.animation.scrollContinueInterval
-    parallaxFactor: Config.data.animation.bgParallaxFactor
+    animationDuration: root.scrollDuration
+    scrollContinueInterval: root.scrollContinueInterval
+    parallaxFactor: root.parallaxFactor
   }
 
   Item {
@@ -82,7 +88,7 @@ FocusScope {
 
     property int itemWidth: Style.carouselItemWidth
     property int itemHeight: Style.carouselItemHeight
-    property real spacing: Style.carouselSpacing
+    property real spacing: root.carouselSpacing
     property real centerX: width / 2
     property real centerY: height / 2
 
@@ -144,9 +150,7 @@ FocusScope {
       // ===== Navigate (←/→) =====
       if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
         const dir = event.key === Qt.Key_Left ? -1 : 1;
-        event.modifiers & Qt.ShiftModifier
-          ? (dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight())
-          : (dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight());
+        event.modifiers & Qt.ShiftModifier ? (dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight()) : (dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight());
         event.accepted = true;
         return;
       }
@@ -190,8 +194,8 @@ FocusScope {
         remoteThumb: _item && _item.type === "remote" ? _item.thumb : ""
         thumbHashToPath: _item && _item.type === "local" ? (root.cacheService ? root.cacheService.thumbHashToPath : {}) : {}
         isCenter: realIndex === root.currentIndex
-        showBorderGlow: Config.data.appearance.showBorderGlow
-        showShadow: Config.data.appearance.showShadow
+        showBorderGlow: root.showBorderGlow
+        showShadow: root.showShadow
 
         readonly property var metrics: {
           const raw = realIndex - scrollController.scrollTarget;
@@ -200,7 +204,7 @@ FocusScope {
             raw,
             abs,
             cos: Math.cos(Math.min(abs, 3) * 0.523599),
-            perspectiveScale: 1.0 / (1.0 + abs * Style.carouselPerspective)
+            perspectiveScale: 1.0 / (1.0 + abs * root.carouselPerspective)
           };
         }
         readonly property var visual: {
@@ -208,7 +212,7 @@ FocusScope {
           return {
             scale: metrics.perspectiveScale * (0.85 + metrics.cos * 0.15) + (isCenter ? 0.06 : 0),
             opacity: abs > 6 ? 0 : Math.pow(Math.max(0, 1 - abs * 0.12), 2.5),
-            rotationY: metrics.raw * -Style.carouselRotation,
+            rotationY: metrics.raw * -root.carouselRotation,
             z: 100 - abs * 50,
             spacingFactor: 0.85 - metrics.abs * 0.06,
             yOffset: abs * 8,
