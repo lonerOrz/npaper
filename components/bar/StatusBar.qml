@@ -65,6 +65,11 @@ Item {
       layer.effect: MultiEffect {
         colorization: 1.0
         colorizationColor: root.dominantColor
+        shadowEnabled: true
+        shadowColor: root.dominantColor
+        shadowBlur: 12
+        shadowHorizontalOffset: 0
+        shadowVerticalOffset: 0
       }
       RotationAnimation on rotation {
         from: 0
