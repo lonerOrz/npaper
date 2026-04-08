@@ -313,18 +313,11 @@ FocusScope {
                 Image {
                     id: thumbImage
                     anchors.fill: parent
-                    source: {
-                        const item = gridItem.modelData;
-                        if (!item) return "";
-                        if (item.type === "remote") return item.thumb;
-                        const path = item.path;
-                        if (!path) return "";
-                        const thumbMap = root.cacheService ? root.cacheService.thumbHashToPath : {};
-                        const bg = CacheUtils.getCachedBgPreview(thumbMap, path);
-                        if (bg) return "file://" + bg;
-                        if (item.isVideo || item.isGif) return "";
-                        return "file://" + path;
-                    }
+                    source: CacheUtils.getStaticThumbSource(
+                        root.cacheService ? root.cacheService.thumbHashToPath : {},
+                        gridItem.modelData
+                    )
+                    visible: source !== ""
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     smooth: true
@@ -340,19 +333,11 @@ FocusScope {
                 AnimatedImage {
                     id: animatedGif
                     anchors.fill: parent
-                    visible: gridItem.isCurrent
-                             && gridItem.modelData
-                             && (gridItem.modelData.isGif || gridItem.modelData.isVideo)
-                             && source !== ""
-                    source: {
-                        const item = gridItem.modelData;
-                        if (!item || item.type === "remote") return "";
-                        const path = item.path;
-                        if (!path) return "";
-                        const thumbMap = root.cacheService ? root.cacheService.thumbHashToPath : {};
-                        const anim = CacheUtils.getCachedAnimatedGif(thumbMap, path);
-                        return anim ? "file://" + anim : "";
-                    }
+                    source: CacheUtils.getAnimatedPreviewSource(
+                        root.cacheService ? root.cacheService.thumbHashToPath : {},
+                        gridItem.modelData
+                    )
+                    visible: source !== "" && gridItem.isCurrent
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     smooth: true

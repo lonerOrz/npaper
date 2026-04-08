@@ -170,21 +170,14 @@ Item {
     Image {
       id: staticImage
       anchors.fill: parent
-      source: {
-        if (root.isRemote)
-          return root.remoteThumb;
-
-        const path = root.wallpaperPath;
-        if (!path || path.length === 0 || path.endsWith('/'))
-          return "";
-        if ((root.isGif || root.isVideo) && root.isCenter && animatedGif.status === AnimatedImage.Ready && animatedGif.visible)
-          return "";
-        const bg = CacheUtils.getCachedBgPreview(root.thumbHashToPath, path);
-        if (bg) return "file://" + bg;
-        // Video/GIF without cache: don't try to load .mp4 directly
-        if (root.isVideo || root.isGif) return "";
-        return "file://" + path;
-      }
+      source: CacheUtils.getWallpaperStaticSource(
+        root.thumbHashToPath,
+        root.wallpaperPath,
+        root.isVideo,
+        root.isGif,
+        root.isRemote,
+        root.remoteThumb
+      )
       fillMode: Image.PreserveAspectCrop
       asynchronous: true
       smooth: root.isCenter || root.isRemote
@@ -221,11 +214,14 @@ Item {
     AnimatedImage {
       id: animatedGif
       anchors.fill: parent
-      visible: (root.isGif || root.isVideo) && root.isCenter
-      source: {
-        const c = CacheUtils.getCachedAnimatedGif(root.thumbHashToPath, root.wallpaperPath);
-        return c ? "file://" + c : "";
-      }
+      source: CacheUtils.getWallpaperAnimatedSource(
+        root.thumbHashToPath,
+        root.wallpaperPath,
+        root.isVideo,
+        root.isGif,
+        root.isCenter
+      )
+      visible: source !== ""
       fillMode: Image.PreserveAspectCrop
       asynchronous: true
       smooth: true

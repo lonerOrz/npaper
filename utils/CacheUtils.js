@@ -64,3 +64,47 @@ function getCachedBgPreview(thumbHashToPath, wallpaperPath) {
     const key = folder + '/' + hash + '_bg.png';
     return thumbHashToPath[key] || "";
 }
+
+// ── High-level source URL builders ────────────────────────
+
+// Static image source — for GridView delegate or WallpaperCard
+// Returns file:// URL, http:// URL (remote), or "" (video/GIF without cache)
+function getStaticThumbSource(thumbHashToPath, item) {
+    if (!item) return "";
+    if (item.type === "remote") return item.thumb;
+    const path = item.path;
+    if (!path || path.length === 0 || path.endsWith('/')) return "";
+    const bg = getCachedBgPreview(thumbHashToPath, path);
+    if (bg) return "file://" + bg;
+    // Video/GIF without cache: return empty to avoid loading .mp4
+    if (item.isVideo || item.isGif) return "";
+    return "file://" + path;
+}
+
+// Animated GIF preview source — for AnimatedImage
+// Returns file:// URL if cache exists, otherwise ""
+function getAnimatedPreviewSource(thumbHashToPath, item) {
+    if (!item || !item.path || item.path.length === 0) return "";
+    if (item.type === "remote") return "";
+    if (!item.isVideo && !item.isGif) return "";
+    const anim = getCachedAnimatedGif(thumbHashToPath, item.path);
+    return anim ? "file://" + anim : "";
+}
+
+// Property-driven interface — for WallpaperCard
+function getWallpaperStaticSource(thumbHashToPath, wallpaperPath, isVideo, isGif, isRemote, remoteThumb) {
+    if (isRemote) return remoteThumb || "";
+    if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/')) return "";
+    const bg = getCachedBgPreview(thumbHashToPath, wallpaperPath);
+    if (bg) return "file://" + bg;
+    if (isVideo || isGif) return "";
+    return "file://" + wallpaperPath;
+}
+
+function getWallpaperAnimatedSource(thumbHashToPath, wallpaperPath, isVideo, isGif, isCenter) {
+    if (!isCenter) return "";
+    if (!wallpaperPath || wallpaperPath.length === 0) return "";
+    if (!isVideo && !isGif) return "";
+    const anim = getCachedAnimatedGif(thumbHashToPath, wallpaperPath);
+    return anim ? "file://" + anim : "";
+}
