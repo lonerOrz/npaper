@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import qs.components.settings
 import qs.services
 
@@ -78,12 +79,25 @@ Item {
 
   focus: settingsOpen
 
-  // ── Background ───────────────────────────────────────────
+  // ── Background with subtle gradient ──────────────────────
   Rectangle {
     anchors.fill: parent
     radius: Style.settingsRadius
-    color: Color.mSurfaceContainerLow
+    gradient: Gradient {
+      GradientStop { position: 0.0; color: Qt.lighter(Color.mSurfaceContainerLow, 1.05) }
+      GradientStop { position: 1.0; color: Color.mSurfaceContainerLow }
+    }
     opacity: root._animProgress
+
+    // Subtle border for depth
+    Rectangle {
+      anchors.fill: parent
+      radius: Style.settingsRadius
+      color: "transparent"
+      border.width: 1
+      border.color: Qt.tint(Color.mOutlineVariant, Color.mSurfaceContainerLow)
+      opacity: 0.5
+    }
   }
 
   // ── Tab bar with sliding capsule ─────────────────────────
@@ -109,10 +123,23 @@ Item {
       anchors.verticalCenter: parent.verticalCenter
       height: Style.settingsTabHeight
       radius: height / 2
-      color: Color.mPrimary
+      gradient: Gradient {
+        GradientStop { position: 0.0; color: Qt.lighter(Color.mPrimary, 1.1) }
+        GradientStop { position: 1.0; color: Color.mPrimary }
+      }
 
       x: tabBar._pillX
       width: tabBar._pillW
+
+      // Soft shadow for depth
+      Rectangle {
+        anchors.fill: parent
+        anchors.verticalCenterOffset: 2
+        radius: parent.radius
+        color: Color.mShadow
+        opacity: 0.15
+        z: -1
+      }
 
       Behavior on x {
         NumberAnimation {
@@ -162,8 +189,9 @@ Item {
             anchors.centerIn: parent
             text: modelData.label
             color: parent.isActive ? Color.mSurfaceContainerLowest : Color.mOutlineVariant
-            font.pixelSize: Style.settingsTabFontSize
-            font.weight: parent.isActive ? Font.Bold : Font.Normal
+            font.pixelSize: Style.settingsTabFontSize + 1
+            font.weight: parent.isActive ? Font.Bold : Font.Medium
+            font.letterSpacing: 0.5
             Behavior on color {
               ColorAnimation {
                 duration: Style.animFast
@@ -194,31 +222,108 @@ Item {
     }
   }
 
-  // ── Content area ─────────────────────────────────────────
-  Item {
+  // ── Content area with scroll support ─────────────────────
+  Flickable {
+    id: contentFlickable
     anchors.top: tabBar.bottom
-    anchors.topMargin: Style.settingsInnerSpacing
+    anchors.topMargin: Style.settingsInnerSpacing + 2
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.bottom: parent.bottom
     anchors.margins: Style.settingsPadding
     clip: true
+    
+    property bool scrollActive: false
+
+    contentWidth: width
+    contentHeight: Math.max(pathsColumn.implicitHeight, wallhavenColumn.implicitHeight, appearanceColumn.implicitHeight) + Style.settingsPadding * 2
+    boundsBehavior: Flickable.StopAtBounds
+    flickableDirection: Flickable.VerticalFlick
+    
+    // Enable mouse wheel scrolling
+    WheelHandler {
+      onWheel: function(event) {
+        contentFlickable.contentY += event.angleDelta.y > 0 ? -40 : 40;
+        contentFlickable.scrollActive = true;
+        scrollFadeTimer.restart();
+      }
+    }
+    
+    Timer {
+      id: scrollFadeTimer
+      interval: 800
+      onTriggered: contentFlickable.scrollActive = false
+    }
+    
+    // Custom scrollbar (hidden by default, shows on interaction)
+    Rectangle {
+      anchors.right: parent.right
+      anchors.top: parent.top
+      anchors.bottom: parent.bottom
+      anchors.rightMargin: 2
+      width: 4
+      radius: 2
+      color: Color.mOutlineVariant
+      opacity: contentFlickable.scrollActive ? 0.6 : 0
+
+      property real scrollProgress: contentFlickable.visibleArea.heightRatio < 1.0 ?
+        contentFlickable.visibleArea.yPosition / (1.0 - contentFlickable.visibleArea.heightRatio) : 0
+      property real scrollHeight: contentFlickable.visibleArea.heightRatio < 1.0 ?
+        contentFlickable.visibleArea.heightRatio * (parent.height - 4) + 20 : 20
+
+      y: scrollProgress * (parent.height - scrollHeight)
+      height: scrollHeight
+
+      Behavior on opacity {
+        NumberAnimation {
+          duration: contentFlickable.scrollActive ? Style.animVeryFast : Style.animSlow
+        }
+      }
+    }
+
+    // Reset scroll position when switching tabs
+    Connections {
+      target: root
+      function onActiveTabChanged() {
+        contentFlickable.contentY = 0;
+      }
+    }
 
     // ── Paths tab ─────────────────────────────────────────
     Column {
+      id: pathsColumn
       anchors.top: parent.top
       anchors.left: parent.left
       anchors.right: parent.right
-      spacing: Style.settingsContentSpacing
+      anchors.margins: Style.settingsPadding
+      spacing: Style.settingsContentSpacing + 2
       visible: root.activeTab === "paths"
 
-      Text {
+      // Section header with underline
+      Row {
         width: parent.width
-        text: "STORAGE"
-        color: Color.mOutline
-        font.pixelSize: Style.fontXS
-        font.weight: Font.Bold
-        font.letterSpacing: 1.5
+        spacing: Style.spaceM
+        
+        Text {
+          text: "STORAGE"
+          color: Color.mOutline
+          font.pixelSize: Style.fontXS + 1
+          font.weight: Font.Bold
+          font.letterSpacing: 2
+        }
+        
+        Rectangle {
+          width: parent.width - _sectionText.implicitWidth - Style.spaceM
+          height: 1
+          anchors.verticalCenter: _sectionText.verticalCenter
+          color: Color.mOutlineVariant
+          opacity: 0.3
+        }
+        
+        Text {
+          id: _sectionText
+          visible: false
+        }
       }
 
       SettingsTextInput {
@@ -245,19 +350,35 @@ Item {
 
     // ── Wallhaven tab ────────────────────────────────────
     Column {
+      id: wallhavenColumn
       anchors.top: parent.top
       anchors.left: parent.left
       anchors.right: parent.right
-      spacing: Style.settingsContentSpacing
+      anchors.margins: Style.settingsPadding
+      spacing: Style.settingsContentSpacing + 2
       visible: root.activeTab === "wallhaven"
 
-      Text {
+      // API section header
+      Row {
         width: parent.width
-        text: "API"
-        color: Color.mOutline
-        font.pixelSize: Style.fontXS
-        font.weight: Font.Bold
-        font.letterSpacing: 1.5
+        spacing: Style.spaceM
+        
+        Text {
+          id: _apiHeader
+          text: "API"
+          color: Color.mOutline
+          font.pixelSize: Style.fontXS + 1
+          font.weight: Font.Bold
+          font.letterSpacing: 2
+        }
+        
+        Rectangle {
+          width: parent.width - _apiHeader.implicitWidth - Style.spaceM
+          height: 1
+          anchors.verticalCenter: _apiHeader.verticalCenter
+          color: Color.mOutlineVariant
+          opacity: 0.3
+        }
       }
 
       SettingsTextInput {
@@ -270,107 +391,151 @@ Item {
         }
       }
 
+      // Divider
       Rectangle {
         width: parent.width
         height: 1
         color: Color.mOutlineVariant
-        opacity: Style.opacityDivider
+        opacity: 0.2
       }
 
-      Text {
+      // Filters section header
+      Row {
         width: parent.width
-        text: "FILTERS"
-        color: Color.mOutline
-        font.pixelSize: Style.fontXS
-        font.weight: Font.Bold
-        font.letterSpacing: 1.5
-      }
-
-      SettingsToggle {
-        width: parent.width
-        text: "General"
-        checked: root.wallhavenCategories[0] === "1"
-        onToggled: function (val) {
-          var c = root.wallhavenCategories.split("");
-          c[0] = val ? "1" : "0";
-          root._emit("wallhaven.categories", c.join(""));
+        spacing: Style.spaceM
+        
+        Text {
+          id: _filtersHeader
+          text: "FILTERS"
+          color: Color.mOutline
+          font.pixelSize: Style.fontXS + 1
+          font.weight: Font.Bold
+          font.letterSpacing: 2
         }
-      }
-      SettingsToggle {
-        width: parent.width
-        text: "Anime"
-        checked: root.wallhavenCategories[1] === "1"
-        onToggled: function (val) {
-          var c = root.wallhavenCategories.split("");
-          c[1] = val ? "1" : "0";
-          root._emit("wallhaven.categories", c.join(""));
-        }
-      }
-      SettingsToggle {
-        width: parent.width
-        text: "People"
-        checked: root.wallhavenCategories[2] === "1"
-        onToggled: function (val) {
-          var c = root.wallhavenCategories.split("");
-          c[2] = val ? "1" : "0";
-          root._emit("wallhaven.categories", c.join(""));
+        
+        Rectangle {
+          width: parent.width - _filtersHeader.implicitWidth - Style.spaceM
+          height: 1
+          anchors.verticalCenter: _filtersHeader.verticalCenter
+          color: Color.mOutlineVariant
+          opacity: 0.3
         }
       }
 
+      // Category toggles with better grouping
+      Column {
+        width: parent.width
+        spacing: Style.spaceS
+        
+        SettingsToggle {
+          width: parent.width
+          text: "General"
+          checked: root.wallhavenCategories[0] === "1"
+          onToggled: function (val) {
+            var c = root.wallhavenCategories.split("");
+            c[0] = val ? "1" : "0";
+            root._emit("wallhaven.categories", c.join(""));
+          }
+        }
+        SettingsToggle {
+          width: parent.width
+          text: "Anime"
+          checked: root.wallhavenCategories[1] === "1"
+          onToggled: function (val) {
+            var c = root.wallhavenCategories.split("");
+            c[1] = val ? "1" : "0";
+            root._emit("wallhaven.categories", c.join(""));
+          }
+        }
+        SettingsToggle {
+          width: parent.width
+          text: "People"
+          checked: root.wallhavenCategories[2] === "1"
+          onToggled: function (val) {
+            var c = root.wallhavenCategories.split("");
+            c[2] = val ? "1" : "0";
+            root._emit("wallhaven.categories", c.join(""));
+          }
+        }
+      }
+
+      // Divider
       Rectangle {
         width: parent.width
         height: 1
         color: Color.mOutlineVariant
-        opacity: Style.opacityDivider
+        opacity: 0.2
       }
 
-      SettingsToggle {
+      // Purity togges with better grouping
+      Column {
         width: parent.width
-        text: "Safe"
-        checked: root.wallhavenPurity[0] === "1"
-        onToggled: function (val) {
-          var p = root.wallhavenPurity.split("");
-          p[0] = val ? "1" : "0";
-          root._emit("wallhaven.purity", p.join(""));
+        spacing: Style.spaceS
+        
+        SettingsToggle {
+          width: parent.width
+          text: "Safe"
+          checked: root.wallhavenPurity[0] === "1"
+          onToggled: function (val) {
+            var p = root.wallhavenPurity.split("");
+            p[0] = val ? "1" : "0";
+            root._emit("wallhaven.purity", p.join(""));
+          }
         }
-      }
-      SettingsToggle {
-        width: parent.width
-        text: "Sketchy"
-        checked: root.wallhavenPurity[1] === "1"
-        onToggled: function (val) {
-          var p = root.wallhavenPurity.split("");
-          p[1] = val ? "1" : "0";
-          root._emit("wallhaven.purity", p.join(""));
+        SettingsToggle {
+          width: parent.width
+          text: "Sketchy"
+          checked: root.wallhavenPurity[1] === "1"
+          onToggled: function (val) {
+            var p = root.wallhavenPurity.split("");
+            p[1] = val ? "1" : "0";
+            root._emit("wallhaven.purity", p.join(""));
+          }
         }
-      }
-      SettingsToggle {
-        width: parent.width
-        text: "NSFW"
-        checked: root.wallhavenPurity[2] === "1"
-        onToggled: function (val) {
-          var p = root.wallhavenPurity.split("");
-          p[2] = val ? "1" : "0";
-          root._emit("wallhaven.purity", p.join(""));
+        SettingsToggle {
+          width: parent.width
+          text: "NSFW"
+          checked: root.wallhavenPurity[2] === "1"
+          onToggled: function (val) {
+            var p = root.wallhavenPurity.split("");
+            p[2] = val ? "1" : "0";
+            root._emit("wallhaven.purity", p.join(""));
+          }
         }
       }
     }
 
     // ── Appearance tab ──────────────────────────────────
     Column {
+      id: appearanceColumn
       anchors.top: parent.top
       anchors.left: parent.left
       anchors.right: parent.right
-      spacing: Style.settingsContentSpacing
+      anchors.margins: Style.settingsPadding
+      spacing: Style.settingsContentSpacing + 2
       visible: root.activeTab === "appearance"
 
-      Text {
+      // Overlay section header
+      Row {
         width: parent.width
-        text: "OVERLAY"
-        color: Color.mOutline
-        font.pixelSize: Style.fontXS
-        font.weight: Font.Bold
-        font.letterSpacing: 1.5
+        spacing: Style.spaceM
+        
+        Text {
+          id: _overlayHeader
+          text: "OVERLAY"
+          color: Color.mOutline
+          font.pixelSize: Style.fontXS + 1
+          font.weight: Font.Bold
+          font.letterSpacing: 2
+        }
+        
+        Rectangle {
+          width: parent.width - _overlayHeader.implicitWidth - Style.spaceM
+          height: 1
+          anchors.verticalCenter: _overlayHeader.verticalCenter
+          color: Color.mOutlineVariant
+          opacity: 0.3
+        }
       }
 
       SettingsSlider {
@@ -385,46 +550,66 @@ Item {
         }
       }
 
+      // Divider
       Rectangle {
         width: parent.width
         height: 1
         color: Color.mOutlineVariant
-        opacity: Style.opacityDivider
+        opacity: 0.2
       }
 
-      Text {
+      // Effects section header
+      Row {
         width: parent.width
-        text: "EFFECTS"
-        color: Color.mOutline
-        font.pixelSize: Style.fontXS
-        font.weight: Font.Bold
-        font.letterSpacing: 1.5
+        spacing: Style.spaceM
+        
+        Text {
+          id: _effectsHeader
+          text: "EFFECTS"
+          color: Color.mOutline
+          font.pixelSize: Style.fontXS + 1
+          font.weight: Font.Bold
+          font.letterSpacing: 2
+        }
+        
+        Rectangle {
+          width: parent.width - _effectsHeader.implicitWidth - Style.spaceM
+          height: 1
+          anchors.verticalCenter: _effectsHeader.verticalCenter
+          color: Color.mOutlineVariant
+          opacity: 0.3
+        }
       }
 
-      SettingsToggle {
+      Column {
         width: parent.width
-        text: "Border Glow"
-        checked: root.showBorderGlow
-        onToggled: function (val) {
-          root._emit("appearance.showBorderGlow", val);
+        spacing: Style.spaceS
+        
+        SettingsToggle {
+          width: parent.width
+          text: "Border Glow"
+          checked: root.showBorderGlow
+          onToggled: function (val) {
+            root._emit("appearance.showBorderGlow", val);
+          }
+        }
+        SettingsToggle {
+          width: parent.width
+          text: "Card Shadow"
+          checked: root.showShadow
+          onToggled: function (val) {
+            root._emit("appearance.showShadow", val);
+          }
+        }
+        SettingsToggle {
+          width: parent.width
+          text: "Background Preview"
+          checked: root.showBgPreview
+          onToggled: function (val) {
+            root._emit("appearance.showBgPreview", val);
+          }
         }
       }
-      SettingsToggle {
-        width: parent.width
-        text: "Card Shadow"
-        checked: root.showShadow
-        onToggled: function (val) {
-          root._emit("appearance.showShadow", val);
-        }
-      }
-      SettingsToggle {
-        width: parent.width
-        text: "Background Preview"
-        checked: root.showBgPreview
-        onToggled: function (val) {
-          root._emit("appearance.showBgPreview", val);
-        }
-      }
-    }
-  }
+    } // end appearanceColumn
+  } // end Flickable
 }
