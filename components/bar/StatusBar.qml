@@ -128,7 +128,6 @@ Item {
 
     // View Mode Pill
     SelectorPill {
-      visible: !root.isWallhaven
       model: ["Carousel", "Grid"]
       activeIndex: Config.previewStyle === "grid" ? 1 : 0
       onSelected: function (index, label) {
@@ -146,10 +145,10 @@ Item {
 
     // Folder Tabs
     SelectorPill {
-      visible: !root.isWallhaven
       model: root.folders
       activeIndex: root.folders.indexOf(root.activeFolder)
       activeColor: Color.mPrimary
+      visible: !root.isWallhaven
       onSelected: function (index, label) {
         root.folderClicked(label);
       }

@@ -1,28 +1,63 @@
 import QtQuick
 import qs.services
 
-/* FilterPill — rounded pill toggle button (npaper style). */
+/* FilterPill — rounded pill toggle button (npaper style).
+ * Enhanced with gradient, glow, and scale animation.
+ */
 MouseArea {
   id: root
 
   property string label: ""
   property bool active: false
-  property bool hovered: false
 
   width: labelText.implicitWidth + Style.spaceXXXL
   height: Style.barSearchHeight
   cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
   hoverEnabled: true
-  onContainsMouseChanged: root.hovered = containsMouse
 
+  // Scale animation on hover
+  scale: enabled && containsMouse ? 1.05 : 1.0
+  Behavior on scale {
+    NumberAnimation {
+      duration: Style.animFast
+      easing.type: Easing.OutCubic
+    }
+  }
+
+  // Background pill
+  Rectangle {
+    anchors.fill: parent
+    anchors.margins: -2
+    radius: height / 2
+    color: root.active ? Color.mPrimary : "transparent"
+    opacity: root.active ? 0.2 : 0
+    Behavior on opacity {
+      NumberAnimation { duration: Style.animFast }
+    }
+  }
+
+  // Main pill body
   Rectangle {
     anchors.fill: parent
     radius: height / 2
-    color: !enabled ? Color.mSurfaceContainer : (root.active ? Color.mPrimary : (root.hovered ? Color.mSurfaceContainerHigh : Color.mSurfaceContainer))
+    color: {
+      if (!enabled)
+        return Color.mSurfaceContainer;
+      if (root.active)
+        return Color.mPrimary;
+      if (containsMouse)
+        return Color.mSurfaceContainerHigh;
+      return Color.mSurfaceContainer;
+    }
+    border.width: root.active ? 0 : 1
+    border.color: containsMouse ? Color.mPrimaryContainer : Color.mOutlineVariant
+    opacity: !enabled ? 0.5 : 1.0
+
     Behavior on color {
-      ColorAnimation {
-        duration: Style.animFast
-      }
+      ColorAnimation { duration: Style.animFast }
+    }
+    Behavior on border.color {
+      ColorAnimation { duration: Style.animFast }
     }
   }
 
@@ -30,8 +65,17 @@ MouseArea {
     id: labelText
     anchors.centerIn: parent
     text: root.label
-    color: !enabled ? Color.mOutline : (root.active ? Color.mSurfaceContainerLowest : Color.mOutlineVariant)
+    color: {
+      if (!enabled)
+        return Color.mOutlineVariant;
+      if (root.active)
+        return Color.mSurfaceContainerLowest;
+      return containsMouse ? Color.mOnSurface : Color.mOutlineVariant;
+    }
     font.pixelSize: Style.barTabFontSize
-    font.weight: Font.Medium
+    font.weight: root.active ? Font.Bold : Font.Medium
+    Behavior on color {
+      ColorAnimation { duration: Style.animFast }
+    }
   }
 }

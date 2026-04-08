@@ -64,11 +64,17 @@ Item {
 
   Component.onCompleted: visible = filterVisible
 
-  // ── Background ──────────────────────────────────────────
+  // ── Background with gradient ──────────────────────────────────────────
   Rectangle {
     anchors.fill: parent
     radius: Style.barRadius
-    color: Color.mSurfaceContainerLowest
+    gradient: Gradient {
+      GradientStop { position: 0.0; color: Qt.lighter(Color.mSurfaceContainerLowest, 1.04) }
+      GradientStop { position: 1.0; color: Color.mSurfaceContainerLowest }
+    }
+    border.width: 1
+    border.color: Qt.tint(Color.mOutlineVariant, Color.mSurfaceContainerLowest)
+    opacity: 0.9
   }
 
   // ── Flow Layout: groups stagger naturally ───────────────
@@ -267,61 +273,111 @@ Item {
     // ── Pagination ────────────────────────────────────────
     FilterGroup {
       label: "PAGE"
-      FilterPill {
-        label: "‹"
-        active: false
+      // Previous button
+      MouseArea {
+        width: prevText.implicitWidth + Style.spaceXXL
+        height: Style.barSearchHeight
+        cursorShape: root.whService && root.whService.currentPage > 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
         enabled: root.whService && root.whService.currentPage > 1
+        hoverEnabled: true
         onClicked: {
           if (root.whService)
             root.whService.search(root.whService.currentPage - 1);
         }
-      }
-      Text {
-        id: pageText
-        text: {
-          if (!root.whService)
-            return "";
-          return root.whService.currentPage + "/" + root.whService.lastPage;
+
+        Rectangle {
+          anchors.fill: parent
+          radius: height / 2
+          color: parent.enabled && parent.containsMouse ? Color.mSurfaceContainerHigh : Color.mSurfaceContainer
+          opacity: parent.enabled ? 1.0 : 0.4
         }
-        color: Color.mOutline
-        font.pixelSize: Style.barTabFontSize
-        font.weight: Font.Medium
+        Text {
+          id: prevText
+          anchors.centerIn: parent
+          text: "‹"
+          color: parent.enabled ? Color.mOnSurface : Color.mOutlineVariant
+          font.pixelSize: Style.barTabFontSize + 2
+          font.weight: Font.Bold
+        }
       }
-      FilterPill {
-        label: "›"
-        active: false
+
+      // Page number badge
+      Rectangle {
+        height: Style.barSearchHeight
+        width: pageText.implicitWidth + Style.spaceXXL
+        radius: height / 2
+        color: Color.mPrimaryContainer
+        opacity: 0.75
+
+        Text {
+          id: pageText
+          anchors.centerIn: parent
+          text: {
+            if (!root.whService)
+              return "";
+            return root.whService.currentPage + "/" + root.whService.lastPage;
+          }
+          color: Color.mOnPrimaryContainer
+          font.pixelSize: Style.barTabFontSize
+          font.weight: Font.Bold
+        }
+      }
+
+      // Next button
+      MouseArea {
+        width: nextText.implicitWidth + Style.spaceXXL
+        height: Style.barSearchHeight
+        cursorShape: root.whService && root.whService.hasMore ? Qt.PointingHandCursor : Qt.ArrowCursor
         enabled: root.whService && root.whService.hasMore
+        hoverEnabled: true
         onClicked: {
           if (root.whService)
             root.whService.search(root.whService.currentPage + 1);
         }
+
+        Rectangle {
+          anchors.fill: parent
+          radius: height / 2
+          color: parent.enabled && parent.containsMouse ? Color.mSurfaceContainerHigh : Color.mSurfaceContainer
+          opacity: parent.enabled ? 1.0 : 0.4
+        }
+        Text {
+          id: nextText
+          anchors.centerIn: parent
+          text: "›"
+          color: parent.enabled ? Color.mOnSurface : Color.mOutlineVariant
+          font.pixelSize: Style.barTabFontSize + 2
+          font.weight: Font.Bold
+        }
       }
     }
 
-    // ── Results indicator ─────────────────────────────────
+    // ── Results indicator (badge style) ─────────────────────────────────
     Item {
       height: Style.barSearchHeight + Style.spaceM
-      width: resText.implicitWidth + Style.spaceXXXL
+      width: resText.implicitWidth + Style.spaceXL * 2
       Rectangle {
         anchors.fill: parent
-        radius: Style.barRadius
-        color: Color.mSurfaceContainerLow
-      }
-      Text {
-        id: resText
-        anchors.centerIn: parent
-        text: {
-          if (!root.whService)
-            return "";
-          if (root.whService.loading)
-            return "Searching…";
-          if (root.whService.errorText)
-            return root.whService.errorText;
-          return root.whService.results.length + " results";
+        radius: height / 2
+        color: Color.mPrimaryContainer
+        opacity: 0.75
+
+        Text {
+          id: resText
+          anchors.centerIn: parent
+          text: {
+            if (!root.whService)
+              return "";
+            if (root.whService.loading)
+              return "Searching…";
+            if (root.whService.errorText)
+              return root.whService.errorText;
+            return root.whService.results.length + " results";
+          }
+          color: root.whService && root.whService.errorText ? "#ff5555" : Color.mOnPrimaryContainer
+          font.pixelSize: Style.barTabFontSize
+          font.weight: Font.Bold
         }
-        color: root.whService && root.whService.errorText ? "#ff5555" : Color.mOutline
-        font.pixelSize: Style.barTabFontSize
-        font.weight: Font.Medium
       }
     }
   }
