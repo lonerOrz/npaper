@@ -52,54 +52,25 @@ Item {
     spacing: Style.barInnerSpacing
 
     // NixOS Logo
-    Item {
+    Image {
       Layout.preferredWidth: Style.barLogoSize
       Layout.preferredHeight: Style.barLogoSize
       Layout.alignment: Qt.AlignVCenter
-
-      // White stroke outline for visibility on dark backgrounds
-      Repeater {
-        model: [
-          { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
-          { dx: 0, dy: -1 }, { dx: 0, dy: 1 }
-        ]
-        Image {
-          anchors.centerIn: parent
-          anchors.horizontalCenterOffset: modelData.dx
-          anchors.verticalCenterOffset: modelData.dy
-          width: parent.width
-          height: parent.height
-          source: Qt.resolvedUrl("../../assets/nixos-logo.svg")
-          fillMode: Image.PreserveAspectFit
-          layer.enabled: true
-          layer.effect: MultiEffect {
-            colorization: 1.0
-            colorizationColor: Color.mSurface
-          }
-        }
+      source: Qt.resolvedUrl("../../assets/nixos-logo.svg")
+      sourceSize.width: Style.barLogoSize
+      sourceSize.height: Style.barLogoSize
+      fillMode: Image.PreserveAspectFit
+      mipmap: true
+      layer.enabled: true
+      layer.effect: MultiEffect {
+        colorization: 1.0
+        colorizationColor: Qt.lighter(root.dominantColor, 3.0)
       }
-
-      // Main colored logo
-      Image {
-        anchors.centerIn: parent
-        width: parent.width
-        height: parent.height
-        source: Qt.resolvedUrl("../../assets/nixos-logo.svg")
-        sourceSize.width: Style.barLogoSize
-        sourceSize.height: Style.barLogoSize
-        fillMode: Image.PreserveAspectFit
-        mipmap: true
-        layer.enabled: true
-        layer.effect: MultiEffect {
-          colorization: 1.0
-          colorizationColor: Qt.lighter(root.dominantColor, 1.4)
-        }
-        RotationAnimation on rotation {
-          from: 0
-          to: 360
-          duration: Style.logoRotationMs
-          loops: Animation.Infinite
-        }
+      RotationAnimation on rotation {
+        from: 0
+        to: 360
+        duration: Style.logoRotationMs
+        loops: Animation.Infinite
       }
     }
 
