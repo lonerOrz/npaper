@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import qs.components.settings
+import qs.components.common
 import qs.services
 
 /*
@@ -336,24 +337,165 @@ Item {
         }
       }
 
-      SettingsTextInput {
+      // ── Wallpaper Directories ──
+      Column {
         width: parent.width
-        label: "Wallpaper Directories"
-        value: root.wallpaperDirs.join(";")
-        placeholder: "/path/to/wallpapers;/path/to/more"
-        onCommit: function (v) {
-          var dirs = v.split(";").map(s => s.trim()).filter(s => s.length > 0);
-          root._emit("wallpaperDirs", dirs);
+        spacing: Style.spaceS
+
+        Text {
+          text: "Wallpaper Directories"
+          color: Color.mOnSurfaceVariant
+          font.pixelSize: Style.fontXS
+          font.weight: Font.Medium
+        }
+
+        // Directory list
+        Column {
+          width: parent.width
+          spacing: Style.spaceXS
+
+          Repeater {
+            model: root.wallpaperDirs
+
+            Row {
+              width: parent.width
+              spacing: Style.spaceS
+
+              Text {
+                width: parent.width - 32
+                text: modelData
+                color: Color.mOnSurface
+                font.pixelSize: Style.fontXS
+                font.family: "monospace"
+                elide: Text.ElideMiddle
+              }
+
+              // Remove button
+              MouseArea {
+                width: 24; height: 24
+                cursorShape: Qt.PointingHandCursor
+                hoverEnabled: true
+
+                Rectangle {
+                  anchors.fill: parent
+                  radius: Style.radiusS
+                  color: parent.containsMouse ? Qt.alpha("#ff5555", 0.12) : "transparent"
+                  Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
+                }
+
+                Text {
+                  anchors.centerIn: parent
+                  text: "\uf014"
+                  font.family: "Symbols Nerd Font"
+                  font.pixelSize: Style.fontS
+                  color: parent.containsMouse ? "#ff5555" : Color.mOnSurfaceVariant
+                }
+
+                onClicked: {
+                  var dirs = root.wallpaperDirs.slice();
+                  dirs.splice(index, 1);
+                  root._emit("wallpaperDirs", dirs);
+                }
+              }
+            }
+          }
+        }
+
+        // Add button
+        MouseArea {
+          width: parent.width
+          height: 32
+          cursorShape: Qt.PointingHandCursor
+          hoverEnabled: true
+
+          Rectangle {
+            anchors.fill: parent
+            radius: Style.radiusS
+            color: parent.containsMouse ? Qt.alpha(Color.mPrimary, 0.08) : "transparent"
+            border.color: Color.mOutline
+            border.width: Style.borderS
+            Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
+          }
+
+          Text {
+            anchors.centerIn: parent
+            text: "\uf07b  Add Directory"
+            font.family: "Symbols Nerd Font"
+            font.pixelSize: Style.fontM
+            color: parent.containsMouse ? Color.mPrimary : Color.mOnSurfaceVariant
+          }
+
+          onClicked: folderPicker.openPicker("")
         }
       }
 
-      SettingsTextInput {
+      FolderPicker {
+        id: folderPicker
+        title: "Select Wallpaper Folder"
+        onAccepted: function (path) {
+          var dirs = root.wallpaperDirs.slice();
+          if (dirs.indexOf(path) === -1) {
+            dirs.push(path);
+            root._emit("wallpaperDirs", dirs);
+          }
+        }
+      }
+
+      // ── Cache Directory ──
+      Row {
         width: parent.width
-        label: "Cache Directory"
-        value: root.cacheDir
-        placeholder: "/path/to/cache"
-        onCommit: function (v) {
-          root._emit("cacheDir", v.trim());
+        spacing: Style.spaceM
+
+        Column {
+          width: parent.width - 40
+          spacing: Style.spaceXS
+
+          Text {
+            text: "Cache Directory"
+            color: Color.mOnSurfaceVariant
+            font.pixelSize: Style.fontXS
+            font.weight: Font.Medium
+          }
+
+          Text {
+            text: root.cacheDir || "Not configured"
+            color: root.cacheDir ? Color.mOnSurface : Color.mOnSurfaceVariant
+            font.pixelSize: Style.fontXS
+            font.family: "monospace"
+            elide: Text.ElideMiddle
+          }
+        }
+
+        MouseArea {
+          width: 32; height: 32
+          cursorShape: Qt.PointingHandCursor
+          hoverEnabled: true
+
+          Rectangle {
+            anchors.fill: parent
+            radius: Style.radiusS
+            color: parent.containsMouse ? Qt.alpha(Color.mPrimary, 0.12) : Color.mSurfaceContainerHigh
+            border.color: Color.mOutline
+            border.width: Style.borderS
+          }
+
+          Text {
+            anchors.centerIn: parent
+            text: "\uf07c"
+            font.family: "Symbols Nerd Font"
+            font.pixelSize: Style.fontM
+            color: parent.containsMouse ? Color.mPrimary : Color.mOnSurfaceVariant
+          }
+
+          onClicked: cachePicker.openPicker(root.cacheDir)
+        }
+      }
+
+      FolderPicker {
+        id: cachePicker
+        title: "Select Cache Folder"
+        onAccepted: function (path) {
+          root._emit("cacheDir", path);
         }
       }
     }
