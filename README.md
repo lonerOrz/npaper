@@ -8,11 +8,13 @@ A Quickshell-based wallpaper selector for Wayland compositors.
 
 ## Features
 
-- 🖼️ Image and video wallpaper support
-- 🎨 Smooth transition effects (via awww)
-- 🔍 Search and filter wallpapers
-- 🎯 CoverFlow-style UI
-- ⚡ Concurrent thumbnail generation
+- Local and remote (Wallhaven) wallpaper support
+- Dual view modes: CoverFlow carousel & grid view
+- Search, filter, and browse wallpapers by folder
+- Concurrent thumbnail generation with ffmpeg
+- Wallhaven API integration with download/apply
+- Folder picker for wallpaper and cache directories
+- Full keyboard navigation
 
 ## Dependencies
 
@@ -23,16 +25,16 @@ A Quickshell-based wallpaper selector for Wayland compositors.
 - **Quickshell** - QML-based Wayland shell
 - **ffmpeg** - Thumbnail generation
 - **imagemagick** - Dynamic logo color extraction
-- **mpvpaper** - Video wallpaper support
 
 ### Optional
 
-- None
+- **mpvpaper** - Video wallpaper support
+- **curl** - Wallhaven API requests and wallpaper downloads
 
 ### Installation (Arch Linux)
 
 ```bash
-sudo pacman -S awww wlr-randr quickshell ffmpeg imagemagick mpvpaper
+sudo pacman -S awww wlr-randr quickshell ffmpeg imagemagick mpvpaper curl
 ```
 
 ### Installation (NixOS)
@@ -75,59 +77,43 @@ nix run github:lonerOrz/npaper
 qs -c npaper
 ```
 
-### CLI
-
-```bash
-# List all wallpapers
-./wallpaper.sh --list
-
-# Apply a wallpaper
-./wallpaper.sh --apply /path/to/wallpaper.jpg
-
-# Show help
-./wallpaper.sh --help
-```
-
 ## Configuration
 
-### Wallpaper Directory
+All settings are managed through the in-app **Settings panel** (`S` key):
 
-Edit `wallpaper.sh` to change the default wallpaper directory:
+### Paths Tab
 
-```bash
-readonly WALLPAPER_DIRS=(
-    "$HOME/Pictures/wallpapers"
-)
-```
+- **Wallpaper Directories** — Add/remove multiple wallpaper folders
+- **Cache Directory** — Thumbnail cache location (default: `~/.cache/wallpaper_thumbs`)
 
-### Thumbnail Cache
+### Wallhaven Tab
 
-Thumbnails are cached in `~/.cache/wallpaper_thumbs`.
+- **API Key** — Your Wallhaven API key (optional, increases rate limit)
+- **Download Folder** — Custom download location for remote wallpapers (optional, falls back to first wallpaper directory)
+- **Filters** — Toggle categories (General, Anime, People) and purity (Safe, Sketchy, NSFW)
+
+### Appearance Tab
+
+- **Overlay Opacity** — Background dimming level
+- **Border Glow** — Enable/disable active card glow effect
+- **Card Shadow** — Enable/disable card drop shadows
+- **Background Preview** — Show wallpaper preview behind cards
 
 ## Keyboard Shortcuts
 
-| Key                       | Action                  |
-| ------------------------- | ----------------------- |
-| `←` / `→`                 | Navigate wallpapers     |
-| `Shift + ←` / `Shift + →` | Fast scroll (5 items)   |
-| `Enter`                   | Apply wallpaper         |
-| `Type`                    | Search by filename      |
-| `Backspace`               | Delete search character |
-| `Esc` / `Tab`             | Quit                    |
-
-## Project Structure
-
-```
-npaper/
-├── wallpaper.sh          # CLI script
-├── shell.qml             # Quickshell UI
-├── assets/
-│   └── nixos-logo.svg    # NixOS logo for watermark
-├── shaders/
-│   ├── borderGlow.frag   # Shader source
-│   └── borderGlow.frag.qsb  # Compiled shader
-└── README.md
-```
+| Key            | Action                             |
+| -------------- | ---------------------------------- |
+| `←` / `→`      | Navigate wallpapers                |
+| `↑` / `↓`      | Grid view navigation               |
+| `Enter`        | Apply wallpaper                    |
+| `/` / `Ctrl+F` | Focus search bar                   |
+| `Tab`          | Switch wallpaper folder            |
+| `[` / `]`      | Toggle view mode (carousel ↔ grid) |
+| `W`            | Toggle Wallhaven browser           |
+| `R`            | Random wallpaper                   |
+| `F5`           | Refresh cache                      |
+| `S`            | Toggle settings panel              |
+| `Esc`          | Quit / close settings              |
 
 ## License
 

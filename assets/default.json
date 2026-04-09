@@ -1,0 +1,10 @@
+{
+  "wallpaperDirs": ["$HOME/Pictures/wallpapers"],
+  "cacheDir": "$HOME/.cache/wallpaper_thumbs",
+  "debugMode": false,
+
+  "scrollDuration": 280,
+  "scrollContinueInterval": 230,
+  "bgSlideDuration": 250,
+  "bgParallaxFactor": 40
+}
