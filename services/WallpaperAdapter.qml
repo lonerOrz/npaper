@@ -99,6 +99,34 @@ Item {
       remoteSource.apply(item);
   }
 
+  // Smart apply: checks download status and handles all cases
+  // - local: apply directly
+  // - remote + done: apply local file
+  // - remote + downloading: mark for auto-apply when done
+  // - remote + not started: download then auto-apply
+  function smartApply(item) {
+    if (!item)
+      return;
+    if (item.type === "local") {
+      root._onApplyLocal(item.path);
+    } else {
+      var ws = root.whService;
+      var safeId = item.id ? String(item.id).replace("wallhaven-", "") : "";
+      var status = ws ? (ws.downloadStatus[safeId] || "") : "";
+      if (status === "done") {
+        var localPath = ws ? (ws.downloadPaths[safeId] || "") : "";
+        if (localPath)
+          root._onApplyLocal(localPath);
+        else if (ws)
+          ws.downloadAndApply(safeId, item.path);
+      } else if (status === "downloading") {
+        if (ws) ws._pendingApplyId = safeId;
+      } else if (ws) {
+        ws.downloadAndApply(safeId, item.path);
+      }
+    }
+  }
+
   function _onApplyLocal(path) {
     // This signal bubbles up to AppWindow for actual wallpaper application
     root.wallpaperApplied(path);

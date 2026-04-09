@@ -492,7 +492,7 @@ FocusScope {
         cursorShape: Qt.PointingHandCursor
         onClicked: {
           if (gridItem.modelData)
-            root.requestApplyItem(gridItem.modelData);
+            root.adapter.smartApply(gridItem.modelData);
         }
       }
     }
@@ -539,7 +539,7 @@ FocusScope {
         if (root.adapter && root.adapter.items.length > 0) {
           var item = root.adapter.items[thumbGridView.currentIndex];
           if (item)
-            root.requestApplyItem(item);
+            root.adapter.smartApply(item);
         }
         event.accepted = true;
         return;

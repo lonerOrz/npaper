@@ -145,8 +145,11 @@ FocusScope {
 
       // ===== Apply (Enter) =====
       if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        if (root.adapter && root.adapter.items.length > 0)
-          root.requestApplyItem(root.adapter.items[root.currentIndex]);
+        if (root.adapter && root.adapter.items.length > 0) {
+          var item = root.adapter.items[root.currentIndex];
+          if (item)
+            root.adapter.smartApply(item);
+        }
         event.accepted = true;
         return;
       }
@@ -240,7 +243,7 @@ FocusScope {
         onClicked: function (path) {
           scrollController.scrollTo(realIndex);
           if (_item)
-            root.requestApplyItem(_item);
+            root.adapter.smartApply(_item);
         }
       }
     }
