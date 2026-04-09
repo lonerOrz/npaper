@@ -31,6 +31,13 @@ Item {
   property bool showShadow: true
   property bool isCenter: false
 
+  // Wallhaven download
+  property var whService: null
+  property var downloadStatus: ({})
+  property var downloadProgress: ({})
+  property var downloadPaths: ({})
+  property string downloadPath: ""  // remote URL for download trigger
+
   property var thumbHashToPath: ({})
 
   signal clicked(string path)
@@ -358,6 +365,32 @@ Item {
       running: root.isCenter && root.showBorderGlow
     }
     fragmentShader: Qt.resolvedUrl("../../shaders/borderGlow.frag.qsb")
+  }
+
+  // ── Download overlay (remote wallpapers only) ─────────────
+  // Uses opacity animation like org/WallhavenBrowser.qml to avoid hover stealing
+  Item {
+    anchors.fill: parent
+    visible: root.isRemote
+    opacity: root._isHovered ? 1 : 0
+    z: 10
+
+    Behavior on opacity {
+      NumberAnimation { duration: Style.animFast }
+    }
+
+    DownloadOverlay {
+      opacity: parent.opacity  // Fade with parent
+      whId: root.remoteId.replace("wallhaven-", "")
+      downloadPath: root.downloadPath
+      whService: root.whService
+      downloadStatus: root.downloadStatus
+      downloadProgress: root.downloadProgress
+      downloadPaths: root.downloadPaths
+      onApplyLocal: function (localPath) {
+        root.clicked(localPath);
+      }
+    }
   }
 
   MouseArea {

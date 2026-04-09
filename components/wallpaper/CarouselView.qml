@@ -200,6 +200,12 @@ FocusScope {
         isCenter: realIndex === root.currentIndex
         showBorderGlow: root.showBorderGlow
         showShadow: root.showShadow
+        // Wallhaven download
+        whService: root.adapter ? root.adapter.whService : null
+        downloadStatus: (whService && whService.downloadStatus) ? whService.downloadStatus : ({})
+        downloadProgress: (whService && whService.downloadProgress) ? whService.downloadProgress : ({})
+        downloadPaths: (whService && whService.downloadPaths) ? whService.downloadPaths : ({})
+        downloadPath: _item && _item.type === "remote" ? _item.path : ""
 
         readonly property var metrics: {
           const raw = realIndex - scrollController.scrollTarget;

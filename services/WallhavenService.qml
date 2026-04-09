@@ -40,6 +40,7 @@ QtObject {
   // Download tracking
   property var downloadStatus: ({})      // wallhavenId -> "downloading" | "done" | "error"
   property var downloadProgress: ({})    // wallhavenId -> 0-100
+  property var downloadPaths: ({})       // wallhavenId -> local file path (after download)
   property var localWallhavenIds: ({})   // wallhavenId -> true (if downloaded locally)
 
   signal resultsUpdated
@@ -96,6 +97,11 @@ QtObject {
     currentPage = 1;
     lastPage = 1;
     errorText = "";
+    // Clear download state when search results are cleared
+    downloadStatus = {};
+    downloadProgress = {};
+    downloadPaths = {};
+    _pendingApplyId = "";
   }
 
   // ===== Build API URL =====
@@ -209,6 +215,12 @@ QtObject {
     };
   }
 
+  // Download and mark for auto-apply when done
+  function downloadAndApply(wallhavenId, fullUrl) {
+    _pendingApplyId = wallhavenId;
+    downloadWallpaper(wallhavenId, fullUrl);
+  }
+
   function downloadWallpaper(wallhavenId, fullUrl) {
     if (_activeDownloads[wallhavenId])
       return;
@@ -254,6 +266,10 @@ QtObject {
   property int _runningDownloads: 0
   readonly property int _maxConcurrent: 3
 
+  // Track pending apply (download then auto-apply)
+  property string _pendingApplyId: ""
+  signal downloadApplied(string localPath)
+
   function _drainDownloadQueue() {
     while (_runningDownloads < _maxConcurrent && _downloadQueue.length > 0) {
       var job = _downloadQueue.shift();
@@ -263,29 +279,71 @@ QtObject {
   }
 
   function _spawnDownload(whId, url, dest) {
-    // Sanitize inputs to prevent QML injection via single quotes
     var safeUrl = url.replace(/'/g, "");
     var safeDest = dest.replace(/'/g, "");
-    if (!safeUrl || !safeDest)
-      return;
-
-    var proc = Qt.createQmlObject('import QtQuick; import Quickshell.Io; Process { command: ["curl", "-#", "-fsSL", "-o", "' + safeDest + '", "' + safeUrl + '"]; running: true }', root);
-    if (!proc)
-      return;
-    proc.onExited = function (exitCode, exitStatus) {
+    if (!safeUrl || !safeDest) {
       _runningDownloads--;
+      return;
+    }
+
+    var comp = Qt.createComponent("WallhavenDownloadProc.qml");
+    if (comp.status !== Component.Ready) {
+      console.error("Failed to create download component:", comp.errorString());
+      _runningDownloads--;
+      return;
+    }
+
+    var proc = comp.createObject(root, {
+      whId: whId,
+      dest: safeDest
+    });
+    if (!proc) {
+      _runningDownloads--;
+      return;
+    }
+
+    proc.command = ["curl", "-#", "-fsSL", "-o", safeDest, safeUrl];
+    proc.onProgressUpdate.connect(function (id, pct) {
+      var p = Object.assign({}, downloadProgress);
+      p[id] = pct;
+      downloadProgress = p;
+    });
+    proc.onDone.connect(function (id, success) {
+      _runningDownloads--;
+      // Clean up active downloads entry
+      delete _activeDownloads[id];
       var s = Object.assign({}, downloadStatus);
-      if (exitCode === 0) {
+      if (success) {
         s[whId] = "done";
         downloadStatus = s;
-        downloadFinished(whId, _activeDownloads[whId] ? _activeDownloads[whId].dest : "");
+        var prog = Object.assign({}, downloadProgress);
+        prog[whId] = 1.0;
+        downloadProgress = prog;
+        var localPath = dest;
+        var paths = Object.assign({}, downloadPaths);
+        paths[whId] = localPath;
+        downloadPaths = paths;
+        downloadFinished(whId, localPath);
+        if (_pendingApplyId === whId) {
+          _pendingApplyId = "";
+          downloadApplied(localPath);
+        }
       } else {
         s[whId] = "error";
         downloadStatus = s;
+        var prog = Object.assign({}, downloadProgress);
+        prog[whId] = 0;
+        downloadProgress = prog;
+        // Clean up downloadPaths on error
+        if (downloadPaths[whId] !== undefined) {
+          var paths2 = Object.assign({}, downloadPaths);
+          delete paths2[whId];
+          downloadPaths = paths2;
+        }
       }
       proc.destroy();
       _drainDownloadQueue();
-    };
+    });
     proc.running = true;
   }
 

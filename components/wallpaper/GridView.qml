@@ -25,6 +25,12 @@ FocusScope {
   property var adapter: null
   property var cacheService: null
 
+  // Wallhaven download state
+  property var whService: adapter ? adapter.whService : null
+  property var downloadStatus: (whService && whService.downloadStatus) ? whService.downloadStatus : ({})
+  property var downloadProgress: (whService && whService.downloadProgress) ? whService.downloadProgress : ({})
+  property var downloadPaths: (whService && whService.downloadPaths) ? whService.downloadPaths : ({})
+
   // Scrollbar state (at root level, not inside Flickable)
   property bool gridScrollActive: false
 
@@ -446,6 +452,35 @@ FocusScope {
           NumberAnimation {
             duration: Style.animNormal
             easing.type: Easing.OutCubic
+          }
+        }
+      }
+
+      // ── Download overlay (remote items, opacity-based like org) ──
+      Item {
+        anchors.fill: parent
+        visible: gridItem.modelData && gridItem.modelData.type === "remote"
+        opacity: gridItem.isHovered ? 1 : 0
+        z: 15
+
+        Behavior on opacity {
+          NumberAnimation { duration: Style.animFast }
+        }
+
+        DownloadOverlay {
+          opacity: parent.opacity
+          whId: gridItem.modelData ? gridItem.modelData.id.replace("wallhaven-", "") : ""
+          downloadPath: gridItem.modelData ? gridItem.modelData.path : ""
+          whService: root.whService
+          downloadStatus: root.downloadStatus
+          downloadProgress: root.downloadProgress
+          downloadPaths: root.downloadPaths
+          onApplyLocal: function (localPath) {
+            var localItem = Object.assign({}, gridItem.modelData, {
+              path: localPath,
+              type: "local"
+            });
+            root.requestApplyItem(localItem);
           }
         }
       }

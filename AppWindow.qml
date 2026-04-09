@@ -357,6 +357,7 @@ PanelWindow {
 
   // Wallhaven Filter Panel (Separate from StatusBar)
   property var _whResultsConn: null
+  property var _whDlAppliedConn: null
 
   WallhavenFilter {
     id: wallhavenFilter
@@ -369,12 +370,23 @@ PanelWindow {
     onWhServiceChanged: {
       if (root._whResultsConn && root._whResultsConn.target)
         root._whResultsConn.target.resultsUpdated.disconnect(root._whResultsConn.callback);
+      if (root._whDlAppliedConn && root._whDlAppliedConn.target)
+        root._whDlAppliedConn.target.downloadApplied.disconnect(root._whDlAppliedConn.callback);
       if (whService) {
         root._whResultsConn = {
           target: whService,
           callback: () => displayManager.scrollTo(0)
         };
         whService.resultsUpdated.connect(root._whResultsConn.callback);
+        root._whDlAppliedConn = {
+          target: whService,
+          callback: function (localPath) {
+            if (wallpaperApplier)
+              wallpaperApplier.apply(localPath);
+            Qt.callLater(Qt.quit);
+          }
+        };
+        whService.downloadApplied.connect(root._whDlAppliedConn.callback);
       }
     }
   }
