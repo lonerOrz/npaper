@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import Qt.labs.folderlistmodel
 import Quickshell
+import Quickshell.Io
 import qs.services
 
 Popup {
@@ -14,8 +15,8 @@ Popup {
   signal accepted(string path)
   signal cancelled
 
-  width: Math.round(560 * Style.uiScaleRatio)
-  height: Math.round(420 * Style.uiScaleRatio)
+  width: Math.round(480 * Style.uiScaleRatio)
+  height: Math.round(360 * Style.uiScaleRatio)
   modal: true
   closePolicy: Popup.CloseOnEscape
   anchors.centerIn: parent
@@ -56,10 +57,28 @@ Popup {
     }
   }
 
+  // Process for mkdir
+  Process {
+    id: mkdirProc
+    running: false
+    onExited: {
+      folderModel.folder = "file://" + root.currentPath;
+    }
+  }
+
+  // Process for rmdir
+  Process {
+    id: rmdirProc
+    running: false
+    onExited: {
+      folderModel.folder = "file://" + root.currentPath;
+    }
+  }
+
   Column {
     anchors.fill: parent
-    anchors.margins: Style.spaceL
-    spacing: Style.spaceM
+    anchors.margins: Style.spaceM
+    spacing: Style.spaceS
 
     // ── Header ──
     Row {
@@ -68,7 +87,7 @@ Popup {
 
       Text {
         text: root.title
-        font.pixelSize: Style.fontL
+        font.pixelSize: Style.fontM
         font.weight: Font.Bold
         color: Color.mOnSurface
         width: parent.width * 0.3
@@ -85,75 +104,89 @@ Popup {
       }
     }
 
-    // ── Navigation toolbar ──
+    // ── Toolbar ──
     Row {
       width: parent.width
-      spacing: Style.spaceS
+      spacing: Style.spaceXS
 
-      // Up button
-      MouseArea {
-        width: 32; height: 32
-        cursorShape: Qt.PointingHandCursor
-        hoverEnabled: true
+      Repeater {
+        model: [
+          { icon: "\uf062", label: "Up" },
+          { icon: "\uf015", label: "Home" },
+          { icon: "\uf07b", label: "New" }
+        ]
+        delegate: MouseArea {
+          width: 28; height: 28
+          cursorShape: Qt.PointingHandCursor
+          hoverEnabled: true
 
-        Rectangle {
-          anchors.fill: parent
-          radius: Style.radiusS
-          color: parent.containsMouse ? Qt.alpha(Color.mPrimary, 0.12) : Color.mSurfaceContainerHigh
-          border.color: Color.mOutline
-          border.width: Style.borderS
-          Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
-        }
+          Rectangle {
+            anchors.fill: parent
+            radius: Style.radiusS
+            color: parent.containsMouse ? Qt.alpha(Color.mPrimary, 0.12) : Color.mSurfaceContainerHigh
+            border.color: Color.mOutline
+            border.width: Style.borderS
+            Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
+          }
 
-        Text {
-          anchors.centerIn: parent
-          text: "\uf062"
-          font.pixelSize: Style.fontM
-          font.family: "Symbols Nerd Font"
-          color: parent.containsMouse ? Color.mPrimary : Color.mOnSurfaceVariant
-        }
+          Text {
+            anchors.centerIn: parent
+            text: modelData.icon
+            font.pixelSize: Style.fontS
+            font.family: "Symbols Nerd Font"
+            color: parent.containsMouse ? Color.mPrimary : Color.mOnSurfaceVariant
+          }
 
-        onClicked: {
-          folderModel.folder = "file://" + folderModel.parentFolder.toString().replace("file://", "");
+          onClicked: {
+            if (index === 0) folderModel.folder = "file://" + folderModel.parentFolder.toString().replace("file://", "");
+            else if (index === 1) { folderModel.folder = "file://" + Quickshell.env("HOME"); root.currentPath = Quickshell.env("HOME"); }
+            else if (index === 2) showNewFolder();
+          }
         }
       }
 
-      // Home button
+      // Delete button
       MouseArea {
-        width: 32; height: 32
+        width: 28; height: 28
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
+        enabled: root.selectedPath !== ""
 
         Rectangle {
           anchors.fill: parent
           radius: Style.radiusS
-          color: parent.containsMouse ? Qt.alpha(Color.mPrimary, 0.12) : Color.mSurfaceContainerHigh
-          border.color: Color.mOutline
+          color: {
+            if (parent.containsMouse) return Qt.alpha("#ff5555", 0.15);
+            return root.selectedPath !== "" ? Color.mSurfaceContainerHigh : "transparent";
+          }
+          border.color: root.selectedPath !== "" ? "#ff5555" : Color.mOutline
           border.width: Style.borderS
           Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
         }
 
         Text {
           anchors.centerIn: parent
-          text: "\uf015"
-          font.pixelSize: Style.fontM
+          text: "\uf014"
+          font.pixelSize: Style.fontS
           font.family: "Symbols Nerd Font"
-          color: parent.containsMouse ? Color.mPrimary : Color.mOnSurfaceVariant
+          color: root.selectedPath !== "" ? (parent.containsMouse ? "#ff5555" : Color.mOnSurfaceVariant) : Color.mOnSurfaceVariant
         }
 
         onClicked: {
-          var home = Quickshell.env("HOME");
-          folderModel.folder = "file://" + home;
-          root.currentPath = home;
+          if (root.selectedPath !== "") {
+            rmdirProc.command = ["rmdir", root.selectedPath];
+            rmdirProc.running = true;
+            root.selectedPath = "";
+          }
         }
       }
 
       // Path input
       TextField {
-        width: parent.width - 100
-        height: 32
+        width: parent.width - 130
+        height: 28
         text: root.currentPath
-        font.pixelSize: Style.fontS
+        font.pixelSize: Style.fontXS
         color: Color.mOnSurface
         placeholderText: "/path/to/folder"
         placeholderTextColor: Color.mOnSurfaceVariant
@@ -170,12 +203,38 @@ Popup {
       }
     }
 
+    // New folder input
+    TextField {
+      id: newFolderInput
+      width: parent.width
+      height: 28
+      visible: false
+      font.pixelSize: Style.fontXS
+      placeholderText: "Enter folder name..."
+      placeholderTextColor: Color.mOnSurfaceVariant
+      background: Rectangle {
+        radius: Style.radiusS
+        color: Color.mSurfaceContainer
+        border.color: parent.activeFocus ? Color.mPrimary : Color.mOutline
+        border.width: Style.borderS
+      }
+      onAccepted: {
+        if (text.trim().length > 0) {
+          mkdirProc.command = ["mkdir", "-p", root.currentPath + "/" + text.trim()];
+          mkdirProc.running = true;
+        }
+        visible = false;
+        text = "";
+      }
+      Keys.onEscapePressed: { visible = false; text = ""; }
+    }
+
     // ── Folder list ──
     Rectangle {
       width: parent.width
-      height: parent.height - 180
+      height: parent.height - 130
       color: Color.mSurfaceContainer
-      radius: Style.radiusM
+      radius: Style.radiusS
       border.color: Color.mOutlineVariant
       border.width: Style.borderS
 
@@ -210,22 +269,22 @@ Popup {
 
           Row {
             anchors.fill: parent
-            anchors.leftMargin: Style.spaceM
-            anchors.rightMargin: Style.spaceM
-            spacing: Style.spaceM
+            anchors.leftMargin: Style.spaceS
+            anchors.rightMargin: Style.spaceS
+            spacing: Style.spaceS
 
             Text {
               text: "\uf07b"
               font.family: "Symbols Nerd Font"
-              font.pixelSize: Style.fontL
+              font.pixelSize: Style.fontM
               color: root.selectedPath === model.filePath ? Color.mPrimary : Color.mOnSurfaceVariant
               anchors.verticalCenter: parent.verticalCenter
             }
 
             Text {
               text: model.fileName
-              font.pixelSize: Style.fontM
-              font.weight: root.selectedPath === model.filePath ? Font.Bold : Font.Normal
+              font.pixelSize: Style.fontS
+              font.weight: root.selectedPath === model.filePath ? Font.Medium : Font.Normal
               color: root.selectedPath === model.filePath ? Color.mPrimary : Color.mOnSurface
               elide: Text.ElideMiddle
               anchors.verticalCenter: parent.verticalCenter
@@ -247,14 +306,14 @@ Popup {
     // ── Footer buttons ──
     Row {
       width: parent.width
-      spacing: Style.spaceM
+      spacing: Style.spaceS
 
-      Item { width: parent.width - 180; height: 1 }
+      Item { width: parent.width - 120; height: 1 }
 
       // Cancel
       MouseArea {
         id: cancelBtn
-        width: 80; height: 32
+        width: 55; height: 28
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
         onClicked: { root.cancelled(); root.close(); }
@@ -271,7 +330,7 @@ Popup {
         Text {
           anchors.centerIn: parent
           text: "Cancel"
-          font.pixelSize: Style.fontM
+          font.pixelSize: Style.fontXS
           color: Color.mOnSurface
         }
       }
@@ -279,7 +338,7 @@ Popup {
       // Select
       MouseArea {
         id: selectBtn
-        width: 80; height: 32
+        width: 55; height: 28
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
         enabled: root.selectedPath !== ""
@@ -297,11 +356,16 @@ Popup {
         Text {
           anchors.centerIn: parent
           text: "Select"
-          font.pixelSize: Style.fontM
+          font.pixelSize: Style.fontXS
           font.weight: Font.Bold
           color: selectBtn.enabled ? Color.mOnPrimary : Color.mOnSurfaceVariant
         }
       }
     }
+  }
+
+  function showNewFolder() {
+    newFolderInput.visible = true;
+    newFolderInput.forceActiveFocus();
   }
 }

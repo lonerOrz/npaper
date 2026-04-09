@@ -25,6 +25,7 @@ Item {
   property bool showBgPreview: true
   property real bgOverlayOpacity: 0.4
   property string wallhavenApiKey: ""
+  property string wallhavenDownloadDir: ""
   property string wallhavenCategories: "111"
   property string wallhavenPurity: "100"
 
@@ -372,13 +373,13 @@ Item {
 
               // Remove button
               MouseArea {
-                width: 24; height: 24
+                width: 20; height: 20
                 cursorShape: Qt.PointingHandCursor
                 hoverEnabled: true
 
                 Rectangle {
                   anchors.fill: parent
-                  radius: Style.radiusS
+                  radius: Style.radiusXS
                   color: parent.containsMouse ? Qt.alpha("#ff5555", 0.12) : "transparent"
                   Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
                 }
@@ -387,7 +388,7 @@ Item {
                   anchors.centerIn: parent
                   text: "\uf014"
                   font.family: "Symbols Nerd Font"
-                  font.pixelSize: Style.fontS
+                  font.pixelSize: Style.fontXS
                   color: parent.containsMouse ? "#ff5555" : Color.mOnSurfaceVariant
                 }
 
@@ -404,7 +405,7 @@ Item {
         // Add button
         MouseArea {
           width: parent.width
-          height: 32
+          height: 26
           cursorShape: Qt.PointingHandCursor
           hoverEnabled: true
 
@@ -421,7 +422,7 @@ Item {
             anchors.centerIn: parent
             text: "\uf07b  Add Directory"
             font.family: "Symbols Nerd Font"
-            font.pixelSize: Style.fontM
+            font.pixelSize: Style.fontS
             color: parent.containsMouse ? Color.mPrimary : Color.mOnSurfaceVariant
           }
 
@@ -467,7 +468,7 @@ Item {
         }
 
         MouseArea {
-          width: 32; height: 32
+          width: 24; height: 24
           cursorShape: Qt.PointingHandCursor
           hoverEnabled: true
 
@@ -483,7 +484,7 @@ Item {
             anchors.centerIn: parent
             text: "\uf07c"
             font.family: "Symbols Nerd Font"
-            font.pixelSize: Style.fontM
+            font.pixelSize: Style.fontS
             color: parent.containsMouse ? Color.mPrimary : Color.mOnSurfaceVariant
           }
 
@@ -549,6 +550,64 @@ Item {
         height: 1
         color: Color.mOutlineVariant
         opacity: 0.2
+      }
+
+      // Download Folder
+      Row {
+        width: parent.width
+        spacing: Style.spaceM
+
+        Column {
+          width: parent.width - 40
+          spacing: Style.spaceXS
+
+          Text {
+            text: "Download Folder"
+            color: Color.mOnSurfaceVariant
+            font.pixelSize: Style.fontXS
+            font.weight: Font.Medium
+          }
+
+          Text {
+            text: root.wallhavenDownloadDir || "Default (Wallpaper Dir)"
+            color: root.wallhavenDownloadDir ? Color.mOnSurface : Color.mOnSurfaceVariant
+            font.pixelSize: Style.fontXS
+            font.family: "monospace"
+            elide: Text.ElideMiddle
+          }
+        }
+
+        MouseArea {
+          width: 24; height: 24
+          cursorShape: Qt.PointingHandCursor
+          hoverEnabled: true
+
+          Rectangle {
+            anchors.fill: parent
+            radius: Style.radiusS
+            color: parent.containsMouse ? Qt.alpha(Color.mPrimary, 0.12) : Color.mSurfaceContainerHigh
+            border.color: Color.mOutline
+            border.width: Style.borderS
+          }
+
+          Text {
+            anchors.centerIn: parent
+            text: "\uf07c"
+            font.family: "Symbols Nerd Font"
+            font.pixelSize: Style.fontS
+            color: parent.containsMouse ? Color.mPrimary : Color.mOnSurfaceVariant
+          }
+
+          onClicked: whDownloadPicker.openPicker(root.wallhavenDownloadDir)
+        }
+      }
+
+      FolderPicker {
+        id: whDownloadPicker
+        title: "Select Download Folder"
+        onAccepted: function (path) {
+          root._emit("wallhaven.downloadDir", path);
+        }
       }
 
       // Filters section header

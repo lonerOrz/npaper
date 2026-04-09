@@ -34,6 +34,7 @@ Singleton {
                                       "previewStyle": "carousel",
                                       "wallhaven": {
                                         "apiKey": "",
+                                        "downloadDir": "",
                                         "defaultAtleast": "1920x1080",
                                         "categories": "111",
                                         "purity": "100",
@@ -170,7 +171,7 @@ Singleton {
       "cacheDir": resolvedData.cacheDir,
       "debugMode": resolvedData.debugMode,
       "previewStyle": resolvedData.previewStyle,
-      "wallhaven": _pick(resolvedData.wallhaven, ["apiKey", "defaultAtleast", "categories", "purity", "sorting"]),
+      "wallhaven": _pick(resolvedData.wallhaven, ["apiKey", "downloadDir", "defaultAtleast", "categories", "purity", "sorting"]),
       "appearance": _pick(resolvedData.appearance, ["showBorderGlow", "showShadow", "showBgPreview", "bgOverlayOpacity"])
     };
     var jsonStr = JSON.stringify(ordered, null, 2);

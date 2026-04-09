@@ -55,11 +55,13 @@ Item {
 
   WallhavenService {
     id: wallhavenService
-    wallpaperDir: root.wallpaperDirs.length > 0 ? root.wallpaperDirs[0] : ""
+    wallpaperDir: _whDownloadDir || (root.wallpaperDirs.length > 0 ? root.wallpaperDirs[0] : "")
     apiKey: Config.data.wallhaven.apiKey
     categories: Config.data.wallhaven.categories
     purity: Config.data.wallhaven.purity
   }
+
+  readonly property string _whDownloadDir: (Config.data.wallhaven && Config.data.wallhaven.downloadDir) ? Config.data.wallhaven.downloadDir : ""
 
   // ── Operations ──────────────────────────────────────────
 

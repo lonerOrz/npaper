@@ -416,6 +416,7 @@ PanelWindow {
     wallpaperDirs: Config.data.wallpaperDirs
     cacheDir: Config.data.cacheDir
     wallhavenApiKey: Config.data.wallhaven.apiKey
+    wallhavenDownloadDir: Config.data.wallhaven.downloadDir
     wallhavenCategories: Config.data.wallhaven.categories
     wallhavenPurity: Config.data.wallhaven.purity
 
