@@ -56,6 +56,9 @@ Item {
   WallhavenService {
     id: wallhavenService
     wallpaperDir: root.wallpaperDirs.length > 0 ? root.wallpaperDirs[0] : ""
+    apiKey: Config.data.wallhaven.apiKey
+    categories: Config.data.wallhaven.categories
+    purity: Config.data.wallhaven.purity
   }
 
   // ── Operations ──────────────────────────────────────────

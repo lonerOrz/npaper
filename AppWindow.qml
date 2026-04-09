@@ -415,9 +415,9 @@ PanelWindow {
     bgOverlayOpacity: root.bgOverlayOpacity
     wallpaperDirs: Config.data.wallpaperDirs
     cacheDir: Config.data.cacheDir
-    wallhavenApiKey: Config.data.wallhaven.apiKey || ""
-    wallhavenCategories: Config.data.wallhaven.categories || "111"
-    wallhavenPurity: Config.data.wallhaven.purity || "100"
+    wallhavenApiKey: Config.data.wallhaven.apiKey
+    wallhavenCategories: Config.data.wallhaven.categories
+    wallhavenPurity: Config.data.wallhaven.purity
 
     onSettingChanged: function (key, val) {
       var vm = viewModel;
