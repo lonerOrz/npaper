@@ -2,20 +2,20 @@ import QtQuick
 import qs.services
 
 /*
- * DownloadOverlay — Reusable download button overlay for wallpaper cards.
- * Used by WallpaperCard.qml (CarouselView) and GridView.qml.
- *
- * Required inputs:
- *   whId          — Wallhaven wallpaper ID (e.g., "abc123")
- *   downloadPath  — Remote URL for download
- *   whService     — WallhavenService instance
- *   downloadStatus — Map from whService
- *   downloadProgress — Map from whService
- *   downloadPaths — Map from whService
- *
- * Signals:
- *   onApplyLocal(localPath) — Emitted when Apply is clicked on a downloaded wallpaper
- */
+* DownloadOverlay — Reusable download button overlay for wallpaper cards.
+* Used by WallpaperCard.qml (CarouselView) and GridView.qml.
+*
+* Required inputs:
+*   whId          — Wallhaven wallpaper ID (e.g., "abc123")
+*   downloadPath  — Remote URL for download
+*   whService     — WallhavenService instance
+*   downloadStatus — Map from whService
+*   downloadProgress — Map from whService
+*   downloadPaths — Map from whService
+*
+* Signals:
+*   onApplyLocal(localPath) — Emitted when Apply is clicked on a downloaded wallpaper
+*/
 Item {
   id: root
 
@@ -108,9 +108,11 @@ Item {
         hoverEnabled: false
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-          if (!root.whService) return;
+          if (!root.whService)
+            return;
           if (root.dlStatus === "done") {
-            if (root.localPath) root.applyLocal(root.localPath);
+            if (root.localPath)
+              root.applyLocal(root.localPath);
           } else {
             root.whService.downloadAndApply(root.whId, root.downloadPath);
           }

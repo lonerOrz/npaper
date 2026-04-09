@@ -84,8 +84,14 @@ Item {
     anchors.fill: parent
     radius: Style.settingsRadius
     gradient: Gradient {
-      GradientStop { position: 0.0; color: Qt.lighter(Color.mSurfaceContainerLow, 1.05) }
-      GradientStop { position: 1.0; color: Color.mSurfaceContainerLow }
+      GradientStop {
+        position: 0.0
+        color: Qt.lighter(Color.mSurfaceContainerLow, 1.05)
+      }
+      GradientStop {
+        position: 1.0
+        color: Color.mSurfaceContainerLow
+      }
     }
     opacity: root._animProgress
 
@@ -124,8 +130,14 @@ Item {
       height: Style.settingsTabHeight
       radius: height / 2
       gradient: Gradient {
-        GradientStop { position: 0.0; color: Qt.lighter(Color.mPrimary, 1.1) }
-        GradientStop { position: 1.0; color: Color.mPrimary }
+        GradientStop {
+          position: 0.0
+          color: Qt.lighter(Color.mPrimary, 1.1)
+        }
+        GradientStop {
+          position: 1.0
+          color: Color.mPrimary
+        }
       }
 
       x: tabBar._pillX
@@ -232,29 +244,29 @@ Item {
     anchors.bottom: parent.bottom
     anchors.margins: Style.settingsPadding
     clip: true
-    
+
     property bool scrollActive: false
 
     contentWidth: width
     contentHeight: Math.max(pathsColumn.implicitHeight, wallhavenColumn.implicitHeight, appearanceColumn.implicitHeight) + Style.settingsPadding * 2
     boundsBehavior: Flickable.StopAtBounds
     flickableDirection: Flickable.VerticalFlick
-    
+
     // Enable mouse wheel scrolling
     WheelHandler {
-      onWheel: function(event) {
+      onWheel: function (event) {
         contentFlickable.contentY += event.angleDelta.y > 0 ? -40 : 40;
         contentFlickable.scrollActive = true;
         scrollFadeTimer.restart();
       }
     }
-    
+
     Timer {
       id: scrollFadeTimer
       interval: 800
       onTriggered: contentFlickable.scrollActive = false
     }
-    
+
     // Custom scrollbar (hidden by default, shows on interaction)
     Rectangle {
       anchors.right: parent.right
@@ -266,10 +278,8 @@ Item {
       color: Color.mOutlineVariant
       opacity: contentFlickable.scrollActive ? 0.6 : 0
 
-      property real scrollProgress: contentFlickable.visibleArea.heightRatio < 1.0 ?
-        contentFlickable.visibleArea.yPosition / (1.0 - contentFlickable.visibleArea.heightRatio) : 0
-      property real scrollHeight: contentFlickable.visibleArea.heightRatio < 1.0 ?
-        contentFlickable.visibleArea.heightRatio * (parent.height - 4) + 20 : 20
+      property real scrollProgress: contentFlickable.visibleArea.heightRatio < 1.0 ? contentFlickable.visibleArea.yPosition / (1.0 - contentFlickable.visibleArea.heightRatio) : 0
+      property real scrollHeight: contentFlickable.visibleArea.heightRatio < 1.0 ? contentFlickable.visibleArea.heightRatio * (parent.height - 4) + 20 : 20
 
       y: scrollProgress * (parent.height - scrollHeight)
       height: scrollHeight
@@ -303,7 +313,7 @@ Item {
       Row {
         width: parent.width
         spacing: Style.spaceM
-        
+
         Text {
           text: "STORAGE"
           color: Color.mOutline
@@ -311,7 +321,7 @@ Item {
           font.weight: Font.Bold
           font.letterSpacing: 2
         }
-        
+
         Rectangle {
           width: parent.width - _sectionText.implicitWidth - Style.spaceM
           height: 1
@@ -319,7 +329,7 @@ Item {
           color: Color.mOutlineVariant
           opacity: 0.3
         }
-        
+
         Text {
           id: _sectionText
           visible: false
@@ -362,7 +372,7 @@ Item {
       Row {
         width: parent.width
         spacing: Style.spaceM
-        
+
         Text {
           id: _apiHeader
           text: "API"
@@ -371,7 +381,7 @@ Item {
           font.weight: Font.Bold
           font.letterSpacing: 2
         }
-        
+
         Rectangle {
           width: parent.width - _apiHeader.implicitWidth - Style.spaceM
           height: 1
@@ -403,7 +413,7 @@ Item {
       Row {
         width: parent.width
         spacing: Style.spaceM
-        
+
         Text {
           id: _filtersHeader
           text: "FILTERS"
@@ -412,7 +422,7 @@ Item {
           font.weight: Font.Bold
           font.letterSpacing: 2
         }
-        
+
         Rectangle {
           width: parent.width - _filtersHeader.implicitWidth - Style.spaceM
           height: 1
@@ -426,7 +436,7 @@ Item {
       Column {
         width: parent.width
         spacing: Style.spaceS
-        
+
         SettingsToggle {
           width: parent.width
           text: "General"
@@ -471,7 +481,7 @@ Item {
       Column {
         width: parent.width
         spacing: Style.spaceS
-        
+
         SettingsToggle {
           width: parent.width
           text: "Safe"
@@ -519,7 +529,7 @@ Item {
       Row {
         width: parent.width
         spacing: Style.spaceM
-        
+
         Text {
           id: _overlayHeader
           text: "OVERLAY"
@@ -528,7 +538,7 @@ Item {
           font.weight: Font.Bold
           font.letterSpacing: 2
         }
-        
+
         Rectangle {
           width: parent.width - _overlayHeader.implicitWidth - Style.spaceM
           height: 1
@@ -562,7 +572,7 @@ Item {
       Row {
         width: parent.width
         spacing: Style.spaceM
-        
+
         Text {
           id: _effectsHeader
           text: "EFFECTS"
@@ -571,7 +581,7 @@ Item {
           font.weight: Font.Bold
           font.letterSpacing: 2
         }
-        
+
         Rectangle {
           width: parent.width - _effectsHeader.implicitWidth - Style.spaceM
           height: 1
@@ -584,7 +594,7 @@ Item {
       Column {
         width: parent.width
         spacing: Style.spaceS
-        
+
         SettingsToggle {
           width: parent.width
           text: "Border Glow"

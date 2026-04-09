@@ -256,7 +256,7 @@ FocusScope {
       radius: Style.radiusRound
       color: Color.mSurfaceContainer
       opacity: 0.85
-      
+
       Text {
         anchors.centerIn: parent
         anchors.leftMargin: Style.spaceXL

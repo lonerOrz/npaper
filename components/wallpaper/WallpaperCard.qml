@@ -58,7 +58,7 @@ Item {
       easing.type: Easing.OutCubic
     }
   }
-  
+
   // Smooth z-index transition
   Behavior on z {
     NumberAnimation {
@@ -376,7 +376,9 @@ Item {
     z: 10
 
     Behavior on opacity {
-      NumberAnimation { duration: Style.animFast }
+      NumberAnimation {
+        duration: Style.animFast
+      }
     }
 
     DownloadOverlay {

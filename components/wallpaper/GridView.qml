@@ -208,7 +208,7 @@ FocusScope {
         }
       }
     }
-    
+
     // Smooth exit transition
     remove: Transition {
       ParallelAnimation {
@@ -226,7 +226,7 @@ FocusScope {
         }
       }
     }
-    
+
     // Refined displaced transition
     displaced: Transition {
       NumberAnimation {
@@ -464,7 +464,9 @@ FocusScope {
         z: 15
 
         Behavior on opacity {
-          NumberAnimation { duration: Style.animFast }
+          NumberAnimation {
+            duration: Style.animFast
+          }
         }
 
         DownloadOverlay {
@@ -477,9 +479,9 @@ FocusScope {
           downloadPaths: root.downloadPaths
           onApplyLocal: function (localPath) {
             var localItem = Object.assign({}, gridItem.modelData, {
-              path: localPath,
-              type: "local"
-            });
+                                            path: localPath,
+                                            type: "local"
+                                          });
             root.requestApplyItem(localItem);
           }
         }
@@ -577,10 +579,8 @@ FocusScope {
     color: Color.mPrimary
     opacity: root.gridScrollActive ? 0.5 : 0
 
-    property real scrollProgress: thumbGridView.visibleArea.heightRatio < 1.0 ?
-      thumbGridView.visibleArea.yPosition / (1.0 - thumbGridView.visibleArea.heightRatio) : 0
-    property real scrollHeight: thumbGridView.visibleArea.heightRatio < 1.0 ?
-      thumbGridView.visibleArea.heightRatio * (height) : 20
+    property real scrollProgress: thumbGridView.visibleArea.heightRatio < 1.0 ? thumbGridView.visibleArea.yPosition / (1.0 - thumbGridView.visibleArea.heightRatio) : 0
+    property real scrollHeight: thumbGridView.visibleArea.heightRatio < 1.0 ? thumbGridView.visibleArea.heightRatio * (height) : 20
 
     y: scrollProgress * (parent.height - scrollHeight)
     height: Math.max(20, scrollHeight)
@@ -600,7 +600,7 @@ FocusScope {
     radius: Style.radiusRound
     color: Color.mSurfaceContainer
     opacity: 0.85
-    
+
     Text {
       anchors.centerIn: parent
       anchors.leftMargin: Style.spaceXL

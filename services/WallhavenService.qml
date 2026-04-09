@@ -294,9 +294,9 @@ QtObject {
     }
 
     var proc = comp.createObject(root, {
-      whId: whId,
-      dest: safeDest
-    });
+                                   whId: whId,
+                                   dest: safeDest
+                                 });
     if (!proc) {
       _runningDownloads--;
       return;

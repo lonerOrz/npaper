@@ -13,11 +13,11 @@ Process {
   stderr: SplitParser {
     splitMarker: "\r"
     onRead: data => {
-      var match = data.match(/([\d.]+)\s*%/);
-      if (match) {
-        dlProc.progressUpdate(dlProc.whId, parseFloat(match[1]) / 100.0);
-      }
-    }
+              var match = data.match(/([\d.]+)\s*%/);
+              if (match) {
+                dlProc.progressUpdate(dlProc.whId, parseFloat(match[1]) / 100.0);
+              }
+            }
   }
 
   onExited: function (exitCode, exitStatus) {
@@ -34,8 +34,8 @@ Process {
     property string _output: ""
     stdout: SplitParser {
       onRead: data => {
-        dlProc._verifyProc._output = data.trim();
-      }
+                dlProc._verifyProc._output = data.trim();
+              }
     }
     onExited: function (exitCode, exitStatus) {
       var mime = _output.toLowerCase();

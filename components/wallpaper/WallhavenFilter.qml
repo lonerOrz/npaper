@@ -69,8 +69,14 @@ Item {
     anchors.fill: parent
     radius: Style.barRadius
     gradient: Gradient {
-      GradientStop { position: 0.0; color: Qt.lighter(Color.mSurfaceContainerLowest, 1.04) }
-      GradientStop { position: 1.0; color: Color.mSurfaceContainerLowest }
+      GradientStop {
+        position: 0.0
+        color: Qt.lighter(Color.mSurfaceContainerLowest, 1.04)
+      }
+      GradientStop {
+        position: 1.0
+        color: Color.mSurfaceContainerLowest
+      }
     }
     border.width: 1
     border.color: Qt.tint(Color.mOutlineVariant, Color.mSurfaceContainerLowest)

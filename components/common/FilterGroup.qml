@@ -3,8 +3,8 @@ import QtQuick.Layouts
 import qs.services
 
 /* FilterGroup — labeled container for a row of filter pills.
- * Enhanced with gradient background and subtle border.
- */
+* Enhanced with gradient background and subtle border.
+*/
 Item {
   id: root
 
@@ -20,8 +20,14 @@ Item {
     anchors.fill: parent
     radius: Style.barRadius
     gradient: Gradient {
-      GradientStop { position: 0.0; color: Qt.lighter(Color.mSurfaceContainerLow, 1.03) }
-      GradientStop { position: 1.0; color: Color.mSurfaceContainerLow }
+      GradientStop {
+        position: 0.0
+        color: Qt.lighter(Color.mSurfaceContainerLow, 1.03)
+      }
+      GradientStop {
+        position: 1.0
+        color: Color.mSurfaceContainerLow
+      }
     }
     border.width: 1
     border.color: Qt.tint(Color.mOutlineVariant, Color.mSurfaceContainerLow)

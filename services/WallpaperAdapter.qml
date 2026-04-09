@@ -120,7 +120,8 @@ Item {
         else if (ws)
           ws.downloadAndApply(safeId, item.path);
       } else if (status === "downloading") {
-        if (ws) ws._pendingApplyId = safeId;
+        if (ws)
+          ws._pendingApplyId = safeId;
       } else if (ws) {
         ws.downloadAndApply(safeId, item.path);
       }

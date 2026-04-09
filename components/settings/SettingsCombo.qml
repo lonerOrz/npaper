@@ -3,18 +3,18 @@ import QtQuick.Controls
 import qs.services
 
 /*
- * SettingsCombo — labeled dropdown selector.
- * Enhanced with better visual hierarchy and menu styling.
- *
- * Usage:
- *   SettingsCombo {
- *     width: parent.width
- *     label: "Sorting"
- *     value: root.currentValue
- *     items: ["toplist", "date_added", "views", "random"]
- *     onSelect: function (v) { root._emit("sorting", v) }
- *   }
- */
+* SettingsCombo — labeled dropdown selector.
+* Enhanced with better visual hierarchy and menu styling.
+*
+* Usage:
+*   SettingsCombo {
+*     width: parent.width
+*     label: "Sorting"
+*     value: root.currentValue
+*     items: ["toplist", "date_added", "views", "random"]
+*     onSelect: function (v) { root._emit("sorting", v) }
+*   }
+*/
 Column {
   id: root
   width: parent ? parent.width : 300
@@ -49,7 +49,9 @@ Column {
       color: Color.mPrimary
       opacity: comboHover.containsMouse ? 0.06 : 0
       Behavior on opacity {
-        NumberAnimation { duration: Style.animFast }
+        NumberAnimation {
+          duration: Style.animFast
+        }
       }
     }
 
@@ -77,7 +79,7 @@ Column {
       radius: 2
       rotation: comboPopup.visible ? 180 : 0
       color: "transparent"
-      
+
       Canvas {
         anchors.fill: parent
         onPaint: {
@@ -92,7 +94,7 @@ Column {
           ctx.stroke();
         }
       }
-      
+
       Behavior on rotation {
         NumberAnimation {
           duration: Style.animFast
@@ -114,7 +116,7 @@ Column {
     id: comboPopup
     modal: true
     dim: false
-    
+
     // Style the menu
     background: Rectangle {
       implicitWidth: root.width
@@ -122,7 +124,7 @@ Column {
       color: Color.mSurfaceContainer
       border.color: Color.mOutlineVariant
       border.width: 1
-      
+
       Rectangle {
         anchors.fill: parent
         radius: parent.radius
@@ -137,7 +139,7 @@ Column {
       comboPopup.clear();
       for (var i = 0; i < root.items.length; i++) {
         var action = comboPopup.addAction(root.items[i]);
-        action.triggered.connect(function() {
+        action.triggered.connect(function () {
           root.select(root.items[i]);
         });
       }

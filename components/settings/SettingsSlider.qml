@@ -3,20 +3,20 @@ import QtQuick.Controls
 import qs.services
 
 /*
- * SettingsSlider — labeled slider with value display.
- * Redesigned with refined aesthetics and smooth interactions.
- *
- * Usage:
- *   SettingsSlider {
- *     width: parent.width
- *     label: "Opacity"
- *     value: root.opacity
- *     min: 0.0
- *     max: 1.0
- *     step: 0.05
- *     onCommit: function (v) { root._emit("opacity", v) }
- *   }
- */
+* SettingsSlider — labeled slider with value display.
+* Redesigned with refined aesthetics and smooth interactions.
+*
+* Usage:
+*   SettingsSlider {
+*     width: parent.width
+*     label: "Opacity"
+*     value: root.opacity
+*     min: 0.0
+*     max: 1.0
+*     step: 0.05
+*     onCommit: function (v) { root._emit("opacity", v) }
+*   }
+*/
 Column {
   id: root
   width: parent ? parent.width : 300
@@ -70,11 +70,11 @@ Column {
     to: root.max
     stepSize: root.step
     value: root.value
-    
+
     // Commit on release
     onValueChanged: {
       if (slider.pressed) {
-        root.commit(value)
+        root.commit(value);
       }
     }
 
@@ -100,8 +100,14 @@ Column {
 
         // Smooth gradient
         gradient: Gradient {
-          GradientStop { position: 0.0; color: Qt.lighter(Color.mPrimary, 1.2) }
-          GradientStop { position: 1.0; color: Color.mPrimary }
+          GradientStop {
+            position: 0.0
+            color: Qt.lighter(Color.mPrimary, 1.2)
+          }
+          GradientStop {
+            position: 1.0
+            color: Color.mPrimary
+          }
         }
       }
     }
@@ -120,12 +126,18 @@ Column {
         radius: height / 2
         color: Color.mPrimary
         opacity: slider.pressed ? 0.2 : 0.12
-        
+
         Behavior on width {
-          NumberAnimation { duration: Style.animFast; easing.type: Easing.OutCubic }
+          NumberAnimation {
+            duration: Style.animFast
+            easing.type: Easing.OutCubic
+          }
         }
         Behavior on height {
-          NumberAnimation { duration: Style.animFast; easing.type: Easing.OutCubic }
+          NumberAnimation {
+            duration: Style.animFast
+            easing.type: Easing.OutCubic
+          }
         }
       }
 
@@ -150,7 +162,9 @@ Column {
         }
 
         Behavior on color {
-          ColorAnimation { duration: Style.animFast }
+          ColorAnimation {
+            duration: Style.animFast
+          }
         }
       }
     }

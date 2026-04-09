@@ -2,17 +2,17 @@ import QtQuick
 import qs.services
 
 /*
- * SettingsToggle — labeled toggle switch with animated knob.
- * Enhanced with better visual hierarchy and subtle effects.
- *
- * Usage:
- *   SettingsToggle {
- *     width: parent.width
- *     text: "Border Glow"
- *     checked: root.showBorderGlow
- *     onToggled: function (val) { root._emit("showBorderGlow", val) }
- *   }
- */
+* SettingsToggle — labeled toggle switch with animated knob.
+* Enhanced with better visual hierarchy and subtle effects.
+*
+* Usage:
+*   SettingsToggle {
+*     width: parent.width
+*     text: "Border Glow"
+*     checked: root.showBorderGlow
+*     onToggled: function (val) { root._emit("showBorderGlow", val) }
+*   }
+*/
 Item {
   id: root
   width: parent ? parent.width : 300
@@ -29,7 +29,9 @@ Item {
     color: hoverArea.containsMouse ? Qt.lighter(Color.mSurfaceContainer, 1.08) : "transparent"
     opacity: 0.6
     Behavior on color {
-      ColorAnimation { duration: Style.animFast }
+      ColorAnimation {
+        duration: Style.animFast
+      }
     }
   }
 
@@ -72,12 +74,16 @@ Item {
           color: root.checked ? Color.mPrimary : "transparent"
           opacity: root.checked ? 0.2 : 0
           Behavior on opacity {
-            NumberAnimation { duration: Style.animFast }
+            NumberAnimation {
+              duration: Style.animFast
+            }
           }
         }
 
         Behavior on color {
-          ColorAnimation { duration: Style.animFast }
+          ColorAnimation {
+            duration: Style.animFast
+          }
         }
       }
 

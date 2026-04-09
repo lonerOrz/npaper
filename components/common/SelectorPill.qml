@@ -15,9 +15,9 @@ import qs.services
 Item {
   id: root
 
-Layout.preferredWidth: _row.implicitWidth + Style.spaceM
-Layout.preferredHeight: Style.barTabHeight
-Layout.alignment: Qt.AlignVCenter
+  Layout.preferredWidth: _row.implicitWidth + Style.spaceM
+  Layout.preferredHeight: Style.barTabHeight
+  Layout.alignment: Qt.AlignVCenter
 
   property var model: []
   property int activeIndex: 0
