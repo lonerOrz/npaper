@@ -45,6 +45,8 @@ FocusScope {
   property int parallaxFactor: 40
 
   readonly property var _activeView: carouselLoader.active && carouselLoader.item ? carouselLoader.item : (gridLoader.item || null)
+
+  signal toggleViewMode  // carousel ↔ grid
   readonly property int currentIndex: _activeView ? _activeView.currentIndex : 0
   readonly property real scrollTarget: _activeView ? _activeView.scrollTarget : 0
   readonly property real contentOffset: _activeView ? _activeView.scrollTarget - _activeView.currentIndex : 0
@@ -58,6 +60,7 @@ FocusScope {
   signal requestRandom
   signal requestToggleWallhaven
   signal requestRefresh
+  signal requestToggleViewMode
 
   // ── Public API ─────────────────────────────────────────
   function reset() {
@@ -134,10 +137,11 @@ FocusScope {
       onRequestRandom: root.requestRandom()
       onRequestToggleWallhaven: root.requestToggleWallhaven()
       onRequestRefresh: root.requestRefresh()
+      onRequestToggleViewMode: root.requestToggleViewMode()
     }
   }
 
-  // ── Grid Loader ────────────────────────────────────────
+  // ── Grid Loader
   Loader {
     id: gridLoader
     anchors.fill: parent
@@ -166,6 +170,7 @@ FocusScope {
       onRequestRandom: root.requestRandom()
       onRequestToggleWallhaven: root.requestToggleWallhaven()
       onRequestRefresh: root.requestRefresh()
+      onRequestToggleViewMode: root.requestToggleViewMode()
     }
   }
 }

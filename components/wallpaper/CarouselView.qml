@@ -47,6 +47,7 @@ FocusScope {
   signal requestRandom
   signal requestToggleWallhaven
   signal requestRefresh
+  signal requestToggleViewMode
 
   function reset() {
     scrollController.reset();
@@ -125,14 +126,9 @@ FocusScope {
         event.accepted = true;
         return;
       }
-      if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft) {
-        root.requestPrevFolder();
+      if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft || event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
         event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
-        root.requestNextFolder();
-        event.accepted = true;
+        root.requestToggleViewMode();
         return;
       }
 
@@ -261,7 +257,7 @@ FocusScope {
         anchors.centerIn: parent
         anchors.leftMargin: Style.spaceXL
         anchors.rightMargin: Style.spaceXL
-        text: "/ Search  •  ←/→ Navigate  •  Tab/[] Folder  •  Enter Apply  •  R Random  •  F5 Refresh  •  S Settings  •  W Wallhaven  •  Esc Quit"
+        text: "/ Search  •  ←/→ Navigate  •  Tab Folder  •  [] Toggle View  •  Enter Apply  •  R Random  •  S Settings  •  W Wallhaven  •  Esc Quit"
         color: Color.mOnSurface
         font.pixelSize: Style.keyboardHintFontSize
         font.weight: Font.Medium

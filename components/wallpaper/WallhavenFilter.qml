@@ -392,12 +392,12 @@ Item {
   Keys.onPressed: event => {
                     if (!root.whService)
                     return;
-                    if (event.key === Qt.Key_PageDown || event.key === Qt.Key_BracketRight) {
+                    if (event.key === Qt.Key_PageDown) {
                       if (root.whService.hasMore)
                       root.whService.search(root.whService.currentPage + 1);
                       event.accepted = true;
                     }
-                    if (event.key === Qt.Key_PageUp || event.key === Qt.Key_BracketLeft) {
+                    if (event.key === Qt.Key_PageUp) {
                       if (root.whService.currentPage > 1)
                       root.whService.search(root.whService.currentPage - 1);
                       event.accepted = true;

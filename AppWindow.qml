@@ -52,6 +52,7 @@ PanelWindow {
   property int bgParallaxFactor: Config.data.animation ? Config.data.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
 
   property string searchText: ""
+  property bool _toggleViewLock: false
 
   property int bgCurrent: -1
   property int bgPrevious: -1
@@ -255,6 +256,16 @@ PanelWindow {
     onRequestSettings: {
       root.settingsOpen = !root.settingsOpen;
       root.settingsOpen ? settingsPanel.forceActiveFocus() : displayManager.focusView();
+    }
+    onRequestToggleViewMode: {
+      if (_toggleViewLock)
+        return;
+      _toggleViewLock = true;
+      Qt.callLater(function () {
+        var next = Config.previewStyle === "grid" ? "carousel" : "grid";
+        Config.update("previewStyle", next);
+        _toggleViewLock = false;
+      });
     }
     onRequestPrevFolder: prevFolder()
     onRequestNextFolder: nextFolder()

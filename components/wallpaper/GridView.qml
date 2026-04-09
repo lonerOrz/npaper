@@ -48,6 +48,7 @@ FocusScope {
   signal requestRandom
   signal requestToggleWallhaven
   signal requestRefresh
+  signal requestToggleViewMode
 
   function reset() {
     thumbGridView.currentIndex = 0;
@@ -522,14 +523,9 @@ FocusScope {
         event.accepted = true;
         return;
       }
-      if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft) {
-        root.requestPrevFolder();
+      if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft || event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
         event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
-        root.requestNextFolder();
-        event.accepted = true;
+        root.requestToggleViewMode();
         return;
       }
       if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
@@ -605,7 +601,7 @@ FocusScope {
       anchors.centerIn: parent
       anchors.leftMargin: Style.spaceXL
       anchors.rightMargin: Style.spaceXL
-      text: "↑/↓/←/→ Navigate  •  Enter Apply  •  R Random  •  F5 Refresh  •  S Settings  •  Esc Quit"
+      text: "↑/↓/←/→ Navigate  •  Enter Apply  •  Tab Folder  •  [] Toggle View  •  S Settings  •  Esc Quit"
       color: Color.mOnSurface
       font.pixelSize: Style.keyboardHintFontSize
       font.weight: Font.Medium
