@@ -176,11 +176,25 @@ Item {
 
       // ── All steps done ──
       function _finish() {
+        // Update cache map immediately so dedup checks work
+        var updated = Object.assign({}, root.thumbHashToPath);
+        const folderKey = _folder + '/';
+        // Add bg path
+        var bgKey = _bgPath.substring(_bgPath.indexOf(folderKey));
+        updated[bgKey] = _bgPath;
+        // Add thumb path
+        var thumbKey = _thumbPath.substring(_thumbPath.indexOf(folderKey));
+        updated[thumbKey] = _thumbPath;
+        // Add anim path if applicable
+        if (_animPath) {
+          var animKey = _animPath.substring(_animPath.indexOf(folderKey));
+          updated[animKey] = _animPath;
+        }
+        root.thumbHashToPath = updated;
+        root.cachedFileCount = Object.keys(updated).length;
+        root.thumbCacheVersion++;
+
         root.thumbnailGenerated(_path, _thumbPath, _bgPath, _animPath);
-
-        // No QML binding update here — cache map is only updated during scanCache
-        // This prevents GridView from refreshing on every thumbnail generation
-
         _reset();
         root.processQueue();
       }
