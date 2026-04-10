@@ -42,6 +42,7 @@ QtObject {
   property var downloadProgress: ({})    // wallhavenId -> 0-100
   property var downloadPaths: ({})       // wallhavenId -> local file path (after download)
   property var localWallhavenIds: ({})   // wallhavenId -> true (if downloaded locally)
+  property var localWallhavenPaths: ({}) // wallhavenId -> full local path (for existing files)
 
   signal resultsUpdated
   signal downloadFinished(string wallhavenId, string localPath)
@@ -54,7 +55,7 @@ QtObject {
 
   property string _localScanOutput: ""
   property var _localScanProc: Process {
-    command: ["find", root.wallpaperDir, "-maxdepth", "1", "-name", "wallhaven-*", "-printf", "%f\n"]
+    command: ["find", root.wallpaperDir, "-maxdepth", "1", "-name", "wallhaven-*"]
     stdout: SplitParser {
       onRead: data => {
                 root._localScanOutput += data + "\n";
@@ -62,16 +63,28 @@ QtObject {
     }
     onExited: function (exitCode, exitStatus) {
       var ids = {};
+      var paths = {};
       var lines = root._localScanOutput.split("\n");
       for (var i = 0; i < lines.length; i++) {
-        var fname = lines[i].trim();
+        var p = lines[i].trim();
+        if (!p)
+          continue;
+        // Extract filename from path
+        var parts = p.split("/").filter(function (s) {
+          return s !== "";
+        });
+        var fname = parts.length > 0 ? parts[parts.length - 1] : "";
         if (!fname)
           continue;
-        var m = fname.match(/^wallhaven-([a-zA-Z0-9]+)/);
-        if (m)
+        // Case-insensitive match for extensions (.jpg, .JPG, .png, .PNG, etc.)
+        var m = fname.match(/^wallhaven-([a-zA-Z0-9]+)\.([a-zA-Z0-9]+)$/i);
+        if (m) {
           ids[m[1]] = true;
+          paths[m[1]] = p;
+        }
       }
       root.localWallhavenIds = ids;
+      root.localWallhavenPaths = paths;
     }
   }
 

@@ -93,13 +93,13 @@ Item {
   }
 
   function load() {
-    if (root.dirs.length === 0 || !root.scriptPath) {
+    if (!root.dirs || root.dirs.length === 0 || !root.scriptPath) {
       if (root.debugMode)
         Logger.d("LocalSource: Skipping load due to missing dirs or scriptPath");
       return;
     }
-    folderListProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-folders', "npaper-fl", root.dirs.join("|"), root.scriptPath];
-    listProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-with-folders', "npaper-lwf", root.dirs.join("|"), root.scriptPath];
+    folderListProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-folders', "npaper-fl", (root.dirs || []).join("|"), root.scriptPath];
+    listProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-with-folders', "npaper-lwf", (root.dirs || []).join("|"), root.scriptPath];
     folderListProcess.exec({});
   }
 

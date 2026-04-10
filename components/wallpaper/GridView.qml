@@ -19,7 +19,10 @@ FocusScope {
   property bool _whLoadingMore: false
 
   // Wallhaven infinite scroll: use a ListModel for remote mode
-  // so the model reference stays stable (no scroll reset on loadMore)
+  // so the model reference stays stable (no scroll reset on loadMore).
+  // We append empty objects ({}) to match whService.results.length.
+  // The delegate reads actual data from whService.results[index],
+  // so the ListModel acts only as a row count placeholder.
   ListModel {
     id: remoteResultsModel
   }
@@ -557,6 +560,37 @@ FocusScope {
               duration: Style.animFast
             }
           }
+        }
+      }
+
+      // Download indicator for remote items (only shown if not yet downloaded)
+      readonly property bool _needsDownload: {
+        if (!(root.adapter && root.adapter.currentSource === "remote"))
+          return false;
+        var id = gridItem.modelData ? gridItem.modelData.id.replace("wallhaven-", "") : "";
+        if (!id)
+          return false;
+        if (!root.whService || !root.whService.localWallhavenPaths)
+          return true;
+        return !root.whService.localWallhavenPaths[id];
+      }
+
+      Rectangle {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: Style.spaceM
+        width: dlIndicator.implicitWidth + Style.spaceM * 2
+        height: Style.spaceXL * 2
+        radius: height / 2
+        color: Qt.rgba(0, 0, 0, 0.6)
+        visible: _needsDownload
+
+        Text {
+          id: dlIndicator
+          anchors.centerIn: parent
+          text: "↓"
+          font.pixelSize: Style.cardLabelFontSize
+          color: Color.mPrimary
         }
       }
 
