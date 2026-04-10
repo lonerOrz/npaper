@@ -45,12 +45,11 @@ Item {
   }
 
   function _makeItem(path) {
-    const cachedBg = CacheUtils.getCachedBgPreview(root.thumbHashToPath, path);
     return {
       id: path,
       type: "local",
       path: path,
-      thumb: cachedBg ? ("file://" + cachedBg) : ("file://" + path),
+      thumb: path,
       filename: path.split('/').pop(),
       resolution: "",
       fileSize: 0,

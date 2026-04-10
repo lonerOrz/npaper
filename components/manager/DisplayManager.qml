@@ -2,51 +2,23 @@ import QtQuick
 import qs.components.wallpaper
 import qs.services
 
-/*
-* DisplayManager — unified display manager with Loader-based mode switching.
-*
-* Inputs:
-*   adapter, cacheService
-*
-* Outputs (properties):
-*   currentIndex, scrollTarget
-*
-* Outputs (signals — all proxied from active child):
-*   requestQuit, requestSettings, requestPrevFolder, requestNextFolder,
-*   requestFocusSearch, requestApplyItem, requestRandom,
-*   requestToggleWallhaven, requestRefresh
-*
-* Methods:
-*   reset(), scrollTo(idx), focusView()
-*
-* Internal:
-*   Auto-manages thumbnail queue on data load
-*   Auto-refreshes background sources on cache version change
-*
-* Switching: Config.previewStyle ("carousel" | "grid")
-*/
 FocusScope {
   id: root
 
   focus: true
 
-  property var adapter: null
-  property var cacheService: null
+  property string displayMode: Config.previewStyle
 
-  // Display mode (from Config.previewStyle via AppWindow)
-  property string displayMode: "carousel"
-
-  // Display parameters (passed from AppWindow)
-  property int carouselSpacing: 24
-  property int carouselRotation: 41
-  property real carouselPerspective: 0.45
-  property int scrollDuration: 170
-  property int scrollContinueInterval: 160
-  property int parallaxFactor: 40
+  property int carouselSpacing: Config.data.carousel ? Config.data.carousel.spacing : Style.defaultCarouselSpacing
+  property int carouselRotation: Config.data.carousel ? Config.data.carousel.rotation : Style.defaultCarouselRotation
+  property real carouselPerspective: Config.data.carousel ? Config.data.carousel.perspective : Style.defaultCarouselPerspective
+  property int scrollDuration: Config.data.animation ? Config.data.animation.scrollDuration : Style.defaultScrollDuration
+  property int scrollContinueInterval: Config.data.animation ? Config.data.animation.scrollContinueInterval : Style.defaultScrollContinueInterval
+  property int parallaxFactor: Config.data.animation ? Config.data.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
 
   readonly property var _activeView: carouselLoader.active && carouselLoader.item ? carouselLoader.item : (gridLoader.item || null)
 
-  signal toggleViewMode  // carousel ↔ grid
+  signal toggleViewMode
   readonly property int currentIndex: _activeView ? _activeView.currentIndex : 0
   readonly property real scrollTarget: _activeView ? _activeView.scrollTarget : 0
   readonly property real contentOffset: _activeView ? _activeView.scrollTarget - _activeView.currentIndex : 0
@@ -62,7 +34,6 @@ FocusScope {
   signal requestRefresh
   signal requestToggleViewMode
 
-  // ── Public API ─────────────────────────────────────────
   function reset() {
     if (_activeView)
       _activeView.reset();
@@ -79,14 +50,9 @@ FocusScope {
   }
 
   function queueVisibleThumbnails() {
-    root._queueVisibleThumbnails();
-  }
-
-  // ── Internal: thumbnail queue management ───────────────
-  function _queueVisibleThumbnails() {
-    if (!adapter || !cacheService)
+    if (!ServiceLocator.ready)
       return;
-    if (adapter.currentSource !== "local")
+    if (ServiceLocator.adapter && ServiceLocator.adapter.currentSource !== "local")
       return;
     if (carouselLoader.item)
       carouselLoader.item.queueVisibleThumbnails();
@@ -95,10 +61,9 @@ FocusScope {
   }
 
   Component.onCompleted: {
-    Qt.callLater(root._queueVisibleThumbnails);
+    Qt.callLater(root.queueVisibleThumbnails);
   }
 
-  // ── Carousel Loader ────────────────────────────────────
   Loader {
     id: carouselLoader
     anchors.fill: parent
@@ -109,14 +74,11 @@ FocusScope {
     onLoaded: {
       if (item) {
         item.focusView();
-        root._queueVisibleThumbnails();
+        root.queueVisibleThumbnails();
       }
     }
 
     sourceComponent: CarouselView {
-      adapter: root.adapter
-      cacheService: root.cacheService
-
       carouselSpacing: root.carouselSpacing
       carouselRotation: root.carouselRotation
       carouselPerspective: root.carouselPerspective
@@ -141,7 +103,6 @@ FocusScope {
     }
   }
 
-  // ── Grid Loader
   Loader {
     id: gridLoader
     anchors.fill: parent
@@ -151,14 +112,11 @@ FocusScope {
     onLoaded: {
       if (item) {
         item.focusView();
-        root._queueVisibleThumbnails();
+        root.queueVisibleThumbnails();
       }
     }
 
     sourceComponent: GridView {
-      adapter: root.adapter
-      cacheService: root.cacheService
-
       onRequestQuit: root.requestQuit()
       onRequestSettings: root.requestSettings()
       onRequestPrevFolder: root.requestPrevFolder()

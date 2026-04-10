@@ -3,27 +3,13 @@ import Quickshell
 import qs.components.common
 import qs.services
 
-/*
-* CarouselView — 3D perspective carousel of wallpaper cards.
-*
-* Inputs:
-*   adapter, cacheService, checkService
-*
-* Outputs (properties):
-*   currentIndex, scrollTarget, ready, baseIndex, maxIndex
-*
-* Outputs (signals):
-*   All 7 request* signals + toggleWallhaven + refresh
-*
-* Note: requestApplyItem emits adapter.items[N] with path field guaranteed.
-*/
 FocusScope {
   id: root
 
-  property var adapter: null
-  property var cacheService: null
+  readonly property var adapter: ServiceLocator.adapter
+  readonly property var cacheService: ServiceLocator.cacheService
+  readonly property var checkService: ServiceLocator.checks
 
-  // Config-derived values (passed from DisplayManager)
   property int carouselSpacing: 20
   property int carouselRotation: 25
   property real carouselPerspective: 0.3
@@ -62,12 +48,12 @@ FocusScope {
   }
 
   function queueVisibleThumbnails() {
-    if (!adapter || !cacheService)
+    if (!root.adapter || !root.cacheService)
       return;
-    for (let i = baseIndex; i <= maxIndex && i < adapter.items.length; i++) {
-      const item = adapter.items[i];
+    for (let i = root.baseIndex; i <= root.maxIndex && i < root.adapter.items.length; i++) {
+      const item = root.adapter.items[i];
       if (item && item.type === "local")
-        cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
+        root.cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
     }
   }
 
@@ -98,29 +84,22 @@ FocusScope {
     property real centerY: height / 2
 
     Keys.onPressed: function (event) {
-      // ===== Escape =====
       if (event.key === Qt.Key_Escape) {
         root.requestQuit();
         event.accepted = true;
         return;
       }
-
-      // ===== Settings (S) =====
       if (event.key === Qt.Key_S && !event.modifiers) {
         root.requestSettings();
         event.accepted = true;
         return;
       }
-
-      // ===== Wallhaven (W) =====
       if (event.key === Qt.Key_W && !event.modifiers) {
         root.requestToggleWallhaven();
         pathViewContainer.forceActiveFocus();
         event.accepted = true;
         return;
       }
-
-      // ===== Folder (Tab/[ / ]) =====
       if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
         event.key === Qt.Key_Tab ? root.requestNextFolder() : root.requestPrevFolder();
         event.accepted = true;
@@ -131,15 +110,11 @@ FocusScope {
         root.requestToggleViewMode();
         return;
       }
-
-      // ===== Search (/, Ctrl+F) =====
       if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
         root.requestFocusSearch();
         event.accepted = true;
         return;
       }
-
-      // ===== Apply (Enter) =====
       if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
         if (root.adapter && root.adapter.items.length > 0) {
           var item = root.adapter.items[root.currentIndex];
@@ -149,24 +124,18 @@ FocusScope {
         event.accepted = true;
         return;
       }
-
-      // ===== Navigate (←/→) =====
       if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
         const dir = event.key === Qt.Key_Left ? -1 : 1;
         event.modifiers & Qt.ShiftModifier ? (dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight()) : (dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight());
         event.accepted = true;
         return;
       }
-
-      // ===== Random (R) =====
       if (event.key === Qt.Key_R && !event.modifiers) {
         scrollController.random();
         root.requestRandom();
         event.accepted = true;
         return;
       }
-
-      // ===== Refresh (F5) =====
       if (event.key === Qt.Key_F5) {
         root.requestRefresh();
         event.accepted = true;
@@ -195,15 +164,9 @@ FocusScope {
         isRemote: _item ? _item.type === "remote" : false
         remoteId: _item && _item.type === "remote" ? _item.id : ""
         remoteThumb: _item && _item.type === "remote" ? _item.thumb : ""
-        thumbHashToPath: _item && _item.type === "local" ? (root.cacheService ? root.cacheService.thumbHashToPath : {}) : {}
         isCenter: realIndex === root.currentIndex
         showBorderGlow: root.showBorderGlow
         showShadow: root.showShadow
-        // Wallhaven download
-        whService: root.adapter ? root.adapter.whService : null
-        downloadStatus: (whService && whService.downloadStatus) ? whService.downloadStatus : ({})
-        downloadProgress: (whService && whService.downloadProgress) ? whService.downloadProgress : ({})
-        downloadPaths: (whService && whService.downloadPaths) ? whService.downloadPaths : ({})
         downloadPath: _item && _item.type === "remote" ? _item.path : ""
 
         readonly property var metrics: {
@@ -244,7 +207,6 @@ FocusScope {
       }
     }
 
-    // Enhanced keybinds hint with pill design
     Rectangle {
       anchors.bottom: parent.bottom
       anchors.bottomMargin: Style.keyboardHintBottomMargin

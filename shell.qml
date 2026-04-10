@@ -91,6 +91,16 @@ ShellRoot {
         cacheService: cacheService
       }
 
+      // Register into ServiceLocator for leaf components
+      Component.onCompleted: {
+        ServiceLocator.register({
+                                  adapter: wallpaperAdapter,
+                                  cacheService: cacheService,
+                                  applier: wallpaperApplier,
+                                  checks: checkService
+                                });
+      }
+
       Variants {
         model: Quickshell.screens
         delegate: AppWindow {

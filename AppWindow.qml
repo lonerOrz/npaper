@@ -42,12 +42,6 @@ PanelWindow {
   property bool showBorderGlow: Config.data.appearance ? Config.data.appearance.showBorderGlow : true
   property real bgOverlayOpacity: Config.data.appearance ? Config.data.appearance.bgOverlayOpacity : 0.4
 
-  property int carouselSpacing: Config.data.carousel ? Config.data.carousel.spacing : Style.defaultCarouselSpacing
-  property int carouselRotation: Config.data.carousel ? Config.data.carousel.rotation : Style.defaultCarouselRotation
-  property real carouselPerspective: Config.data.carousel ? Config.data.carousel.perspective : Style.defaultCarouselPerspective
-
-  property int scrollDuration: Config.data.animation ? Config.data.animation.scrollDuration : Style.defaultScrollDuration
-  property int scrollContinueInterval: Config.data.animation ? Config.data.animation.scrollContinueInterval : Style.defaultScrollContinueInterval
   property int bgSlideDuration: Config.data.animation ? Config.data.animation.bgSlideDuration : Style.defaultBgSlideDuration
   property int bgParallaxFactor: Config.data.animation ? Config.data.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
 
@@ -64,9 +58,6 @@ PanelWindow {
 
   Component.onCompleted: {
     Style.uiScaleRatio = screen.height / 1080;
-    // Quickshell 的 property var 绑定不可靠，必须显式赋值
-    displayManager.cacheService = cacheService;
-    displayManager.adapter = wallpaperAdapter;
     if (adapter) {
       adapter.dataLoaded.connect(applyFolderSelection);
       adapter.wallpaperApplied.connect(function (path) {
@@ -182,7 +173,7 @@ PanelWindow {
   function applyFolderSelection() {
     displayManager.reset();
     Qt.callLater(function () {
-      displayManager._queueVisibleThumbnails();
+      displayManager.queueVisibleThumbnails();
     });
     bgPrevious = -1;
     bgCurrent = -1;
@@ -235,15 +226,6 @@ PanelWindow {
     z: 1
 
     displayMode: Config.previewStyle
-    carouselSpacing: root.carouselSpacing
-    carouselRotation: root.carouselRotation
-    carouselPerspective: root.carouselPerspective
-    scrollDuration: root.scrollDuration
-    scrollContinueInterval: root.scrollContinueInterval
-    parallaxFactor: root.bgParallaxFactor
-
-    adapter: wallpaperAdapter
-    cacheService: cacheService
 
     onRequestQuit: {
       if (root.settingsOpen) {

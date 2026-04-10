@@ -6,32 +6,13 @@ import Quickshell
 import "../../utils/CacheUtils.js" as CacheUtils
 import qs.services
 
-/*
-* GridView — Simple grid view of wallpaper cards.
-* Inspired by org/qml/wallpaper/WallpaperSelector.qml thumbGridView.
-*
-* Features:
-*   - Snap scroll (wheel → cellHeight steps, 400ms OutCubic)
-*   - Keyboard navigation (Up/Down/Left/Right with _ensureVisible)
-*   - Entry/displaced transitions (opacity + scale OutBack)
-*   - Vertical scrollbar
-*   - Cell size animations
-*
-* requestApplyItem emits adapter.items[N] with path field guaranteed.
-*/
 FocusScope {
   id: root
 
-  property var adapter: null
-  property var cacheService: null
+  readonly property var adapter: ServiceLocator.adapter
+  readonly property var cacheService: ServiceLocator.cacheService
+  readonly property var whService: root.adapter ? root.adapter.whService : null
 
-  // Wallhaven download state
-  property var whService: adapter ? adapter.whService : null
-  property var downloadStatus: (whService && whService.downloadStatus) ? whService.downloadStatus : ({})
-  property var downloadProgress: (whService && whService.downloadProgress) ? whService.downloadProgress : ({})
-  property var downloadPaths: (whService && whService.downloadPaths) ? whService.downloadPaths : ({})
-
-  // Scrollbar state (at root level, not inside Flickable)
   property bool gridScrollActive: false
 
   readonly property int currentIndex: thumbGridView.currentIndex
@@ -65,33 +46,30 @@ FocusScope {
   }
 
   function queueVisibleThumbnails() {
-    if (!adapter || !cacheService)
+    if (!root.adapter || !root.cacheService)
       return;
     var model = thumbGridView.model;
     if (!model)
       return;
     var cols = Math.max(1, Math.ceil(thumbGridView.width / thumbGridView.cellWidth));
     var rows = Math.max(1, Math.ceil(thumbGridView.height / thumbGridView.cellHeight));
-    // Preload extra rows above/below visible area
     var preloadRows = 2;
     var startRow = Math.max(0, Math.floor(thumbGridView.contentY / thumbGridView.cellHeight) - preloadRows);
     var endRow = Math.min(Math.ceil((thumbGridView.contentY + thumbGridView.height) / thumbGridView.cellHeight) + preloadRows, Math.ceil(model.length / cols));
     var startIdx = startRow * cols;
     var endIdx = endRow * cols;
-    for (let i = startIdx; i < endIdx && i < adapter.items.length; i++) {
-      const item = adapter.items[i];
+    for (let i = startIdx; i < endIdx && i < root.adapter.items.length; i++) {
+      const item = root.adapter.items[i];
       if (item && item.type === "local")
-        cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
+        root.cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
     }
   }
 
-  // Grid dimensions — bound to Style singletons
   readonly property int _gridCellW: Style.gridCellWidth
   readonly property int _gridCellH: Style.gridCellHeight
   readonly property int _gridCellSpacing: Style.gridCellSpacing
   readonly property int _gridCellPadding: Style.gridCellPadding
 
-  // Calculate columns based on parent width
   property real _availableWidth: Math.max(1, (parent.width > 0 ? parent.width : 1920) - _gridCellPadding * 2)
   property int _columns: Math.max(1, Math.floor(_availableWidth / (_gridCellW + _gridCellSpacing)))
   property real _gridWidth: _columns * (_gridCellW + _gridCellSpacing)
@@ -189,7 +167,6 @@ FocusScope {
         _snapScrollTo(rowBottom - height);
     }
 
-    // Enhanced entry transition
     add: Transition {
       ParallelAnimation {
         NumberAnimation {
@@ -210,7 +187,6 @@ FocusScope {
       }
     }
 
-    // Smooth exit transition
     remove: Transition {
       ParallelAnimation {
         NumberAnimation {
@@ -228,7 +204,6 @@ FocusScope {
       }
     }
 
-    // Refined displaced transition
     displaced: Transition {
       NumberAnimation {
         properties: "x,y"
@@ -237,7 +212,6 @@ FocusScope {
       }
     }
 
-    // Mouse wheel → snap scroll
     MouseArea {
       anchors.fill: parent
       propagateComposedEvents: true
@@ -262,7 +236,6 @@ FocusScope {
       readonly property bool isCurrent: GridView.isCurrentItem
       readonly property bool isHovered: itemMouse.containsMouse
 
-      // Enhanced scale animation with smoother transitions
       scale: isCurrent ? 1.04 : (isHovered ? 1.02 : 1.0)
       z: isCurrent ? 20 : (isHovered ? 10 : 0)
 
@@ -273,7 +246,6 @@ FocusScope {
         }
       }
 
-      // Enhanced card shadow with depth
       Rectangle {
         anchors.fill: parent
         anchors.margins: gridItem.isCurrent ? Style.spaceM : Style.spaceS
@@ -290,7 +262,6 @@ FocusScope {
         }
       }
 
-      // Rounded mask - refined corners
       Item {
         id: cardMask
         anchors.fill: parent
@@ -351,7 +322,6 @@ FocusScope {
         }
       }
 
-      // Card content
       Item {
         id: cardContent
         anchors.fill: parent
@@ -395,7 +365,6 @@ FocusScope {
 
           onStatusChanged: {
             if (status === Image.Error && source !== "") {
-              // Corrupted cache file — try fallback to original image
               const item = gridItem.modelData;
               if (item && item.path && !item.isVideo && !item.isGif)
                 source = "file://" + item.path;
@@ -408,7 +377,6 @@ FocusScope {
           }
         }
 
-        // Animated GIF/Video preview — only for current/selected item
         AnimatedImage {
           id: animatedGif
           anchors.fill: parent
@@ -430,7 +398,6 @@ FocusScope {
         }
       }
 
-      // Border with smooth animation (Rectangle instead of Shape for performance)
       Rectangle {
         anchors.fill: parent
         radius: Style.radiusL
@@ -457,7 +424,6 @@ FocusScope {
         }
       }
 
-      // ── Download overlay (remote items, opacity-based like org) ──
       Item {
         anchors.fill: parent
         visible: gridItem.modelData && gridItem.modelData.type === "remote"
@@ -475,9 +441,9 @@ FocusScope {
           whId: gridItem.modelData ? gridItem.modelData.id.replace("wallhaven-", "") : ""
           downloadPath: gridItem.modelData ? gridItem.modelData.path : ""
           whService: root.whService
-          downloadStatus: root.downloadStatus
-          downloadProgress: root.downloadProgress
-          downloadPaths: root.downloadPaths
+          downloadStatus: (root.whService && root.whService.downloadStatus) ? root.whService.downloadStatus : ({})
+          downloadProgress: (root.whService && root.whService.downloadProgress) ? root.whService.downloadProgress : ({})
+          downloadPaths: (root.whService && root.whService.downloadPaths) ? root.whService.downloadPaths : ({})
           onApplyLocal: function (localPath) {
             var localItem = Object.assign({}, gridItem.modelData, {
                                             path: localPath,
@@ -500,7 +466,6 @@ FocusScope {
       }
     }
 
-    // Keyboard handling
     Keys.onPressed: function (event) {
       if (event.key === Qt.Key_Escape) {
         root.requestQuit();
@@ -557,14 +522,12 @@ FocusScope {
     }
   }
 
-  // Scroll fade timer (sibling of GridView, not inside Flickable)
   Timer {
     id: gridScrollFadeTimer
     interval: 800
     onTriggered: root.gridScrollActive = false
   }
 
-  // Custom scrollbar (sibling of GridView, stays fixed in viewport)
   Rectangle {
     anchors.right: parent.right
     anchors.top: thumbGridView.top
@@ -588,7 +551,6 @@ FocusScope {
     }
   }
 
-  // Enhanced keybinds hint with pill design
   Rectangle {
     anchors.bottom: parent.bottom
     anchors.bottomMargin: Style.keyboardHintBottomMargin
