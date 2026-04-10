@@ -176,36 +176,28 @@ FocusScope {
         showShadow: root.showShadow
         downloadPath: _item && _item.type === "remote" ? _item.path : ""
 
-        readonly property var metrics: {
-          const raw = realIndex - scrollController.scrollTarget;
-          const abs = Math.abs(raw);
-          return {
-            raw,
-            abs,
-            cos: Math.cos(Math.min(abs, 3) * 0.523599),
-            perspectiveScale: 1.0 / (1.0 + abs * root.carouselPerspective)
-          };
-        }
-        readonly property var visual: {
-          const abs = metrics.abs;
-          return {
-            scale: metrics.perspectiveScale * (0.85 + metrics.cos * 0.15) + (isCenter ? 0.06 : 0),
-            opacity: abs > 6 ? 0 : Math.pow(Math.max(0, 1 - abs * 0.12), 2.5),
-            rotationY: metrics.raw * -root.carouselRotation,
-            z: 100 - abs * 50,
-            spacingFactor: 0.85 - metrics.abs * 0.06,
-            yOffset: abs * 8,
-            shadowOpacity: abs < 0.6 ? 0.25 : 0
-          };
-        }
-        visualScale: visual.scale
-        visualOpacity: visual.opacity
-        visualRotationY: visual.rotationY
-        visualZ: visual.z
-        visualYOffset: visual.yOffset
-        visualShadowOpacity: visual.shadowOpacity
-        x: pathViewContainer.centerX - width / 2 + metrics.raw * (width + pathViewContainer.spacing) * visual.spacingFactor
-        y: pathViewContainer.centerY - height / 2 + visual.yOffset
+        // Pre-computed visual values to avoid JS object re-creation per frame
+        readonly property real _absOffset: Math.abs(realIndex - scrollController.scrollTarget)
+        readonly property real _cos: Math.cos(Math.min(_absOffset, 3) * 0.523599)
+        readonly property real _perspScale: 1.0 / (1.0 + _absOffset * root.carouselPerspective)
+        readonly property real _visualScale: _perspScale * (0.85 + _cos * 0.15) + (isCenter ? 0.06 : 0)
+        readonly property real _visualOpacity: _absOffset > 6 ? 0 : Math.pow(Math.max(0, 1 - _absOffset * 0.12), 2.5)
+        readonly property real _visualRotationY: (realIndex - scrollController.scrollTarget) * -root.carouselRotation
+        readonly property int _visualZ: 100 - _absOffset * 50
+        readonly property real _visualSpacingFactor: 0.85 - _absOffset * 0.06
+        readonly property real _visualYOffset: _absOffset * 8
+        readonly property real _visualShadowOpacity: _absOffset < 0.6 ? 0.25 : 0
+
+        visualScale: _visualScale
+        visualOpacity: _visualOpacity
+        visualRotationY: _visualRotationY
+        visualZ: _visualZ
+        visualYOffset: _visualYOffset
+        visualShadowOpacity: _visualShadowOpacity
+        x: pathViewContainer.centerX - width / 2
+           + (realIndex - scrollController.scrollTarget)
+             * (width + pathViewContainer.spacing) * _visualSpacingFactor
+        y: pathViewContainer.centerY - height / 2 + _visualYOffset
         onClicked: function (path) {
           scrollController.scrollTo(realIndex);
           if (_item)

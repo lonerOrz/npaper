@@ -215,9 +215,10 @@ FocusScope {
         _savedContentY = contentY;
       if (!_gridScrollAnim.running)
         _scrollTarget = contentY;
-      _thumbQueueTimer.restart();
-      // Debounced bottom check for Wallhaven infinite scroll
-      _whLoadMoreTimer.restart();
+      if (!_gridScrollAnim.running) {
+        _thumbQueueTimer.restart();
+        _whLoadMoreTimer.restart();
+      }
     }
 
     // When model reference changes (e.g. local ↔ remote switch), restore scroll
@@ -261,7 +262,7 @@ FocusScope {
       duration: 400
       easing.type: Easing.OutCubic
       onFinished: {
-        // After scroll animation ends, check if we need to load more
+        _thumbQueueTimer.restart();
         _whLoadMoreTimer.restart();
       }
     }
@@ -582,9 +583,12 @@ FocusScope {
         }
       }
 
-      Item {
+      // Wallhaven download overlay
+      Rectangle {
         anchors.fill: parent
-        visible: (root.adapter && root.adapter.currentSource === "remote" && gridItem.modelData) ? true : false
+        radius: Style.radiusL
+        color: "transparent"
+        visible: root.adapter && root.adapter.currentSource === "remote" && gridItem.modelData
         opacity: gridItem.isHovered ? 1 : 0
         z: 15
 

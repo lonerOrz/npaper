@@ -356,8 +356,11 @@ Item {
     fragmentShader: Qt.resolvedUrl("../../shaders/borderGlow.frag.qsb")
   }
 
-  Item {
+  // Download overlay
+  Rectangle {
     anchors.fill: parent
+    radius: root.itemRadius
+    color: "transparent"
     visible: root.isRemote
     opacity: root._isHovered ? 1 : 0
     z: 10
