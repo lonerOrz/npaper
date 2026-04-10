@@ -15,11 +15,17 @@ QtObject {
   signal servicesReady
 
   function register(obj) {
-    if (root.ready) return;
-    if (obj.adapter) root.adapter = obj.adapter;
-    if (obj.cacheService) root.cacheService = obj.cacheService;
-    if (obj.applier) root.applier = obj.applier;
-    if (obj.checks) root.checks = obj.checks;
-    if (root.ready) root.servicesReady();
+    if (root.ready)
+      return;
+    if (obj.adapter)
+      root.adapter = obj.adapter;
+    if (obj.cacheService)
+      root.cacheService = obj.cacheService;
+    if (obj.applier)
+      root.applier = obj.applier;
+    if (obj.checks)
+      root.checks = obj.checks;
+    if (root.ready)
+      root.servicesReady();
   }
 }

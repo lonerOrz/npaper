@@ -129,9 +129,7 @@ FocusScope {
         const dir = event.key === Qt.Key_Left ? -1 : 1;
         event.modifiers & Qt.ShiftModifier ? (dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight()) : (dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight());
         // Auto-load more when scrolling right at the end (Wallhaven remote mode)
-        if (dir === 1 && root.adapter && root.adapter.currentSource === "remote"
-            && root.whService && root.whService.hasMore && !root.whService.loading
-            && root.maxIndex >= root.adapter.count - 2) {
+        if (dir === 1 && root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.hasMore && !root.whService.loading && root.maxIndex >= root.adapter.count - 2) {
           root.whService.loadMore();
         }
         event.accepted = true;
@@ -194,9 +192,7 @@ FocusScope {
         visualZ: _visualZ
         visualYOffset: _visualYOffset
         visualShadowOpacity: _visualShadowOpacity
-        x: pathViewContainer.centerX - width / 2
-           + (realIndex - scrollController.scrollTarget)
-             * (width + pathViewContainer.spacing) * _visualSpacingFactor
+        x: pathViewContainer.centerX - width / 2 + (realIndex - scrollController.scrollTarget) * (width + pathViewContainer.spacing) * _visualSpacingFactor
         y: pathViewContainer.centerY - height / 2 + _visualYOffset
         onClicked: function (path) {
           scrollController.scrollTo(realIndex);

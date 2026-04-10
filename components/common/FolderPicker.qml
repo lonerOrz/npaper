@@ -1,6 +1,6 @@
+import Qt.labs.folderlistmodel
 import QtQuick
 import QtQuick.Controls
-import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
 import qs.services
@@ -111,12 +111,22 @@ Popup {
 
       Repeater {
         model: [
-          { icon: "\uf062", label: "Up" },
-          { icon: "\uf015", label: "Home" },
-          { icon: "\uf07b", label: "New" }
+          {
+            icon: "\uf062",
+            label: "Up"
+          },
+          {
+            icon: "\uf015",
+            label: "Home"
+          },
+          {
+            icon: "\uf07b",
+            label: "New"
+          }
         ]
         delegate: MouseArea {
-          width: 28; height: 28
+          width: 28
+          height: 28
           cursorShape: Qt.PointingHandCursor
           hoverEnabled: true
 
@@ -126,7 +136,11 @@ Popup {
             color: parent.containsMouse ? Qt.alpha(Color.mPrimary, 0.12) : Color.mSurfaceContainerHigh
             border.color: Color.mOutline
             border.width: Style.borderS
-            Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
+            Behavior on color {
+              ColorAnimation {
+                duration: Style.animVeryFast
+              }
+            }
           }
 
           Text {
@@ -138,16 +152,21 @@ Popup {
           }
 
           onClicked: {
-            if (index === 0) folderModel.folder = "file://" + folderModel.parentFolder.toString().replace("file://", "");
-            else if (index === 1) { folderModel.folder = "file://" + Quickshell.env("HOME"); root.currentPath = Quickshell.env("HOME"); }
-            else if (index === 2) showNewFolder();
+            if (index === 0)
+              folderModel.folder = "file://" + folderModel.parentFolder.toString().replace("file://", "");
+            else if (index === 1) {
+              folderModel.folder = "file://" + Quickshell.env("HOME");
+              root.currentPath = Quickshell.env("HOME");
+            } else if (index === 2)
+              showNewFolder();
           }
         }
       }
 
       // Delete button
       MouseArea {
-        width: 28; height: 28
+        width: 28
+        height: 28
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
         enabled: root.selectedPath !== ""
@@ -156,12 +175,17 @@ Popup {
           anchors.fill: parent
           radius: Style.radiusS
           color: {
-            if (parent.containsMouse) return Qt.alpha("#ff5555", 0.15);
+            if (parent.containsMouse)
+              return Qt.alpha("#ff5555", 0.15);
             return root.selectedPath !== "" ? Color.mSurfaceContainerHigh : "transparent";
           }
           border.color: root.selectedPath !== "" ? "#ff5555" : Color.mOutline
           border.width: Style.borderS
-          Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
+          Behavior on color {
+            ColorAnimation {
+              duration: Style.animVeryFast
+            }
+          }
         }
 
         Text {
@@ -226,7 +250,10 @@ Popup {
         visible = false;
         text = "";
       }
-      Keys.onEscapePressed: { visible = false; text = ""; }
+      Keys.onEscapePressed: {
+        visible = false;
+        text = "";
+      }
     }
 
     // ── Folder list ──
@@ -264,7 +291,11 @@ Popup {
             }
             border.color: root.selectedPath === model.filePath ? Color.mPrimary : "transparent"
             border.width: Style.borderS
-            Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
+            Behavior on color {
+              ColorAnimation {
+                duration: Style.animVeryFast
+              }
+            }
           }
 
           Row {
@@ -308,15 +339,22 @@ Popup {
       width: parent.width
       spacing: Style.spaceS
 
-      Item { width: parent.width - 120; height: 1 }
+      Item {
+        width: parent.width - 120
+        height: 1
+      }
 
       // Cancel
       MouseArea {
         id: cancelBtn
-        width: 55; height: 28
+        width: 55
+        height: 28
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
-        onClicked: { root.cancelled(); root.close(); }
+        onClicked: {
+          root.cancelled();
+          root.close();
+        }
 
         Rectangle {
           anchors.fill: parent
@@ -324,7 +362,11 @@ Popup {
           color: cancelBtn.containsMouse ? Color.mSurfaceContainerHighest : "transparent"
           border.color: Color.mOutline
           border.width: Style.borderS
-          Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
+          Behavior on color {
+            ColorAnimation {
+              duration: Style.animVeryFast
+            }
+          }
         }
 
         Text {
@@ -338,19 +380,25 @@ Popup {
       // Select
       MouseArea {
         id: selectBtn
-        width: 55; height: 28
+        width: 55
+        height: 28
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
         enabled: root.selectedPath !== ""
-        onClicked: { root.accepted(root.selectedPath); root.close(); }
+        onClicked: {
+          root.accepted(root.selectedPath);
+          root.close();
+        }
 
         Rectangle {
           anchors.fill: parent
           radius: Style.radiusS
-          color: selectBtn.enabled
-            ? (selectBtn.containsMouse ? Color.mPrimaryContainer : Color.mPrimary)
-            : Color.mSurfaceContainerLow
-          Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
+          color: selectBtn.enabled ? (selectBtn.containsMouse ? Color.mPrimaryContainer : Color.mPrimary) : Color.mSurfaceContainerLow
+          Behavior on color {
+            ColorAnimation {
+              duration: Style.animVeryFast
+            }
+          }
         }
 
         Text {

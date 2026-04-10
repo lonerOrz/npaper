@@ -237,9 +237,7 @@ FocusScope {
       id: _whLoadMoreTimer
       interval: 300
       onTriggered: {
-        if (root.adapter && root.adapter.currentSource === "remote"
-            && root.whService && root.whService.hasMore && !root.whService.loading
-            && !root._whLoadingMore) {
+        if (root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.hasMore && !root.whService.loading && !root._whLoadingMore) {
           var maxY = thumbGridView.contentHeight - thumbGridView.height;
           if (maxY > 0 && thumbGridView.contentY >= maxY - Style.gridCellHeight) {
             root._whLoadingMore = true;
@@ -376,8 +374,12 @@ FocusScope {
         return (m && index < m.length) ? m[index] : null;
       }
 
-      Component.onCompleted: { gridItem.modelData = gridItem._resolveItem(); }
-      onIndexChanged: { gridItem.modelData = gridItem._resolveItem(); }
+      Component.onCompleted: {
+        gridItem.modelData = gridItem._resolveItem();
+      }
+      onIndexChanged: {
+        gridItem.modelData = gridItem._resolveItem();
+      }
 
       // Refresh data when remote results change (infinite scroll append)
       Connections {
@@ -508,7 +510,8 @@ FocusScope {
           id: thumbImage
           anchors.fill: parent
           source: {
-            if (!gridItem.modelData) return "";
+            if (!gridItem.modelData)
+              return "";
             if (root.adapter && root.adapter.currentSource === "remote")
               return gridItem.modelData.thumbLarge || gridItem.modelData.thumb || "";
             return CacheUtils.getStaticThumbSource(root.cacheService ? root.cacheService.thumbHashToPath : {}, gridItem.modelData);
