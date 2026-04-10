@@ -27,7 +27,11 @@ Item {
     radius: Style.radiusM
     color: hoverArea.containsMouse ? Qt.lighter(Color.mSurfaceContainer, 1.08) : "transparent"
     opacity: 0.6
-    Behavior on color { ColorAnimation { duration: Style.animFast } }
+    Behavior on color {
+      ColorAnimation {
+        duration: Style.animFast
+      }
+    }
   }
 
   Row {
@@ -60,7 +64,11 @@ Item {
         border.width: root.checked ? 0 : 1
         border.color: Color.mOutline
         opacity: root.checked ? 1.0 : 0.7
-        Behavior on color { ColorAnimation { duration: Style.animFast } }
+        Behavior on color {
+          ColorAnimation {
+            duration: Style.animFast
+          }
+        }
       }
 
       // Knob
@@ -72,7 +80,12 @@ Item {
         radius: height / 2
         color: Color.mInverseSurface
         opacity: 0.95
-        Behavior on x { NumberAnimation { duration: Style.animFast; easing.type: Easing.OutCubic } }
+        Behavior on x {
+          NumberAnimation {
+            duration: Style.animFast
+            easing.type: Easing.OutCubic
+          }
+        }
       }
 
       MouseArea {

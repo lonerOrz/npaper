@@ -3,27 +3,14 @@ import Quickshell
 import qs.components.common
 import qs.services
 
-/*
-* CarouselView — 3D perspective carousel of wallpaper cards.
-*
-* Inputs:
-*   adapter, cacheService, checkService
-*
-* Outputs (properties):
-*   currentIndex, scrollTarget, ready, baseIndex, maxIndex
-*
-* Outputs (signals):
-*   All 7 request* signals + toggleWallhaven + refresh
-*
-* Note: requestApplyItem emits adapter.items[N] with path field guaranteed.
-*/
 FocusScope {
   id: root
 
-  property var adapter: null
-  property var cacheService: null
+  readonly property var adapter: ServiceLocator.adapter
+  readonly property var cacheService: ServiceLocator.cacheService
+  readonly property var checkService: ServiceLocator.checks
+  readonly property var whService: root.adapter ? root.adapter.whService : null
 
-  // Config-derived values (passed from DisplayManager)
   property int carouselSpacing: 20
   property int carouselRotation: 25
   property real carouselPerspective: 0.3
@@ -62,12 +49,12 @@ FocusScope {
   }
 
   function queueVisibleThumbnails() {
-    if (!adapter || !cacheService)
+    if (!root.adapter || !root.cacheService)
       return;
-    for (let i = baseIndex; i <= maxIndex && i < adapter.items.length; i++) {
-      const item = adapter.items[i];
+    for (let i = root.baseIndex; i <= root.maxIndex && i < root.adapter.items.length; i++) {
+      const item = root.adapter.items[i];
       if (item && item.type === "local")
-        cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
+        root.cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
     }
   }
 
@@ -98,29 +85,22 @@ FocusScope {
     property real centerY: height / 2
 
     Keys.onPressed: function (event) {
-      // ===== Escape =====
       if (event.key === Qt.Key_Escape) {
         root.requestQuit();
         event.accepted = true;
         return;
       }
-
-      // ===== Settings (S) =====
       if (event.key === Qt.Key_S && !event.modifiers) {
         root.requestSettings();
         event.accepted = true;
         return;
       }
-
-      // ===== Wallhaven (W) =====
       if (event.key === Qt.Key_W && !event.modifiers) {
         root.requestToggleWallhaven();
         pathViewContainer.forceActiveFocus();
         event.accepted = true;
         return;
       }
-
-      // ===== Folder (Tab/[ / ]) =====
       if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
         event.key === Qt.Key_Tab ? root.requestNextFolder() : root.requestPrevFolder();
         event.accepted = true;
@@ -131,15 +111,11 @@ FocusScope {
         root.requestToggleViewMode();
         return;
       }
-
-      // ===== Search (/, Ctrl+F) =====
       if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
         root.requestFocusSearch();
         event.accepted = true;
         return;
       }
-
-      // ===== Apply (Enter) =====
       if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
         if (root.adapter && root.adapter.items.length > 0) {
           var item = root.adapter.items[root.currentIndex];
@@ -149,24 +125,22 @@ FocusScope {
         event.accepted = true;
         return;
       }
-
-      // ===== Navigate (←/→) =====
       if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
         const dir = event.key === Qt.Key_Left ? -1 : 1;
         event.modifiers & Qt.ShiftModifier ? (dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight()) : (dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight());
+        // Auto-load more when scrolling right at the end (Wallhaven remote mode)
+        if (dir === 1 && root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.hasMore && !root.whService.loading && root.maxIndex >= root.adapter.count - 2) {
+          root.whService.loadMore();
+        }
         event.accepted = true;
         return;
       }
-
-      // ===== Random (R) =====
       if (event.key === Qt.Key_R && !event.modifiers) {
         scrollController.random();
         root.requestRandom();
         event.accepted = true;
         return;
       }
-
-      // ===== Refresh (F5) =====
       if (event.key === Qt.Key_F5) {
         root.requestRefresh();
         event.accepted = true;
@@ -195,47 +169,31 @@ FocusScope {
         isRemote: _item ? _item.type === "remote" : false
         remoteId: _item && _item.type === "remote" ? _item.id : ""
         remoteThumb: _item && _item.type === "remote" ? _item.thumb : ""
-        thumbHashToPath: _item && _item.type === "local" ? (root.cacheService ? root.cacheService.thumbHashToPath : {}) : {}
         isCenter: realIndex === root.currentIndex
         showBorderGlow: root.showBorderGlow
         showShadow: root.showShadow
-        // Wallhaven download
-        whService: root.adapter ? root.adapter.whService : null
-        downloadStatus: (whService && whService.downloadStatus) ? whService.downloadStatus : ({})
-        downloadProgress: (whService && whService.downloadProgress) ? whService.downloadProgress : ({})
-        downloadPaths: (whService && whService.downloadPaths) ? whService.downloadPaths : ({})
         downloadPath: _item && _item.type === "remote" ? _item.path : ""
 
-        readonly property var metrics: {
-          const raw = realIndex - scrollController.scrollTarget;
-          const abs = Math.abs(raw);
-          return {
-            raw,
-            abs,
-            cos: Math.cos(Math.min(abs, 3) * 0.523599),
-            perspectiveScale: 1.0 / (1.0 + abs * root.carouselPerspective)
-          };
-        }
-        readonly property var visual: {
-          const abs = metrics.abs;
-          return {
-            scale: metrics.perspectiveScale * (0.85 + metrics.cos * 0.15) + (isCenter ? 0.06 : 0),
-            opacity: abs > 6 ? 0 : Math.pow(Math.max(0, 1 - abs * 0.12), 2.5),
-            rotationY: metrics.raw * -root.carouselRotation,
-            z: 100 - abs * 50,
-            spacingFactor: 0.85 - metrics.abs * 0.06,
-            yOffset: abs * 8,
-            shadowOpacity: abs < 0.6 ? 0.25 : 0
-          };
-        }
-        visualScale: visual.scale
-        visualOpacity: visual.opacity
-        visualRotationY: visual.rotationY
-        visualZ: visual.z
-        visualYOffset: visual.yOffset
-        visualShadowOpacity: visual.shadowOpacity
-        x: pathViewContainer.centerX - width / 2 + metrics.raw * (width + pathViewContainer.spacing) * visual.spacingFactor
-        y: pathViewContainer.centerY - height / 2 + visual.yOffset
+        // Pre-computed visual values to avoid JS object re-creation per frame
+        readonly property real _absOffset: Math.abs(realIndex - scrollController.scrollTarget)
+        readonly property real _cos: Math.cos(Math.min(_absOffset, 3) * 0.523599)
+        readonly property real _perspScale: 1.0 / (1.0 + _absOffset * root.carouselPerspective)
+        readonly property real _visualScale: _perspScale * (0.85 + _cos * 0.15) + (isCenter ? 0.06 : 0)
+        readonly property real _visualOpacity: _absOffset > 6 ? 0 : Math.pow(Math.max(0, 1 - _absOffset * 0.12), 2.5)
+        readonly property real _visualRotationY: (realIndex - scrollController.scrollTarget) * -root.carouselRotation
+        readonly property int _visualZ: 100 - _absOffset * 50
+        readonly property real _visualSpacingFactor: 0.85 - _absOffset * 0.06
+        readonly property real _visualYOffset: _absOffset * 8
+        readonly property real _visualShadowOpacity: _absOffset < 0.6 ? 0.25 : 0
+
+        visualScale: _visualScale
+        visualOpacity: _visualOpacity
+        visualRotationY: _visualRotationY
+        visualZ: _visualZ
+        visualYOffset: _visualYOffset
+        visualShadowOpacity: _visualShadowOpacity
+        x: pathViewContainer.centerX - width / 2 + (realIndex - scrollController.scrollTarget) * (width + pathViewContainer.spacing) * _visualSpacingFactor
+        y: pathViewContainer.centerY - height / 2 + _visualYOffset
         onClicked: function (path) {
           scrollController.scrollTo(realIndex);
           if (_item)
@@ -244,7 +202,6 @@ FocusScope {
       }
     }
 
-    // Enhanced keybinds hint with pill design
     Rectangle {
       anchors.bottom: parent.bottom
       anchors.bottomMargin: Style.keyboardHintBottomMargin

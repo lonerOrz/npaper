@@ -15,7 +15,7 @@ Item {
   readonly property int baseIndex: Math.max(0, currentIndex - visibleRange - preloadRange)
   readonly property int maxIndex: Math.min(count - 1, currentIndex + visibleRange + preloadRange)
   readonly property int loadedCount: count > 0 ? Math.max(0, maxIndex - baseIndex + 1) : 0
-  readonly property real parallaxX: (currentIndex - Math.round(scrollTarget)) * parallaxFactor // Wait, this needs smooth target
+  readonly property real parallaxX: (currentIndex - Math.round(scrollTarget)) * parallaxFactor
 
   // Internal State
   property real scrollTarget: 0

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
-import qs.components.settings
 import qs.components.common
+import qs.components.settings
 import qs.services
 
 /*
@@ -373,7 +373,8 @@ Item {
 
               // Remove button
               MouseArea {
-                width: 20; height: 20
+                width: 20
+                height: 20
                 cursorShape: Qt.PointingHandCursor
                 hoverEnabled: true
 
@@ -381,7 +382,11 @@ Item {
                   anchors.fill: parent
                   radius: Style.radiusXS
                   color: parent.containsMouse ? Qt.alpha("#ff5555", 0.12) : "transparent"
-                  Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
+                  Behavior on color {
+                    ColorAnimation {
+                      duration: Style.animVeryFast
+                    }
+                  }
                 }
 
                 Text {
@@ -415,7 +420,11 @@ Item {
             color: parent.containsMouse ? Qt.alpha(Color.mPrimary, 0.08) : "transparent"
             border.color: Color.mOutline
             border.width: Style.borderS
-            Behavior on color { ColorAnimation { duration: Style.animVeryFast } }
+            Behavior on color {
+              ColorAnimation {
+                duration: Style.animVeryFast
+              }
+            }
           }
 
           Text {
@@ -468,7 +477,8 @@ Item {
         }
 
         MouseArea {
-          width: 24; height: 24
+          width: 24
+          height: 24
           cursorShape: Qt.PointingHandCursor
           hoverEnabled: true
 
@@ -578,7 +588,8 @@ Item {
         }
 
         MouseArea {
-          width: 24; height: 24
+          width: 24
+          height: 24
           cursorShape: Qt.PointingHandCursor
           hoverEnabled: true
 

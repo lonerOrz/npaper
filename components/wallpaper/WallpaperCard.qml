@@ -12,7 +12,6 @@ Item {
   property bool isVideo: false
   property bool isGif: false
 
-  // Remote wallpaper properties
   property bool isRemote: false
   property string remoteId: ""
   property string remoteThumb: ""
@@ -31,14 +30,12 @@ Item {
   property bool showShadow: true
   property bool isCenter: false
 
-  // Wallhaven download
-  property var whService: null
-  property var downloadStatus: ({})
-  property var downloadProgress: ({})
-  property var downloadPaths: ({})
-  property string downloadPath: ""  // remote URL for download trigger
-
-  property var thumbHashToPath: ({})
+  readonly property var thumbHashToPath: ServiceLocator.cacheService ? ServiceLocator.cacheService.thumbHashToPath : {}
+  readonly property var whService: ServiceLocator.adapter ? ServiceLocator.adapter.whService : null
+  readonly property var downloadStatus: (whService && whService.downloadStatus) ? whService.downloadStatus : ({})
+  readonly property var downloadProgress: (whService && whService.downloadProgress) ? whService.downloadProgress : ({})
+  readonly property var downloadPaths: (whService && whService.downloadPaths) ? whService.downloadPaths : ({})
+  property string downloadPath: ""
 
   signal clicked(string path)
 
@@ -51,7 +48,6 @@ Item {
   z: visualZ + (_isHovered ? 15 : 0)
   transformOrigin: Item.Center
 
-  // Smoother scale animation
   Behavior on scale {
     NumberAnimation {
       duration: Style.animNormal
@@ -59,7 +55,6 @@ Item {
     }
   }
 
-  // Smooth z-index transition
   Behavior on z {
     NumberAnimation {
       duration: Style.animFast
@@ -77,7 +72,6 @@ Item {
     origin.y: height / 2
   }
 
-  // ── Rounded rect mask ──────────────────────────────────────
   Item {
     id: roundMask
     width: itemWidth
@@ -139,7 +133,6 @@ Item {
     }
   }
 
-  // ── Shadow (sibling, NO transform) ─────────────────────────
   Rectangle {
     id: shadowItem
     anchors.fill: parent
@@ -161,7 +154,6 @@ Item {
     }
   }
 
-  // ── Card content (clipped via MultiEffect mask) ────────────
   Item {
     id: cardContent
     anchors.fill: parent
@@ -208,7 +200,6 @@ Item {
         }
       }
 
-      // Download indicator overlay for remote items
       Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
@@ -280,7 +271,6 @@ Item {
     }
   }
 
-  // ── Border (on top, NOT clipped) ───────────────────────────
   Shape {
     anchors.fill: parent
     antialiasing: true
@@ -348,7 +338,6 @@ Item {
     }
   }
 
-  // ── Glow shader ────────────────────────────────────────────
   ShaderEffect {
     anchors.fill: parent
     z: 5
@@ -367,10 +356,11 @@ Item {
     fragmentShader: Qt.resolvedUrl("../../shaders/borderGlow.frag.qsb")
   }
 
-  // ── Download overlay (remote wallpapers only) ─────────────
-  // Uses opacity animation like org/WallhavenBrowser.qml to avoid hover stealing
-  Item {
+  // Download overlay
+  Rectangle {
     anchors.fill: parent
+    radius: root.itemRadius
+    color: "transparent"
     visible: root.isRemote
     opacity: root._isHovered ? 1 : 0
     z: 10
@@ -382,7 +372,7 @@ Item {
     }
 
     DownloadOverlay {
-      opacity: parent.opacity  // Fade with parent
+      opacity: parent.opacity
       whId: root.remoteId.replace("wallhaven-", "")
       downloadPath: root.downloadPath
       whService: root.whService

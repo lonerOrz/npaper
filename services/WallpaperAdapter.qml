@@ -49,13 +49,13 @@ Item {
   RemoteSource {
     id: remoteSource
     whService: wallhavenService
-    wallpaperDir: root.wallpaperDirs.length > 0 ? root.wallpaperDirs[0] : ""
+    wallpaperDir: root.wallpaperDirs && root.wallpaperDirs.length > 0 ? root.wallpaperDirs[0] : ""
     _onApply: root._onApplyLocal
   }
 
   WallhavenService {
     id: wallhavenService
-    wallpaperDir: _whDownloadDir || (root.wallpaperDirs.length > 0 ? root.wallpaperDirs[0] : "")
+    wallpaperDir: _whDownloadDir || (root.wallpaperDirs && root.wallpaperDirs.length > 0 ? root.wallpaperDirs[0] : "")
     apiKey: Config.data.wallhaven.apiKey
     categories: Config.data.wallhaven.categories
     purity: Config.data.wallhaven.purity

@@ -25,6 +25,7 @@ ShellRoot {
     active: configLoaded
 
     sourceComponent: Item {
+      id: shellItem
       SettingsBridge {
         id: bridge
       }
@@ -81,14 +82,33 @@ ShellRoot {
         scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
       }
 
+      // Computed wallpaper dirs: user dirs + wallhaven download dir (if configured)
+      readonly property var _effectiveWallpaperDirs: {
+        var dirs = Config.data.wallpaperDirs || [];
+        var whDir = Config.data.wallhaven ? Config.data.wallhaven.downloadDir : "";
+        if (whDir && whDir.length > 0 && dirs.indexOf(whDir) === -1)
+        dirs = dirs.concat([whDir]);
+        return dirs;
+      }
+
       // Must be defined BEFORE Variants so it's available for injection
       WallpaperAdapter {
         id: wallpaperAdapter
-        wallpaperDirs: Config.data.wallpaperDirs
+        wallpaperDirs: shellItem._effectiveWallpaperDirs
         scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
         debugMode: Config.data.debugMode
         cacheDir: Config.data.cacheDir
         cacheService: cacheService
+      }
+
+      // Register into ServiceLocator for leaf components
+      Component.onCompleted: {
+        ServiceLocator.register({
+                                  adapter: wallpaperAdapter,
+                                  cacheService: cacheService,
+                                  applier: wallpaperApplier,
+                                  checks: checkService
+                                });
       }
 
       Variants {

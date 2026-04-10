@@ -37,10 +37,23 @@ Item {
   readonly property string dlStatus: root.downloadStatus[root.whId] || ""
   readonly property real dlProgress: root.downloadProgress[root.whId] || 0
   readonly property bool isDownloading: dlStatus === "downloading"
-  readonly property string localPath: {
-    var p = root.downloadPaths || {};
-    return p[root.whId] || "";
+
+  // Check for pre-existing local file (from previous sessions)
+  readonly property string existingLocalPath: {
+    if (root.whService && root.whService.localWallhavenPaths) {
+      return root.whService.localWallhavenPaths[root.whId] || "";
+    }
+    return "";
   }
+
+  // Effective local path: current session download OR pre-existing file
+  readonly property string effectiveLocalPath: {
+    var p = root.downloadPaths || {};
+    return (p[root.whId] && p[root.whId] !== "") ? p[root.whId] : root.existingLocalPath;
+  }
+
+  // Determine if the file is effectively "done" (downloaded or pre-existing)
+  readonly property bool isLocallyAvailable: dlStatus === "done" || root.effectiveLocalPath !== ""
 
   // Dark overlay
   Rectangle {
@@ -62,7 +75,7 @@ Item {
       height: Style.spaceXL * 2 - Style.spaceS
       radius: height / 2
       color: Color.mPrimary
-      visible: root.dlStatus !== "done"
+      visible: !root.isLocallyAvailable
 
       Text {
         id: btnDlText
@@ -85,7 +98,7 @@ Item {
       }
     }
 
-    // Apply button
+    // Apply button (always visible)
     Rectangle {
       id: btnApply
       width: Math.max(85, btnApplyText.implicitWidth + Style.spaceL)
@@ -110,10 +123,10 @@ Item {
         onClicked: {
           if (!root.whService)
             return;
-          if (root.dlStatus === "done") {
-            if (root.localPath)
-              root.applyLocal(root.localPath);
+          if (root.effectiveLocalPath) {
+            root.applyLocal(root.effectiveLocalPath);
           } else {
+            // Fallback if path is missing but status says done (should not happen ideally)
             root.whService.downloadAndApply(root.whId, root.downloadPath);
           }
         }
