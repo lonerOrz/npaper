@@ -108,6 +108,7 @@ FocusScope {
     anchors.fill: parent
     active: root.displayMode === "grid"
     asynchronous: true
+    focus: active
 
     onLoaded: {
       if (item) {

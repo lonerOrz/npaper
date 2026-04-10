@@ -368,7 +368,10 @@ PanelWindow {
       if (whService) {
         root._whResultsConn = {
           target: whService,
-          callback: () => displayManager.scrollTo(0)
+          callback: function () {
+            if (whService.currentPage === 1)
+              displayManager.scrollTo(0);
+          }
         };
         whService.resultsUpdated.connect(root._whResultsConn.callback);
         root._whDlAppliedConn = {

@@ -9,6 +9,7 @@ FocusScope {
   readonly property var adapter: ServiceLocator.adapter
   readonly property var cacheService: ServiceLocator.cacheService
   readonly property var checkService: ServiceLocator.checks
+  readonly property var whService: root.adapter ? root.adapter.whService : null
 
   property int carouselSpacing: 20
   property int carouselRotation: 25
@@ -127,6 +128,12 @@ FocusScope {
       if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
         const dir = event.key === Qt.Key_Left ? -1 : 1;
         event.modifiers & Qt.ShiftModifier ? (dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight()) : (dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight());
+        // Auto-load more when scrolling right at the end (Wallhaven remote mode)
+        if (dir === 1 && root.adapter && root.adapter.currentSource === "remote"
+            && root.whService && root.whService.hasMore && !root.whService.loading
+            && root.maxIndex >= root.adapter.count - 2) {
+          root.whService.loadMore();
+        }
         event.accepted = true;
         return;
       }

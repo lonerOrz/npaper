@@ -80,7 +80,8 @@ QtObject {
     if (loading)
       return;
     currentPage = page || 1;
-    results = [];
+    if (currentPage === 1)
+      results = [];
     loading = true;
     errorText = "";
     _searchProcess.running = true;

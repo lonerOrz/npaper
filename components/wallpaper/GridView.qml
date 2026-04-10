@@ -15,10 +15,93 @@ FocusScope {
 
   property bool gridScrollActive: false
 
+  // Wallhaven infinite scroll state
+  property bool _whLoadingMore: false
+
+  // Wallhaven infinite scroll: use a ListModel for remote mode
+  // so the model reference stays stable (no scroll reset on loadMore)
+  ListModel {
+    id: remoteResultsModel
+  }
+
+  Connections {
+    id: remoteResultsConn
+    target: root.whService
+    enabled: root.adapter && root.adapter.currentSource === "remote"
+
+    function onResultsUpdated() {
+      if (!root.whService || !root.whService.results)
+        return;
+      var total = root.whService.results.length;
+      var isNewSearch = (total < remoteResultsModel.count) || (root.whService.currentPage === 1);
+      if (isNewSearch) {
+        remoteResultsModel.clear();
+        var toAdd = total - remoteResultsModel.count;
+        if (toAdd > 0) {
+          var batch = [];
+          for (var i = 0; i < toAdd; i++)
+            batch.push({});
+          remoteResultsModel.append(batch);
+        }
+        Qt.callLater(function () {
+          thumbGridView.positionViewAtBeginning();
+          thumbGridView.currentIndex = 0;
+        });
+      } else {
+        var toAdd2 = total - remoteResultsModel.count;
+        if (toAdd2 > 0) {
+          var savedY = thumbGridView.contentY;
+          thumbGridView._modelChanging = true;
+          var batch2 = [];
+          for (var j = 0; j < toAdd2; j++)
+            batch2.push({});
+          remoteResultsModel.append(batch2);
+          thumbGridView.contentY = savedY;
+          Qt.callLater(function () {
+            thumbGridView._modelChanging = false;
+          });
+        }
+      }
+      root._whLoadingMore = false;
+    }
+  }
+
+  Connections {
+    target: root.adapter
+    function onCurrentSourceChanged() {
+      if (root.adapter && root.adapter.currentSource === "remote") {
+        remoteResultsModel.clear();
+        if (root.whService && root.whService.results && root.whService.results.length > 0) {
+          var batch = [];
+          for (var i = 0; i < root.whService.results.length; i++)
+            batch.push({});
+          remoteResultsModel.append(batch);
+        }
+        remoteResultsConn.enabled = true;
+      } else {
+        remoteResultsModel.clear();
+        remoteResultsConn.enabled = false;
+      }
+    }
+  }
+
+  // Initialize remoteResultsModel on component creation (for view mode switches)
+  Component.onCompleted: {
+    if (root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.results) {
+      var total = root.whService.results.length;
+      if (total > 0) {
+        var batch = [];
+        for (var i = 0; i < total; i++)
+          batch.push({});
+        remoteResultsModel.append(batch);
+      }
+    }
+  }
+
   readonly property int currentIndex: thumbGridView.currentIndex
   readonly property real scrollTarget: thumbGridView.currentIndex
   readonly property int baseIndex: 0
-  readonly property int maxIndex: thumbGridView.model ? thumbGridView.model.length - 1 : 0
+  readonly property int maxIndex: thumbGridView.model ? (thumbGridView.model.count !== undefined ? thumbGridView.model.count : thumbGridView.model.length) - 1 : 0
 
   signal requestQuit
   signal requestSettings
@@ -45,20 +128,28 @@ FocusScope {
     thumbGridView.forceActiveFocus();
   }
 
+  function _currentItems() {
+    if (root.adapter && root.adapter.currentSource === "remote" && root.whService)
+      return root.whService.results;
+    return root.adapter ? root.adapter.items : [];
+  }
+
   function queueVisibleThumbnails() {
     if (!root.adapter || !root.cacheService)
       return;
     var model = thumbGridView.model;
     if (!model)
       return;
+    var modelLen = model.count !== undefined ? model.count : model.length;
     var cols = Math.max(1, Math.ceil(thumbGridView.width / thumbGridView.cellWidth));
     var rows = Math.max(1, Math.ceil(thumbGridView.height / thumbGridView.cellHeight));
     var preloadRows = 2;
     var startRow = Math.max(0, Math.floor(thumbGridView.contentY / thumbGridView.cellHeight) - preloadRows);
-    var endRow = Math.min(Math.ceil((thumbGridView.contentY + thumbGridView.height) / thumbGridView.cellHeight) + preloadRows, Math.ceil(model.length / cols));
+    var endRow = Math.min(Math.ceil((thumbGridView.contentY + thumbGridView.height) / thumbGridView.cellHeight) + preloadRows, Math.ceil(modelLen / cols));
     var startIdx = startRow * cols;
     var endIdx = endRow * cols;
-    for (let i = startIdx; i < endIdx && i < root.adapter.items.length; i++) {
+    var itemsLen = root.adapter.items.length;
+    for (let i = startIdx; i < endIdx && i < itemsLen; i++) {
       const item = root.adapter.items[i];
       if (item && item.type === "local")
         root.cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
@@ -82,7 +173,7 @@ FocusScope {
     anchors.bottom: parent.bottom
     anchors.bottomMargin: Style.keyboardHintBottomMargin + 40
     anchors.horizontalCenter: parent.horizontalCenter
-    model: root.adapter ? root.adapter.items : null
+    model: (root.adapter && root.adapter.currentSource === "remote") ? remoteResultsModel : (root.adapter ? root.adapter.items : null)
     clip: false
 
     Behavior on width {
@@ -114,11 +205,47 @@ FocusScope {
     highlightMoveDuration: Style.animNormal
     highlight: Item {}
 
+    // Track contentY so we can restore it after model changes
+    property real _savedContentY: 0
+    property bool _modelChanging: false
+
     property real _scrollTarget: 0
     onContentYChanged: {
+      if (!_modelChanging)
+        _savedContentY = contentY;
       if (!_gridScrollAnim.running)
         _scrollTarget = contentY;
       _thumbQueueTimer.restart();
+      // Debounced bottom check for Wallhaven infinite scroll
+      _whLoadMoreTimer.restart();
+    }
+
+    // When model reference changes (e.g. local ↔ remote switch), restore scroll
+    onModelChanged: {
+      _modelChanging = true;
+      var savedY = _savedContentY;
+      Qt.callLater(function () {
+        thumbGridView.contentY = savedY;
+        _modelChanging = false;
+      });
+    }
+
+    // Auto-load more Wallhaven results when scrolled to bottom
+    // Use a debounced check to avoid triggering during animation
+    Timer {
+      id: _whLoadMoreTimer
+      interval: 300
+      onTriggered: {
+        if (root.adapter && root.adapter.currentSource === "remote"
+            && root.whService && root.whService.hasMore && !root.whService.loading
+            && !root._whLoadingMore) {
+          var maxY = thumbGridView.contentHeight - thumbGridView.height;
+          if (maxY > 0 && thumbGridView.contentY >= maxY - Style.gridCellHeight) {
+            root._whLoadingMore = true;
+            root.whService.loadMore();
+          }
+        }
+      }
     }
 
     Timer {
@@ -133,6 +260,10 @@ FocusScope {
       property: "contentY"
       duration: 400
       easing.type: Easing.OutCubic
+      onFinished: {
+        // After scroll animation ends, check if we need to load more
+        _whLoadMoreTimer.restart();
+      }
     }
 
     function _snapScroll(delta) {
@@ -231,7 +362,29 @@ FocusScope {
       width: root._gridCellW
       height: root._gridCellH
 
-      required property var modelData
+      required property int index
+      property var modelData: null
+
+      function _resolveItem() {
+        if (root.adapter && root.adapter.currentSource === "remote") {
+          if (root.whService && root.whService.results && index < root.whService.results.length)
+            return root.whService.results[index];
+          return null;
+        }
+        var m = thumbGridView.model;
+        return (m && index < m.length) ? m[index] : null;
+      }
+
+      Component.onCompleted: { gridItem.modelData = gridItem._resolveItem(); }
+      onIndexChanged: { gridItem.modelData = gridItem._resolveItem(); }
+
+      // Refresh data when remote results change (infinite scroll append)
+      Connections {
+        target: root.whService
+        function onResultsUpdated() {
+          gridItem.modelData = gridItem._resolveItem();
+        }
+      }
 
       readonly property bool isCurrent: GridView.isCurrentItem
       readonly property bool isHovered: itemMouse.containsMouse
@@ -353,7 +506,12 @@ FocusScope {
         Image {
           id: thumbImage
           anchors.fill: parent
-          source: CacheUtils.getStaticThumbSource(root.cacheService ? root.cacheService.thumbHashToPath : {}, gridItem.modelData)
+          source: {
+            if (!gridItem.modelData) return "";
+            if (root.adapter && root.adapter.currentSource === "remote")
+              return gridItem.modelData.thumbLarge || gridItem.modelData.thumb || "";
+            return CacheUtils.getStaticThumbSource(root.cacheService ? root.cacheService.thumbHashToPath : {}, gridItem.modelData);
+          }
           visible: source !== ""
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
@@ -426,7 +584,7 @@ FocusScope {
 
       Item {
         anchors.fill: parent
-        visible: gridItem.modelData && gridItem.modelData.type === "remote"
+        visible: (root.adapter && root.adapter.currentSource === "remote" && gridItem.modelData) ? true : false
         opacity: gridItem.isHovered ? 1 : 0
         z: 15
 
@@ -499,8 +657,9 @@ FocusScope {
         return;
       }
       if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        if (root.adapter && root.adapter.items.length > 0) {
-          var item = root.adapter.items[thumbGridView.currentIndex];
+        var items = root._currentItems();
+        if (items.length > 0 && thumbGridView.currentIndex < items.length) {
+          var item = items[thumbGridView.currentIndex];
           if (item)
             root.adapter.smartApply(item);
         }
@@ -508,8 +667,9 @@ FocusScope {
         return;
       }
       if (event.key === Qt.Key_R && !event.modifiers) {
-        if (root.adapter && root.adapter.items.length > 0)
-          thumbGridView.currentIndex = Math.floor(Math.random() * root.adapter.items.length);
+        var rItems = root._currentItems();
+        if (rItems.length > 0)
+          thumbGridView.currentIndex = Math.floor(Math.random() * rItems.length);
         root.requestRandom();
         event.accepted = true;
         return;

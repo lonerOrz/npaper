@@ -14,7 +14,19 @@ Item {
   property string wallpaperDir: ""
 
   // Unified item list from Wallhaven results
-  readonly property var items: _makeItems()
+  // Use a mutable property updated by signal to ensure reactivity
+  property var items: []
+
+  Connections {
+    target: root.whService
+    function onResultsUpdated() {
+      root.items = root._makeItems();
+    }
+  }
+
+  Component.onCompleted: {
+    root.items = root._makeItems();
+  }
 
   function _makeItems() {
     if (!root.whService || !root.whService.results)
