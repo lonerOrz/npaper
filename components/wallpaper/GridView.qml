@@ -395,8 +395,8 @@ FocusScope {
       readonly property bool isCurrent: GridView.isCurrentItem
       readonly property bool isHovered: itemMouse.containsMouse
 
-      scale: isCurrent ? 1.05 : (isHovered ? 1.03 : 1.0)
-      z: isCurrent ? 20 : (isHovered ? 10 : 0)
+      scale: isCurrent ? 1.05 : 1.0
+      z: isCurrent ? 20 : 0
 
       Behavior on scale {
         NumberAnimation {
@@ -658,6 +658,9 @@ FocusScope {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onEntered: {
+          thumbGridView.currentIndex = gridItem.index;
+        }
         onClicked: {
           if (gridItem.modelData)
             root.adapter.smartApply(gridItem.modelData);
