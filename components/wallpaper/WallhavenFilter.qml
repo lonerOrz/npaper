@@ -86,8 +86,7 @@ Item {
   Flow {
     id: filterFlow
     x: (parent.width - implicitWidth) / 2
-    anchors.top: parent.top
-    anchors.topMargin: Style.spaceM
+    anchors.verticalCenter: parent.verticalCenter
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.margins: Style.spaceM
@@ -364,8 +363,19 @@ Item {
       Rectangle {
         anchors.fill: parent
         radius: height / 2
-        color: Color.mPrimaryContainer
-        opacity: 0.75
+        color: Qt.rgba(
+          Color.mSurfaceContainer.r,
+          Color.mSurfaceContainer.g,
+          Color.mSurfaceContainer.b,
+          Style.childBgAlpha
+        )
+        border.color: Qt.rgba(
+          Color.mOutlineVariant.r,
+          Color.mOutlineVariant.g,
+          Color.mOutlineVariant.b,
+          Style.childBgAlpha * 0.5
+        )
+        border.width: 1
 
         Text {
           id: resText
@@ -379,7 +389,7 @@ Item {
               return root.whService.errorText;
             return root.whService.results.length + " results";
           }
-          color: root.whService && root.whService.errorText ? "#ff5555" : Color.mOnPrimaryContainer
+          color: root.whService && root.whService.errorText ? "#ff5555" : Color.mOnSurface
           font.pixelSize: Style.barTabFontSize
           font.weight: Font.Bold
         }
