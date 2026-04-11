@@ -84,6 +84,23 @@ FocusScope {
     property real centerX: width / 2
     property real centerY: height / 2
 
+    // ── Mouse wheel scrolling ──
+    MouseArea {
+      anchors.fill: parent
+      propagateComposedEvents: true
+      onWheel: function (wheel) {
+        var ticks = Math.round(Math.abs(wheel.angleDelta.y) / 120);
+        if (ticks < 1)
+          ticks = 1;
+        var dir = wheel.angleDelta.y > 0 ? -1 : 1;
+        var target = Math.max(0, Math.min(scrollController.currentIndex + dir * ticks, root.adapter ? root.adapter.count - 1 : 0));
+        scrollController.scrollTo(target);
+      }
+      onPressed: mouse => mouse.accepted = false
+      onReleased: mouse => mouse.accepted = false
+      onClicked: mouse => mouse.accepted = false
+    }
+
     Keys.onPressed: function (event) {
       if (event.key === Qt.Key_Escape) {
         root.requestQuit();
