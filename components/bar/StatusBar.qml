@@ -64,7 +64,7 @@ Item {
       layer.enabled: true
       layer.effect: MultiEffect {
         colorization: 1.0
-        colorizationColor: Qt.lighter(root.dominantColor, 3.0)
+        colorizationColor: Qt.lighter(root.dominantColor, 1.5)
       }
       RotationAnimation on rotation {
         from: 0
