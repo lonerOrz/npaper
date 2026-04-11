@@ -68,7 +68,7 @@ Singleton {
   // ==================== Fixed Values (not user-configurable) ====================
   readonly property int carouselItemWidth: _s(480)
   readonly property int carouselItemHeight: _s(270)
-  readonly property int carouselTopMargin: _s(440)
+  readonly property int carouselTopMargin: _s(410)
   readonly property int carouselSideMargin: _s(10)
 
   // Defaults — read by AppWindow, overridable via Config
@@ -93,7 +93,7 @@ Singleton {
 
   // ==================== Pure Constants ====================
   // Status Bar
-  readonly property int barTopMargin: _s(400)
+  readonly property int barTopMargin: _s(350)
   readonly property int barHeight: _s(40)
   readonly property int barRadius: _s(20)
   readonly property int barSidePadding: _s(12)

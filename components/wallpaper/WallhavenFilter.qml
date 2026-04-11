@@ -363,18 +363,8 @@ Item {
       Rectangle {
         anchors.fill: parent
         radius: height / 2
-        color: Qt.rgba(
-          Color.mSurfaceContainer.r,
-          Color.mSurfaceContainer.g,
-          Color.mSurfaceContainer.b,
-          Style.childBgAlpha
-        )
-        border.color: Qt.rgba(
-          Color.mOutlineVariant.r,
-          Color.mOutlineVariant.g,
-          Color.mOutlineVariant.b,
-          Style.childBgAlpha * 0.5
-        )
+        color: Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
+        border.color: Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.childBgAlpha * 0.5)
         border.width: 1
 
         Text {
