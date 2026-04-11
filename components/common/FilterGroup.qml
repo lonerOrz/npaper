@@ -22,15 +22,15 @@ Item {
     gradient: Gradient {
       GradientStop {
         position: 0.0
-        color: Qt.lighter(Color.mSurfaceContainerLow, 1.03)
+        color: Qt.rgba(Qt.lighter(Color.mSurfaceContainerLow, 1.03).r, Qt.lighter(Color.mSurfaceContainerLow, 1.03).g, Qt.lighter(Color.mSurfaceContainerLow, 1.03).b, Style.childBgAlpha)
       }
       GradientStop {
         position: 1.0
-        color: Color.mSurfaceContainerLow
+        color: Qt.rgba(Color.mSurfaceContainerLow.r, Color.mSurfaceContainerLow.g, Color.mSurfaceContainerLow.b, Style.childBgAlpha)
       }
     }
     border.width: 1
-    border.color: Qt.tint(Color.mOutlineVariant, Color.mSurfaceContainerLow)
+    border.color: Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.childBgAlpha * 0.5)
     opacity: 0.8
   }
 

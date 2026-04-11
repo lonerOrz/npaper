@@ -133,8 +133,8 @@ Popup {
           Rectangle {
             anchors.fill: parent
             radius: Style.radiusS
-            color: parent.containsMouse ? Qt.alpha(Color.mPrimary, 0.12) : Color.mSurfaceContainerHigh
-            border.color: Color.mOutline
+            color: parent.containsMouse ? Qt.rgba(Color.mPrimary.r, Color.mPrimary.g, Color.mPrimary.b, 0.12) : Qt.rgba(Color.mSurfaceContainerHigh.r, Color.mSurfaceContainerHigh.g, Color.mSurfaceContainerHigh.b, Style.childBgAlpha)
+            border.color: Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, Style.childBgAlpha)
             border.width: Style.borderS
             Behavior on color {
               ColorAnimation {
@@ -176,10 +176,10 @@ Popup {
           radius: Style.radiusS
           color: {
             if (parent.containsMouse)
-              return Qt.alpha("#ff5555", 0.15);
-            return root.selectedPath !== "" ? Color.mSurfaceContainerHigh : "transparent";
+              return Qt.rgba(1.0, 0.33, 0.33, 0.15);
+            return root.selectedPath !== "" ? Qt.rgba(Color.mSurfaceContainerHigh.r, Color.mSurfaceContainerHigh.g, Color.mSurfaceContainerHigh.b, Style.childBgAlpha) : "transparent";
           }
-          border.color: root.selectedPath !== "" ? "#ff5555" : Color.mOutline
+          border.color: root.selectedPath !== "" ? "#ff5555" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, Style.childBgAlpha)
           border.width: Style.borderS
           Behavior on color {
             ColorAnimation {
@@ -216,8 +216,8 @@ Popup {
         placeholderTextColor: Color.mOnSurfaceVariant
         background: Rectangle {
           radius: Style.radiusS
-          color: Color.mSurfaceContainer
-          border.color: parent.parent.activeFocus ? Color.mPrimary : Color.mOutline
+          color: Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
+          border.color: parent.parent.activeFocus ? Color.mPrimary : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, Style.childBgAlpha)
           border.width: Style.borderS
         }
         onAccepted: {
@@ -238,8 +238,8 @@ Popup {
       placeholderTextColor: Color.mOnSurfaceVariant
       background: Rectangle {
         radius: Style.radiusS
-        color: Color.mSurfaceContainer
-        border.color: parent.activeFocus ? Color.mPrimary : Color.mOutline
+        color: Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
+        border.color: parent.activeFocus ? Color.mPrimary : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, Style.childBgAlpha)
         border.width: Style.borderS
       }
       onAccepted: {
@@ -260,9 +260,9 @@ Popup {
     Rectangle {
       width: parent.width
       height: parent.height - 130
-      color: Color.mSurfaceContainer
+      color: Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
       radius: Style.radiusS
-      border.color: Color.mOutlineVariant
+      border.color: Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.childBgAlpha)
       border.width: Style.borderS
 
       ListView {
@@ -284,9 +284,9 @@ Popup {
             radius: Style.radiusS
             color: {
               if (root.selectedPath === model.filePath)
-                return Qt.tint(Color.mPrimary, Qt.rgba(1, 1, 1, 0.08));
+                return Qt.rgba(Color.mPrimary.r, Color.mPrimary.g, Color.mPrimary.b, 0.15);
               if (parent.containsMouse)
-                return Color.mSurfaceContainerHighest;
+                return Qt.rgba(Color.mSurfaceContainerHighest.r, Color.mSurfaceContainerHighest.g, Color.mSurfaceContainerHighest.b, Style.childBgAlpha);
               return "transparent";
             }
             border.color: root.selectedPath === model.filePath ? Color.mPrimary : "transparent"
@@ -359,8 +359,8 @@ Popup {
         Rectangle {
           anchors.fill: parent
           radius: Style.radiusS
-          color: cancelBtn.containsMouse ? Color.mSurfaceContainerHighest : "transparent"
-          border.color: Color.mOutline
+          color: cancelBtn.containsMouse ? Qt.rgba(Color.mSurfaceContainerHighest.r, Color.mSurfaceContainerHighest.g, Color.mSurfaceContainerHighest.b, Style.childBgAlpha) : "transparent"
+          border.color: Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, Style.childBgAlpha)
           border.width: Style.borderS
           Behavior on color {
             ColorAnimation {
@@ -393,7 +393,7 @@ Popup {
         Rectangle {
           anchors.fill: parent
           radius: Style.radiusS
-          color: selectBtn.enabled ? (selectBtn.containsMouse ? Color.mPrimaryContainer : Color.mPrimary) : Color.mSurfaceContainerLow
+          color: selectBtn.enabled ? (selectBtn.containsMouse ? Color.mPrimaryContainer : Color.mPrimary) : Qt.rgba(Color.mSurfaceContainerLow.r, Color.mSurfaceContainerLow.g, Color.mSurfaceContainerLow.b, Style.childBgAlpha)
           Behavior on color {
             ColorAnimation {
               duration: Style.animVeryFast

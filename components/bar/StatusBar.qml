@@ -39,7 +39,7 @@ Item {
   Rectangle {
     anchors.fill: parent
     radius: Style.barRadius
-    color: Color.mSurfaceContainerLowest
+    color: Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, Style.barBlurAlpha)
   }
 
   // ── Content Row ──────────────────────────────────────────
@@ -64,7 +64,7 @@ Item {
       layer.enabled: true
       layer.effect: MultiEffect {
         colorization: 1.0
-        colorizationColor: Qt.lighter(root.dominantColor, 3.0)
+        colorizationColor: Qt.lighter(root.dominantColor, 1.5)
       }
       RotationAnimation on rotation {
         from: 0
@@ -81,7 +81,7 @@ Item {
       Layout.preferredWidth: Math.max(Style.barSearchMinWidth, searchInput.baseWidth + Style.space2M)
       Layout.preferredHeight: Style.barSearchHeight
       radius: Style.barSearchHeight / 2
-      color: Color.mSurfaceContainer
+      color: Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
 
       TextInput {
         id: searchInput
@@ -167,7 +167,7 @@ Item {
       Rectangle {
         anchors.fill: parent
         radius: Style.barSettingsBtnHeight / 2
-        color: parent.hover ? Color.mSurfaceContainerHigh : "transparent"
+        color: parent.hover ? Qt.rgba(Color.mSurfaceContainerHigh.r, Color.mSurfaceContainerHigh.g, Color.mSurfaceContainerHigh.b, Style.childHoverAlpha) : "transparent"
         Behavior on color {
           ColorAnimation {
             duration: Style.animFast
@@ -181,7 +181,7 @@ Item {
         text: root.isWallhaven ? "\uf0ac" : "\uf03e"
         font.pixelSize: Style.barSettingsIconSize
         font.family: "Symbols Nerd Font"
-        color: root.isWallhaven ? Color.mPrimary : Color.mOutlineVariant
+        color: root.isWallhaven ? Color.mPrimary : Color.mOnSurface
       }
     }
 
@@ -189,7 +189,7 @@ Item {
     Text {
       Layout.alignment: Qt.AlignVCenter
       text: root.wallpaperCount + " / " + root.cachedCount
-      color: Color.mOutlineVariant
+      color: Color.mOnSurface
       font.pixelSize: Style.barInfoFontSize
     }
 
@@ -215,7 +215,7 @@ Item {
       Rectangle {
         anchors.fill: parent
         radius: Style.barSettingsBtnHeight / 2
-        color: parent.hover ? Color.mSurfaceContainerHigh : "transparent"
+        color: parent.hover ? Qt.rgba(Color.mSurfaceContainerHigh.r, Color.mSurfaceContainerHigh.g, Color.mSurfaceContainerHigh.b, Style.childHoverAlpha) : "transparent"
         Behavior on color {
           ColorAnimation {
             duration: Style.animFast
@@ -228,7 +228,7 @@ Item {
         text: "\uf013"
         font.pixelSize: Style.barSettingsIconSize
         font.family: "Symbols Nerd Font"
-        color: root.settingsOpen ? Color.mPrimary : Color.mOutlineVariant
+        color: root.settingsOpen ? Color.mPrimary : Color.mOnSurface
         Behavior on color {
           ColorAnimation {
             duration: Style.animFast

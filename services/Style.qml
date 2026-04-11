@@ -68,7 +68,7 @@ Singleton {
   // ==================== Fixed Values (not user-configurable) ====================
   readonly property int carouselItemWidth: _s(480)
   readonly property int carouselItemHeight: _s(270)
-  readonly property int carouselTopMargin: _s(440)
+  readonly property int carouselTopMargin: _s(410)
   readonly property int carouselSideMargin: _s(10)
 
   // Defaults — read by AppWindow, overridable via Config
@@ -93,7 +93,7 @@ Singleton {
 
   // ==================== Pure Constants ====================
   // Status Bar
-  readonly property int barTopMargin: _s(400)
+  readonly property int barTopMargin: _s(350)
   readonly property int barHeight: _s(40)
   readonly property int barRadius: _s(20)
   readonly property int barSidePadding: _s(12)
@@ -152,6 +152,15 @@ Singleton {
   // ==================== Opacity ====================
   readonly property real opacityLight: 0.15
   readonly property real opacityDivider: 0.3
+
+  // Blur layer: panel background alpha (0-1). Higher = more opaque, better text contrast.
+  readonly property real barBlurAlpha: 0.5
+  readonly property real filterBlurAlpha: 0.6
+  readonly property real settingsBlurAlpha: 0.65
+
+  // Blur layer: child component bg alpha (search pill, selector pill, etc.)
+  readonly property real childBgAlpha: 0.4
+  readonly property real childHoverAlpha: 0.5
 
   // ==================== Animation Duration (ms) ====================
   readonly property int animVeryFast: 100

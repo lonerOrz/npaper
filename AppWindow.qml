@@ -48,6 +48,8 @@ PanelWindow {
   property string searchText: ""
   property bool _toggleViewLock: false
 
+  property var _blurRoot: null
+
   property int bgCurrent: -1
   property int bgPrevious: -1
   property real bgSlideProgress: 0.0
@@ -66,6 +68,32 @@ PanelWindow {
         Qt.quit();
       });
       adapter.load();
+    }
+
+    // ── Status Bar Blur ──
+    if (BlurService.available) {
+      Qt.callLater(_initAllBlur);
+    }
+  }
+
+  function _initAllBlur() {
+    if (!BlurService.available)
+      return;
+    try {
+      // Build a single Region tree with all panels as children
+      const qml = `
+        import Quickshell
+        Region {
+          Region { item: statusBar; radius: ${Style.barRadius} }
+          Region { item: settingsPanel; radius: ${Style.settingsRadius} }
+          Region { item: wallhavenFilter; radius: ${Style.barRadius} }
+        }
+      `;
+
+      _blurRoot = Qt.createQmlObject(qml, root, "BlurRoot");
+      root.BackgroundEffect.blurRegion = _blurRoot;
+    } catch (e) {
+      console.warn("AppWindow: Failed to create blur regions:", e);
     }
   }
 
@@ -345,6 +373,15 @@ PanelWindow {
       _doSearch();
       searchDebounce.stop();
       displayManager.focusView();
+    }
+  }
+
+  Component.onDestruction: {
+    if (_blurRoot) {
+      try {
+        root.BackgroundEffect.blurRegion = null;
+      } catch (e) {}
+      _blurRoot.destroy();
     }
   }
 

@@ -38,9 +38,9 @@ Column {
     width: parent.width
     height: Style.barSearchHeight + 6
     radius: Style.barRadius + 2
-    color: Color.mSurfaceContainer
+    color: Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
     border.width: 1
-    border.color: Qt.tint(Color.mOutlineVariant, Color.mSurfaceContainer)
+    border.color: Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.childBgAlpha)
 
     // Hover effect
     Rectangle {

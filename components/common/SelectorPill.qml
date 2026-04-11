@@ -34,7 +34,9 @@ Item {
     for (let i = 0; i < _row.children.length; i++) {
       const item = _row.children[i];
       if (item && typeof item._isActive !== "undefined" && item._isActive) {
-        _pillX = item.x;
+        // Map item's top-left to root's coordinate space
+        const mapped = item.mapToItem(root, 0, 0);
+        _pillX = mapped.x;
         _pillW = item.width;
         found = true;
         break;
@@ -50,7 +52,7 @@ Item {
   Rectangle {
     anchors.fill: parent
     radius: Style.barTabHeight / 2
-    color: Color.mSurfaceContainer
+    color: Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
     visible: root.hasBg
   }
 
@@ -100,7 +102,7 @@ Item {
           id: _pillLabel
           anchors.centerIn: parent
           text: modelData
-          color: parent._isActive ? root.activeColor : Color.mOutlineVariant
+          color: parent._isActive ? root.activeColor : Color.mOnSurface
           font.pixelSize: Style.barTabFontSize
           font.weight: parent._isActive ? Font.Bold : Font.Normal
           Behavior on color {

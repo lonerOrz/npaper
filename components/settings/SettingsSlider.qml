@@ -86,7 +86,7 @@ Column {
       Rectangle {
         anchors.fill: parent
         anchors.verticalCenterOffset: 0
-        color: Color.mSurfaceContainerHighest
+        color: Qt.rgba(Color.mSurfaceContainerHighest.r, Color.mSurfaceContainerHighest.g, Color.mSurfaceContainerHighest.b, Style.childBgAlpha)
         radius: 4
         opacity: 0.8
       }
