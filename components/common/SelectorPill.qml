@@ -34,7 +34,9 @@ Item {
     for (let i = 0; i < _row.children.length; i++) {
       const item = _row.children[i];
       if (item && typeof item._isActive !== "undefined" && item._isActive) {
-        _pillX = item.x;
+        // Map item's top-left to root's coordinate space
+        const mapped = item.mapToItem(root, 0, 0);
+        _pillX = mapped.x;
         _pillW = item.width;
         found = true;
         break;
