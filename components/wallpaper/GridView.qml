@@ -625,7 +625,7 @@ FocusScope {
         anchors.fill: parent
         radius: Style.radiusL
         color: "transparent"
-        visible: root.adapter && root.adapter.currentSource === "remote" && gridItem.modelData
+        visible: root.adapter && root.adapter.currentSource === "remote" && !!gridItem.modelData
         opacity: gridItem.isHovered ? 1 : 0
         z: 15
 

@@ -25,7 +25,7 @@ Item {
   Rectangle {
     anchors.fill: parent
     radius: Style.radiusM
-    color: hoverArea.containsMouse ? Qt.lighter(Color.mSurfaceContainer, 1.08) : "transparent"
+    color: hoverArea.containsMouse ? Qt.rgba(Qt.lighter(Color.mSurfaceContainer, 1.08).r, Qt.lighter(Color.mSurfaceContainer, 1.08).g, Qt.lighter(Color.mSurfaceContainer, 1.08).b, Style.childBgAlpha) : "transparent"
     opacity: 0.6
     Behavior on color {
       ColorAnimation {
@@ -60,9 +60,9 @@ Item {
       Rectangle {
         anchors.fill: parent
         radius: height / 2
-        color: root.checked ? Color.mPrimary : Color.mSurfaceContainerHighest
+        color: root.checked ? Color.mPrimary : Qt.rgba(Color.mSurfaceContainerHighest.r, Color.mSurfaceContainerHighest.g, Color.mSurfaceContainerHighest.b, Style.childBgAlpha)
         border.width: root.checked ? 0 : 1
-        border.color: Color.mOutline
+        border.color: root.checked ? "transparent" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, Style.childBgAlpha)
         opacity: root.checked ? 1.0 : 0.7
         Behavior on color {
           ColorAnimation {

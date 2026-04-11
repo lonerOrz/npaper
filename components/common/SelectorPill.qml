@@ -50,7 +50,7 @@ Item {
   Rectangle {
     anchors.fill: parent
     radius: Style.barTabHeight / 2
-    color: Color.mSurfaceContainer
+    color: Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
     visible: root.hasBg
   }
 
@@ -100,7 +100,7 @@ Item {
           id: _pillLabel
           anchors.centerIn: parent
           text: modelData
-          color: parent._isActive ? root.activeColor : Color.mOutlineVariant
+          color: parent._isActive ? root.activeColor : Color.mOnSurface
           font.pixelSize: Style.barTabFontSize
           font.weight: parent._isActive ? Font.Bold : Font.Normal
           Behavior on color {

@@ -71,16 +71,15 @@ Item {
     gradient: Gradient {
       GradientStop {
         position: 0.0
-        color: Qt.lighter(Color.mSurfaceContainerLowest, 1.04)
+        color: Qt.rgba(Qt.lighter(Color.mSurfaceContainerLowest, 1.04).r, Qt.lighter(Color.mSurfaceContainerLowest, 1.04).g, Qt.lighter(Color.mSurfaceContainerLowest, 1.04).b, Style.filterBlurAlpha)
       }
       GradientStop {
         position: 1.0
-        color: Color.mSurfaceContainerLowest
+        color: Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, Style.filterBlurAlpha)
       }
     }
     border.width: 1
-    border.color: Qt.tint(Color.mOutlineVariant, Color.mSurfaceContainerLowest)
-    opacity: 0.9
+    border.color: Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.filterBlurAlpha * 0.5)
   }
 
   // ── Flow Layout: groups stagger naturally ───────────────
@@ -294,14 +293,14 @@ Item {
         Rectangle {
           anchors.fill: parent
           radius: height / 2
-          color: parent.enabled && parent.containsMouse ? Color.mSurfaceContainerHigh : Color.mSurfaceContainer
+          color: parent.enabled && parent.containsMouse ? Qt.rgba(Color.mSurfaceContainerHigh.r, Color.mSurfaceContainerHigh.g, Color.mSurfaceContainerHigh.b, Style.childHoverAlpha) : Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
           opacity: parent.enabled ? 1.0 : 0.4
         }
         Text {
           id: prevText
           anchors.centerIn: parent
           text: "‹"
-          color: parent.enabled ? Color.mOnSurface : Color.mOutlineVariant
+          color: parent.enabled ? Color.mOnSurface : Color.mOnSurfaceVariant
           font.pixelSize: Style.barTabFontSize + 2
           font.weight: Font.Bold
         }
@@ -344,14 +343,14 @@ Item {
         Rectangle {
           anchors.fill: parent
           radius: height / 2
-          color: parent.enabled && parent.containsMouse ? Color.mSurfaceContainerHigh : Color.mSurfaceContainer
+          color: parent.enabled && parent.containsMouse ? Qt.rgba(Color.mSurfaceContainerHigh.r, Color.mSurfaceContainerHigh.g, Color.mSurfaceContainerHigh.b, Style.childHoverAlpha) : Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
           opacity: parent.enabled ? 1.0 : 0.4
         }
         Text {
           id: nextText
           anchors.centerIn: parent
           text: "›"
-          color: parent.enabled ? Color.mOnSurface : Color.mOutlineVariant
+          color: parent.enabled ? Color.mOnSurface : Color.mOnSurfaceVariant
           font.pixelSize: Style.barTabFontSize + 2
           font.weight: Font.Bold
         }

@@ -43,16 +43,19 @@ MouseArea {
     anchors.fill: parent
     radius: height / 2
     color: {
+      function toRgba(c, a) {
+        return Qt.rgba(c.r, c.g, c.b, a);
+      }
       if (!enabled)
-        return Color.mSurfaceContainer;
+        return toRgba(Color.mSurfaceContainer, Style.childBgAlpha);
       if (root.active)
-        return Color.mPrimary;
+        return toRgba(Color.mPrimary, 0.7);
       if (containsMouse)
-        return Color.mSurfaceContainerHigh;
-      return Color.mSurfaceContainer;
+        return toRgba(Color.mSurfaceContainerHigh, Style.childHoverAlpha);
+      return toRgba(Color.mSurfaceContainer, Style.childBgAlpha);
     }
     border.width: root.active ? 0 : 1
-    border.color: containsMouse ? Color.mPrimaryContainer : Color.mOutlineVariant
+    border.color: containsMouse ? Color.mPrimaryContainer : Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.childBgAlpha)
     opacity: !enabled ? 0.5 : 1.0
 
     Behavior on color {
@@ -73,10 +76,10 @@ MouseArea {
     text: root.label
     color: {
       if (!enabled)
-        return Color.mOutlineVariant;
+        return Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, 0.5);
       if (root.active)
         return Color.mSurfaceContainerLowest;
-      return containsMouse ? Color.mOnSurface : Color.mOutlineVariant;
+      return containsMouse ? Color.mOnSurface : Color.mOnSurfaceVariant;
     }
     font.pixelSize: Style.barTabFontSize
     font.weight: root.active ? Font.Bold : Font.Medium

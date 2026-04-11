@@ -153,6 +153,15 @@ Singleton {
   readonly property real opacityLight: 0.15
   readonly property real opacityDivider: 0.3
 
+  // Blur layer: panel background alpha (0-1). Higher = more opaque, better text contrast.
+  readonly property real barBlurAlpha: 0.5
+  readonly property real filterBlurAlpha: 0.6
+  readonly property real settingsBlurAlpha: 0.65
+
+  // Blur layer: child component bg alpha (search pill, selector pill, etc.)
+  readonly property real childBgAlpha: 0.4
+  readonly property real childHoverAlpha: 0.5
+
   // ==================== Animation Duration (ms) ====================
   readonly property int animVeryFast: 100
   readonly property int animFast: 150

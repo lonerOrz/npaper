@@ -88,11 +88,11 @@ Item {
     gradient: Gradient {
       GradientStop {
         position: 0.0
-        color: Qt.lighter(Color.mSurfaceContainerLow, 1.05)
+        color: Qt.rgba(Qt.lighter(Color.mSurfaceContainerLow, 1.05).r, Qt.lighter(Color.mSurfaceContainerLow, 1.05).g, Qt.lighter(Color.mSurfaceContainerLow, 1.05).b, Style.settingsBlurAlpha)
       }
       GradientStop {
         position: 1.0
-        color: Color.mSurfaceContainerLow
+        color: Qt.rgba(Color.mSurfaceContainerLow.r, Color.mSurfaceContainerLow.g, Color.mSurfaceContainerLow.b, Style.settingsBlurAlpha)
       }
     }
     opacity: root._animProgress
@@ -103,8 +103,7 @@ Item {
       radius: Style.settingsRadius
       color: "transparent"
       border.width: 1
-      border.color: Qt.tint(Color.mOutlineVariant, Color.mSurfaceContainerLow)
-      opacity: 0.5
+      border.color: Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.settingsBlurAlpha * 0.5)
     }
   }
 
