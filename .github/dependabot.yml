@@ -1,0 +1,15 @@
+version: 2
+
+updates:
+  - package-ecosystem: "nix"
+    directory: "/"
+    target-branch: "test"
+    schedule:
+      interval: "daily"
+
+    open-pull-requests-limit: 5
+
+    groups:
+      nix-deps:
+        patterns:
+          - "*"
