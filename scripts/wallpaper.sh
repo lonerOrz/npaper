@@ -241,7 +241,7 @@ apply_video_wallpaper() {
             fi
             pkill mpvpaper 2>/dev/null || true
             pkill phonto 2>/dev/null || true
-            mpvpaper -f -p '*' -o "no-audio loop" "$path"
+            mpvpaper -f -p '*' -o "no-audio loop --no-config" "$path"
             ;;
     esac
 }
