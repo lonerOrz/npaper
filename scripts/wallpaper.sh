@@ -222,15 +222,28 @@ apply_image_wallpaper() {
 
 apply_video_wallpaper() {
     local path="$1"
+    local backend="${NPAPER_VIDEO_BACKEND:-mpvpaper}"
 
-    if ! command -v mpvpaper >/dev/null 2>&1; then
-        echo "Error: mpvpaper not installed" >&2
-        exit 1
-    fi
-
-    pkill mpvpaper 2>/dev/null || true
-
-    mpvpaper -f -p '*' -o "no-audio loop" "$path"
+    case "$backend" in
+        phonto)
+            if ! command -v phonto >/dev/null 2>&1; then
+                echo "Error: phonto not installed" >&2
+                exit 1
+            fi
+            pkill mpvpaper 2>/dev/null || true
+            pkill phonto 2>/dev/null || true
+            phonto --scale fill --layer background "$path"
+            ;;
+        mpvpaper|*)
+            if ! command -v mpvpaper >/dev/null 2>&1; then
+                echo "Error: mpvpaper not installed" >&2
+                exit 1
+            fi
+            pkill mpvpaper 2>/dev/null || true
+            pkill phonto 2>/dev/null || true
+            mpvpaper -f -p '*' -o "no-audio loop" "$path"
+            ;;
+    esac
 }
 
 # =============================================================================

@@ -10,6 +10,7 @@ Item {
   property bool hasAwww: false
   property bool hasWlrRandr: false
   property bool hasMpvpaper: false
+  property bool hasPhonto: false
   property bool ready: false
 
   signal allChecked
@@ -36,6 +37,10 @@ Item {
     {
       key: "hasMpvpaper",
       cmd: "command -v mpvpaper >/dev/null 2>&1 && echo OK"
+    },
+    {
+      key: "hasPhonto",
+      cmd: "command -v phonto >/dev/null 2>&1 && echo OK"
     }
   ]
 

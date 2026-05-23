@@ -32,6 +32,7 @@ Singleton {
                                       "cacheDir": "$HOME/.cache/wallpaper_thumbs",
                                       "debugMode": false,
                                       "previewStyle": "carousel",
+                                      "videoBackend": "mpvpaper",
                                       "wallhaven": {
                                         "apiKey": "",
                                         "downloadDir": "",
@@ -171,6 +172,7 @@ Singleton {
       "cacheDir": resolvedData.cacheDir,
       "debugMode": resolvedData.debugMode,
       "previewStyle": resolvedData.previewStyle,
+      "videoBackend": resolvedData.videoBackend,
       "wallhaven": _pick(resolvedData.wallhaven, ["apiKey", "downloadDir", "defaultAtleast", "categories", "purity", "sorting"]),
       "appearance": _pick(resolvedData.appearance, ["showBorderGlow", "showShadow", "showBgPreview", "bgOverlayOpacity"])
     };

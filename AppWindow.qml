@@ -41,6 +41,7 @@ PanelWindow {
   property bool showShadow: Config.data.appearance ? Config.data.appearance.showShadow : true
   property bool showBorderGlow: Config.data.appearance ? Config.data.appearance.showBorderGlow : true
   property real bgOverlayOpacity: Config.data.appearance ? Config.data.appearance.bgOverlayOpacity : 0.4
+  property string videoBackend: Config.data.videoBackend || "mpvpaper"
 
   property int bgSlideDuration: Config.data.animation ? Config.data.animation.bgSlideDuration : Style.defaultBgSlideDuration
   property int bgParallaxFactor: Config.data.animation ? Config.data.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
@@ -435,6 +436,7 @@ PanelWindow {
     showShadow: root.showShadow
     showBgPreview: root.showBgPreview
     bgOverlayOpacity: root.bgOverlayOpacity
+    videoBackend: root.videoBackend
     wallpaperDirs: Config.data.wallpaperDirs
     cacheDir: Config.data.cacheDir
     wallhavenApiKey: Config.data.wallhaven.apiKey
