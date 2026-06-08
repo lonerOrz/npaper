@@ -20,6 +20,8 @@ Item {
   property bool debugMode: false
   property var thumbHashToPath: ({})
 
+  property var cacheService: null
+
   property string currentFolder: ""
   property var folders: []
   property var wallpaperMap: ({})
@@ -32,6 +34,25 @@ Item {
   onCurrentFolderChanged: _updateItems()
   onSearchTextChanged: _updateItems()
   onWallpaperMapChanged: _updateItems()
+  onThumbHashToPathChanged: _updateItems()
+
+  Connections {
+    target: root.cacheService || null
+    function onThumbnailGenerated(path, thumbPath, bgPath, animPath) {
+      let len = root.items.length;
+      for (let i = 0; i < len; i++) {
+        if (root.items[i].path === path) {
+          let updatedItem = Object.assign({}, root.items[i], {
+            thumb: "file://" + thumbPath
+          });
+          let newItems = root.items.slice();
+          newItems[i] = updatedItem;
+          root.items = newItems;
+          break;
+        }
+      }
+    }
+  }
 
   function _updateItems() {
     const folder = root.wallpaperMap[root.currentFolder];
@@ -54,11 +75,24 @@ Item {
   }
 
   function _makeItem(path) {
+    const thumbMap = root.thumbHashToPath || {};
+    const cachedThumb = CacheUtils.getCachedThumb(thumbMap, path);
+    const cachedBg = CacheUtils.getCachedBgPreview(thumbMap, path);
+    let resolvedThumb = "";
+
+    if (cachedThumb) {
+      resolvedThumb = "file://" + cachedThumb;
+    } else if (cachedBg) {
+      resolvedThumb = "file://" + cachedBg;
+    } else if (!FileTypes.isVideoFile(path) && !FileTypes.isGifFile(path)) {
+      resolvedThumb = "file://" + path;
+    }
+
     return {
       id: path,
       type: "local",
       path: path,
-      thumb: path,
+      thumb: resolvedThumb,
       filename: path.split('/').pop(),
       resolution: "",
       fileSize: 0,

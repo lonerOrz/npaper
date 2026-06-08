@@ -144,7 +144,7 @@ Item {
       fillMode: Image.PreserveAspectCrop
       asynchronous: true
       smooth: root.isCenter || root.isRemote
-      mipmap: true
+      mipmap: false
       sourceSize: Qt.size(root.itemWidth, root.itemHeight)
       opacity: status === Image.Ready ? 1.0 : 0.0
       Behavior on opacity {
