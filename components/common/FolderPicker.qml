@@ -31,11 +31,11 @@ Popup {
   function openPicker(startPath) {
     if (startPath) {
       root.selectedPath = startPath;
-      folderModel.folder = "file://" + startPath;
+      folderModel.folder = Qt.resolvedUrl("file://" + startPath);
       currentPath = startPath;
     } else {
       root.selectedPath = root.initialPath;
-      folderModel.folder = "file://" + root.initialPath;
+      folderModel.folder = Qt.resolvedUrl("file://" + root.initialPath);
       currentPath = root.initialPath;
     }
     open();
@@ -45,7 +45,7 @@ Popup {
 
   FolderListModel {
     id: folderModel
-    folder: "file://" + root.currentPath
+    folder: Qt.resolvedUrl("file://" + root.currentPath)
     showDirs: true
     showFiles: false
     showHidden: false
@@ -53,7 +53,7 @@ Popup {
     sortField: FolderListModel.Name
 
     onFolderChanged: {
-      root.currentPath = folder.toString().replace("file://", "");
+      root.currentPath = decodeURIComponent(folder.toString().replace("file://", ""));
     }
   }
 
@@ -62,7 +62,7 @@ Popup {
     id: mkdirProc
     running: false
     onExited: {
-      folderModel.folder = "file://" + root.currentPath;
+      folderModel.folder = Qt.resolvedUrl("file://" + root.currentPath);
     }
   }
 
@@ -71,7 +71,7 @@ Popup {
     id: rmdirProc
     running: false
     onExited: {
-      folderModel.folder = "file://" + root.currentPath;
+      folderModel.folder = Qt.resolvedUrl("file://" + root.currentPath);
     }
   }
 
@@ -153,9 +153,9 @@ Popup {
 
           onClicked: {
             if (index === 0)
-              folderModel.folder = "file://" + folderModel.parentFolder.toString().replace("file://", "");
+              folderModel.folder = Qt.resolvedUrl("file://" + decodeURIComponent(folderModel.parentFolder.toString().replace("file://", "")));
             else if (index === 1) {
-              folderModel.folder = "file://" + Quickshell.env("HOME");
+              folderModel.folder = Qt.resolvedUrl("file://" + Quickshell.env("HOME"));
               root.currentPath = Quickshell.env("HOME");
             } else if (index === 2)
               showNewFolder();
@@ -221,7 +221,7 @@ Popup {
           border.width: Style.borderS
         }
         onAccepted: {
-          folderModel.folder = "file://" + text;
+          folderModel.folder = Qt.resolvedUrl("file://" + text);
           root.currentPath = text;
         }
       }
@@ -326,7 +326,7 @@ Popup {
           onClicked: root.selectedPath = model.filePath
 
           onDoubleClicked: {
-            folderModel.folder = "file://" + model.filePath;
+            folderModel.folder = Qt.resolvedUrl("file://" + model.filePath);
             root.currentPath = model.filePath;
             root.selectedPath = model.filePath;
           }

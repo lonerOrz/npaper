@@ -300,7 +300,7 @@ QtObject {
       return;
     }
 
-    var comp = Qt.createComponent("WallhavenDownloadProc.qml");
+    var comp = Qt.createComponent(Qt.resolvedUrl("WallhavenDownloadProc.qml"));
     if (comp.status !== Component.Ready) {
       console.error("Failed to create download component:", comp.errorString());
       _runningDownloads--;
