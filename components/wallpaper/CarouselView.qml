@@ -195,7 +195,9 @@ FocusScope {
         readonly property real _absOffset: Math.abs(realIndex - scrollController.scrollTarget)
         readonly property real _cos: Math.cos(Math.min(_absOffset, 3) * 0.523599)
         readonly property real _perspScale: 1.0 / (1.0 + _absOffset * root.carouselPerspective)
-        readonly property real _visualScale: _perspScale * (0.85 + _cos * 0.15) + (isCenter ? 0.06 : 0)
+
+        readonly property real _visualScale: _perspScale * (0.85 + _cos * 0.15) + (Math.max(0, 1 - _absOffset) * 0.06)
+
         readonly property real _visualOpacity: _absOffset > 6 ? 0 : Math.pow(Math.max(0, 1 - _absOffset * 0.12), 2.5)
         readonly property real _visualRotationY: (realIndex - scrollController.scrollTarget) * -root.carouselRotation
         readonly property int _visualZ: 100 - _absOffset * 50

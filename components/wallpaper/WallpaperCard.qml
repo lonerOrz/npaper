@@ -43,17 +43,10 @@ Item {
 
   width: itemWidth
   height: itemHeight
-  scale: visualScale * (_isHovered ? 1.03 : 1.0)
+  scale: visualScale
   opacity: visualOpacity
   z: visualZ + (_isHovered ? 15 : 0)
   transformOrigin: Item.Center
-
-  Behavior on scale {
-    NumberAnimation {
-      duration: Style.animNormal
-      easing.type: Easing.OutCubic
-    }
-  }
 
   Behavior on z {
     NumberAnimation {
@@ -120,6 +113,14 @@ Item {
       maskSpreadAtMin: 0.3
     }
 
+    scale: root._isHovered ? 1.03 : 1.0
+    Behavior on scale {
+      NumberAnimation {
+        duration: Style.animNormal
+        easing.type: Easing.OutCubic
+      }
+    }
+
     Rectangle {
       anchors.fill: parent
       color: {
@@ -146,10 +147,11 @@ Item {
       smooth: root.isCenter || root.isRemote
       mipmap: false
       sourceSize: Qt.size(root.itemWidth, root.itemHeight)
-      opacity: status === Image.Ready ? 1.0 : 0.0
+      opacity: status === Image.Ready ? 1.0 : (status === Image.Error ? 0.3 : 0.0)
+
       Behavior on opacity {
         NumberAnimation {
-          duration: Style.animFast
+          duration: 100
         }
       }
 
