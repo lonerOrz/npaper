@@ -12,6 +12,7 @@ import qs.services
 *     onSelected: Config.update("previewStyle", index === 0 ? "carousel" : "grid")
 *   }
 */
+
 Item {
   id: root
 
@@ -34,7 +35,6 @@ Item {
     for (let i = 0; i < _row.children.length; i++) {
       const item = _row.children[i];
       if (item && typeof item._isActive !== "undefined" && item._isActive) {
-        // Map item's top-left to root's coordinate space
         const mapped = item.mapToItem(root, 0, 0);
         _pillX = mapped.x;
         _pillW = item.width;
@@ -48,7 +48,6 @@ Item {
     }
   }
 
-  // Background (optional)
   Rectangle {
     anchors.fill: parent
     radius: Style.barTabHeight / 2
@@ -56,7 +55,6 @@ Item {
     visible: root.hasBg
   }
 
-  // Sliding active indicator
   Rectangle {
     anchors.verticalCenter: parent.verticalCenter
     height: Style.barTabHeight - Style.space2XS
@@ -65,6 +63,16 @@ Item {
     opacity: Style.opacityLight
     x: root._pillX
     width: root._pillW
+
+    Rectangle {
+      anchors.fill: parent
+      radius: parent.radius
+      color: "transparent"
+      border.width: 1
+      border.color: root.activeColor
+      opacity: 0.25
+    }
+
     Behavior on x {
       NumberAnimation {
         duration: Style.animEnter

@@ -31,18 +31,15 @@ Item {
     searchInput.forceActiveFocus();
   }
 
-  // Fixed height, single row
   height: Style.barHeight
   width: contentRow.implicitWidth + Style.space2L
 
-  // ── Background Pill ──────────────────────────────────────
   Rectangle {
     anchors.fill: parent
     radius: Style.barRadius
     color: Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, Style.barBlurAlpha)
   }
 
-  // ── Content Row ──────────────────────────────────────────
   RowLayout {
     id: contentRow
     anchors.verticalCenter: parent.verticalCenter
@@ -51,7 +48,6 @@ Item {
     anchors.margins: Style.barSidePadding
     spacing: Style.barInnerSpacing
 
-    // NixOS Logo
     Image {
       Layout.preferredWidth: Style.barLogoSize
       Layout.preferredHeight: Style.barLogoSize
@@ -74,7 +70,6 @@ Item {
       }
     }
 
-    // Search Input
     Rectangle {
       Layout.alignment: Qt.AlignVCenter
       Layout.minimumWidth: Style.barSearchMinWidth
@@ -82,6 +77,21 @@ Item {
       Layout.preferredHeight: Style.barSearchHeight
       radius: Style.barSearchHeight / 2
       color: Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
+      border.width: searchInput.activeFocus ? 2 : 1
+      border.color: searchInput.activeFocus ? Color.mPrimary : Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, 0.2)
+
+      Behavior on border.color { ColorAnimation { duration: 150 } }
+      Behavior on border.width { NumberAnimation { duration: 150 } }
+
+      Rectangle {
+        anchors.fill: parent
+        anchors.margins: -2
+        radius: parent.radius + 2
+        color: Color.mPrimary
+        opacity: searchInput.activeFocus ? 0.08 : 0
+        visible: opacity > 0.01
+        Behavior on opacity { NumberAnimation { duration: 150 } }
+      }
 
       TextInput {
         id: searchInput
@@ -126,7 +136,6 @@ Item {
       }
     }
 
-    // View Mode Pill
     SelectorPill {
       model: ["Carousel", "Grid"]
       activeIndex: Config.previewStyle === "grid" ? 1 : 0
@@ -135,7 +144,6 @@ Item {
       }
     }
 
-    // Divider
     Rectangle {
       Layout.preferredWidth: Style.borderS
       Layout.preferredHeight: Style.barDividerHeight
@@ -143,7 +151,6 @@ Item {
       opacity: Style.opacityDivider
     }
 
-    // Folder Tabs
     SelectorPill {
       model: root.folders
       activeIndex: root.folders.indexOf(root.activeFolder)
@@ -154,7 +161,6 @@ Item {
       }
     }
 
-    // Wallhaven Button
     MouseArea {
       Layout.preferredWidth: Style.barSettingsBtnWidth
       Layout.preferredHeight: Style.barSettingsBtnHeight
@@ -177,7 +183,6 @@ Item {
 
       Text {
         anchors.centerIn: parent
-        // fa-globe when on Wallhaven, fa-picture when local
         text: root.isWallhaven ? "\uf0ac" : "\uf03e"
         font.pixelSize: Style.barSettingsIconSize
         font.family: "Symbols Nerd Font"
@@ -185,7 +190,6 @@ Item {
       }
     }
 
-    // Info Text
     Text {
       Layout.alignment: Qt.AlignVCenter
       text: root.wallpaperCount + " / " + root.cachedCount
@@ -193,7 +197,6 @@ Item {
       font.pixelSize: Style.barInfoFontSize
     }
 
-    // Queue Count
     Text {
       Layout.alignment: Qt.AlignVCenter
       text: root.queueCount > 0 ? "\uf251 " + root.queueCount : ""
@@ -203,7 +206,6 @@ Item {
       visible: root.queueCount > 0
     }
 
-    // Settings Button
     MouseArea {
       Layout.preferredWidth: Style.barSettingsBtnWidth
       Layout.preferredHeight: Style.barSettingsBtnHeight

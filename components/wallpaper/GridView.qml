@@ -8,21 +8,16 @@ import qs.services
 
 FocusScope {
   id: root
+  clip: true
 
-  readonly property var adapter: ServiceLocator.adapter
-  readonly property var cacheService: ServiceLocator.cacheService
+  property var adapter: null
+  property var cacheService: null
   readonly property var whService: root.adapter ? root.adapter.whService : null
 
   property bool gridScrollActive: false
 
-  // Wallhaven infinite scroll state
   property bool _whLoadingMore: false
 
-  // Wallhaven infinite scroll: use a ListModel for remote mode
-  // so the model reference stays stable (no scroll reset on loadMore).
-  // We append empty objects ({}) to match whService.results.length.
-  // The delegate reads actual data from whService.results[index],
-  // so the ListModel acts only as a row count placeholder.
   ListModel {
     id: remoteResultsModel
   }
@@ -39,12 +34,9 @@ FocusScope {
       var isNewSearch = (total < remoteResultsModel.count) || (root.whService.currentPage === 1);
       if (isNewSearch) {
         remoteResultsModel.clear();
-        var toAdd = total - remoteResultsModel.count;
-        if (toAdd > 0) {
-          var batch = [];
-          for (var i = 0; i < toAdd; i++)
-            batch.push({});
-          remoteResultsModel.append(batch);
+        var toAdd = total;
+        for (var i = 0; i < toAdd; i++) {
+          remoteResultsModel.append(root.whService.results[i]);
         }
         Qt.callLater(function () {
           thumbGridView.positionViewAtBeginning();
@@ -55,10 +47,10 @@ FocusScope {
         if (toAdd2 > 0) {
           var savedY = thumbGridView.contentY;
           thumbGridView._modelChanging = true;
-          var batch2 = [];
-          for (var j = 0; j < toAdd2; j++)
-            batch2.push({});
-          remoteResultsModel.append(batch2);
+          var startIdx = remoteResultsModel.count;
+          for (var j = startIdx; j < total; j++) {
+            remoteResultsModel.append(root.whService.results[j]);
+          }
           thumbGridView.contentY = savedY;
           Qt.callLater(function () {
             thumbGridView._modelChanging = false;
@@ -75,10 +67,10 @@ FocusScope {
       if (root.adapter && root.adapter.currentSource === "remote") {
         remoteResultsModel.clear();
         if (root.whService && root.whService.results && root.whService.results.length > 0) {
-          var batch = [];
-          for (var i = 0; i < root.whService.results.length; i++)
-            batch.push({});
-          remoteResultsModel.append(batch);
+          var len = root.whService.results.length;
+          for (var i = 0; i < len; i++) {
+            remoteResultsModel.append(root.whService.results[i]);
+          }
         }
         remoteResultsConn.enabled = true;
       } else {
@@ -88,15 +80,13 @@ FocusScope {
     }
   }
 
-  // Initialize remoteResultsModel on component creation (for view mode switches)
   Component.onCompleted: {
     if (root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.results) {
       var total = root.whService.results.length;
       if (total > 0) {
-        var batch = [];
-        for (var i = 0; i < total; i++)
-          batch.push({});
-        remoteResultsModel.append(batch);
+        for (var i = 0; i < total; i++) {
+          remoteResultsModel.append(root.whService.results[i]);
+        }
       }
     }
   }
@@ -179,6 +169,8 @@ FocusScope {
     model: (root.adapter && root.adapter.currentSource === "remote") ? remoteResultsModel : (root.adapter ? root.adapter.items : null)
     clip: false
 
+    cacheBuffer: cellHeight * 3
+
     Behavior on width {
       NumberAnimation {
         duration: Style.animNormal
@@ -208,7 +200,6 @@ FocusScope {
     highlightMoveDuration: Style.animNormal
     highlight: Item {}
 
-    // Track contentY so we can restore it after model changes
     property real _savedContentY: 0
     property bool _modelChanging: false
 
@@ -224,18 +215,14 @@ FocusScope {
       }
     }
 
-    // When model reference changes (e.g. local ↔ remote switch), restore scroll
     onModelChanged: {
       _modelChanging = true;
-      var savedY = _savedContentY;
       Qt.callLater(function () {
-        thumbGridView.contentY = savedY;
+        thumbGridView.contentY = thumbGridView._savedContentY;
         _modelChanging = false;
       });
     }
 
-    // Auto-load more Wallhaven results when scrolled to bottom
-    // Use a debounced check to avoid triggering during animation
     Timer {
       id: _whLoadMoreTimer
       interval: 300
@@ -367,14 +354,18 @@ FocusScope {
       required property int index
       property var modelData: null
 
+      HoverHandler {
+        id: gridItemHover
+      }
+
+      readonly property bool isCurrent: GridView.isCurrentItem
+      readonly property bool isHovered: gridItemHover.hovered
+
       function _resolveItem() {
-        if (root.adapter && root.adapter.currentSource === "remote") {
-          if (root.whService && root.whService.results && index < root.whService.results.length)
-            return root.whService.results[index];
-          return null;
-        }
         var m = thumbGridView.model;
-        return (m && index < m.length) ? m[index] : null;
+        if (m && index >= 0 && index < m.count)
+          return m.get(index);
+        return null;
       }
 
       Component.onCompleted: {
@@ -384,16 +375,12 @@ FocusScope {
         gridItem.modelData = gridItem._resolveItem();
       }
 
-      // Refresh data when remote results change (infinite scroll append)
       Connections {
         target: root.whService
         function onResultsUpdated() {
           gridItem.modelData = gridItem._resolveItem();
         }
       }
-
-      readonly property bool isCurrent: GridView.isCurrentItem
-      readonly property bool isHovered: itemMouse.containsMouse
 
       scale: isCurrent ? 1.05 : 1.0
       z: isCurrent ? 20 : 0
@@ -512,19 +499,13 @@ FocusScope {
         Image {
           id: thumbImage
           anchors.fill: parent
-          source: {
-            if (!gridItem.modelData)
-              return "";
-            if (root.adapter && root.adapter.currentSource === "remote")
-              return gridItem.modelData.thumbLarge || gridItem.modelData.thumb || "";
-            return CacheUtils.getStaticThumbSource(root.cacheService ? root.cacheService.thumbHashToPath : {}, gridItem.modelData);
-          }
+          source: gridItem.modelData ? (gridItem.modelData.thumbLarge || gridItem.modelData.thumb || "") : ""
           visible: source !== ""
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
           cache: true
           smooth: true
-          mipmap: true
+          mipmap: false
           sourceSize: Qt.size(root._gridCellW, root._gridCellH)
           opacity: status === Image.Ready ? 1.0 : (status === Image.Error ? 0.3 : 0.0)
 
@@ -537,7 +518,7 @@ FocusScope {
           }
           Behavior on opacity {
             NumberAnimation {
-              duration: Style.animFast
+              duration: 100
             }
           }
         }
@@ -563,7 +544,6 @@ FocusScope {
         }
       }
 
-      // Download indicator for remote items (only shown if not yet downloaded)
       readonly property bool _needsDownload: {
         if (!(root.adapter && root.adapter.currentSource === "remote"))
           return false;
@@ -598,6 +578,7 @@ FocusScope {
         anchors.fill: parent
         radius: Style.radiusL
         color: "transparent"
+        z: 20
         border.color: {
           if (gridItem.isCurrent)
             return Color.mPrimary;
@@ -620,7 +601,6 @@ FocusScope {
         }
       }
 
-      // Wallhaven download overlay
       Rectangle {
         anchors.fill: parent
         radius: Style.radiusL
@@ -653,10 +633,32 @@ FocusScope {
         }
       }
 
+      Rectangle {
+        anchors.fill: parent
+        radius: Style.radiusL
+        color: "transparent"
+        visible: root.adapter && root.adapter.currentSource === "local" && !!gridItem.modelData
+        opacity: gridItem.isHovered ? 1 : 0
+        z: 15
+
+        Behavior on opacity {
+          NumberAnimation {
+            duration: Style.animFast
+          }
+        }
+
+        LocalOverlay {
+          opacity: parent.opacity
+          wallpaperPath: gridItem.modelData ? gridItem.modelData.path : ""
+          itemIndex: index
+        }
+      }
+
       MouseArea {
         id: itemMouse
         anchors.fill: parent
         hoverEnabled: true
+        z: 1
         cursorShape: Qt.PointingHandCursor
         onEntered: {
           thumbGridView.currentIndex = gridItem.index;
@@ -761,7 +763,6 @@ FocusScope {
     anchors.horizontalCenter: parent.horizontalCenter
     radius: Style.radiusRound
     color: Color.mSurfaceContainer
-    opacity: 0.85
 
     Text {
       anchors.centerIn: parent

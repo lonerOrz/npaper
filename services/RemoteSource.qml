@@ -7,15 +7,16 @@ import qs.services
 * Outputs unified items:
 *   { id, type:"remote", path, thumb, filename, resolution, fileSize, isVideo, isGif }
 */
+
 Item {
   id: root
 
   required property var whService
   property string wallpaperDir: ""
 
-  // Unified item list from Wallhaven results
-  // Use a mutable property updated by signal to ensure reactivity
   property var items: []
+
+  signal applyLocal(string path)
 
   Connections {
     target: root.whService
@@ -39,10 +40,8 @@ Item {
     return {
       id: "wallhaven-" + safeId,
       type: "remote",
-      path: r.path || ""        // remote path for download
-            ,
-      thumb: r.thumbLarge || "" // direct URL to thumbnail
-             ,
+      path: r.path || "",
+      thumb: r.thumbLarge || "",
       filename: "wallhaven-" + safeId + (r.resolution ? " (" + r.resolution + ")" : ""),
       resolution: r.resolution || "",
       fileSize: r.filesize || 0,
@@ -54,7 +53,6 @@ Item {
   function search(query) {
     if (!root.whService)
       return;
-    // Guard: prevent empty searches
     if (!query || query.trim().length === 0) {
       Logger.w("RemoteSource", "Empty search query ignored");
       return;
@@ -69,12 +67,10 @@ Item {
     root.whService.results = [];
   }
 
-  // Download and apply a remote wallpaper
   function apply(item) {
     if (!root.whService || !item || item.type !== "remote")
       return;
     var safeId = item.id.replace(/[^a-zA-Z0-9-]/g, "");
-    // Extract actual extension from URL
     var ext = "jpg";
     if (item.path && item.path.indexOf(".") !== -1) {
       var parts = item.path.split(".");
@@ -85,7 +81,7 @@ Item {
     var localPath = root.wallpaperDir + "/" + safeId + "." + ext;
     root.whService.downloadWallpaper(safeId, item.path);
     var startTime = new Date().getTime();
-    var timeoutMs = 30000; // 30 seconds
+    var timeoutMs = 30000;
     var checkDone = function () {
       var elapsed = new Date().getTime() - startTime;
       if (elapsed > timeoutMs) {
@@ -106,10 +102,6 @@ Item {
   }
 
   function _applyLocal(path) {
-    // This will be connected by the Adapter via a callback
-    if (root._onApply)
-      root._onApply(path);
+    root.applyLocal(path);
   }
-
-  property var _onApply: null
 }

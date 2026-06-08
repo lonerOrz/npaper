@@ -24,6 +24,7 @@ Item {
   property bool showShadow: true
   property bool showBgPreview: true
   property real bgOverlayOpacity: 0.4
+  property string videoBackend: "mpvpaper"
   property string wallhavenApiKey: ""
   property string wallhavenDownloadDir: ""
   property string wallhavenCategories: "111"
@@ -186,6 +187,10 @@ Item {
             label: "Wallhaven"
           },
           {
+            key: "video",
+            label: "Video"
+          },
+          {
             key: "appearance",
             label: "Appearance"
           }
@@ -249,7 +254,7 @@ Item {
     property bool scrollActive: false
 
     contentWidth: width
-    contentHeight: Math.max(pathsColumn.implicitHeight, wallhavenColumn.implicitHeight, appearanceColumn.implicitHeight) + Style.settingsPadding * 2
+    contentHeight: Math.max(pathsColumn.implicitHeight, wallhavenColumn.implicitHeight, videoColumn.implicitHeight, appearanceColumn.implicitHeight) + Style.settingsPadding * 2
     boundsBehavior: Flickable.StopAtBounds
     flickableDirection: Flickable.VerticalFlick
 
@@ -722,6 +727,50 @@ Item {
             p[2] = val ? "1" : "0";
             root._emit("wallhaven.purity", p.join(""));
           }
+        }
+      }
+    }
+
+    // ── Video tab ───────────────────────────────────────
+    Column {
+      id: videoColumn
+      anchors.top: parent.top
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.margins: Style.settingsPadding
+      spacing: Style.settingsContentSpacing + 2
+      visible: root.activeTab === "video"
+
+      // Engine section header
+      Row {
+        width: parent.width
+        spacing: Style.spaceM
+
+        Text {
+          id: _engineHeader
+          text: "ENGINE"
+          color: Color.mOutline
+          font.pixelSize: Style.fontXS + 1
+          font.weight: Font.Bold
+          font.letterSpacing: 2
+        }
+
+        Rectangle {
+          width: parent.width - _engineHeader.implicitWidth - Style.spaceM
+          height: 1
+          anchors.verticalCenter: _engineHeader.verticalCenter
+          color: Color.mOutlineVariant
+          opacity: 0.3
+        }
+      }
+
+      SettingsCombo {
+        width: parent.width
+        label: "Video Backend"
+        value: root.videoBackend
+        items: ["mpvpaper", "phonto"]
+        onSelect: function (v) {
+          root._emit("videoBackend", v);
         }
       }
     }

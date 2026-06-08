@@ -41,6 +41,7 @@ PanelWindow {
   property bool showShadow: Config.data.appearance ? Config.data.appearance.showShadow : true
   property bool showBorderGlow: Config.data.appearance ? Config.data.appearance.showBorderGlow : true
   property real bgOverlayOpacity: Config.data.appearance ? Config.data.appearance.bgOverlayOpacity : 0.4
+  property string videoBackend: Config.data.videoBackend || "mpvpaper"
 
   property int bgSlideDuration: Config.data.animation ? Config.data.animation.bgSlideDuration : Style.defaultBgSlideDuration
   property int bgParallaxFactor: Config.data.animation ? Config.data.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
@@ -51,12 +52,6 @@ PanelWindow {
   property var _blurRoot: null
 
   property int bgCurrent: -1
-  property int bgPrevious: -1
-  property real bgSlideProgress: 0.0
-  property string _bgSourceA: ""
-  property string _bgSourceB: ""
-
-  // ========== Logic ==========
 
   Component.onCompleted: {
     Style.uiScaleRatio = screen.height / 1080;
@@ -70,7 +65,6 @@ PanelWindow {
       adapter.load();
     }
 
-    // ── Status Bar Blur ──
     if (BlurService.available) {
       Qt.callLater(_initAllBlur);
     }
@@ -80,7 +74,6 @@ PanelWindow {
     if (!BlurService.available)
       return;
     try {
-      // Build a single Region tree with all panels as children
       const qml = `
         import Quickshell
         Region {
@@ -100,75 +93,13 @@ PanelWindow {
   Connections {
     target: displayManager
     function onCurrentIndexChanged() {
-      updateBackground(displayManager.currentIndex);
+      bgUpdateDebounce.restart();
     }
   }
 
   onBgCurrentChanged: {
-    updateSourceA();
-  }
-  onBgPreviousChanged: {
-    updateSourceB();
-  }
-
-  function updateSourceA() {
-    if (bgCurrent >= 0 && bgCurrent < (adapter ? adapter.items.length : 0)) {
+    if (bgCurrent >= 0 && adapter && bgCurrent < adapter.items.length) {
       const item = adapter.items[bgCurrent];
-      if (!item)
-        return;
-      if (item.type === "local") {
-        const p = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, item.path);
-        if (p) {
-          _bgSourceA = "file://" + p;
-        } else if (!item.isVideo && !item.isGif) {
-          _bgSourceA = "file://" + item.path;
-        } else {
-          _bgSourceA = "";
-        }
-      } else if (item.type === "remote" && item.thumb) {
-        _bgSourceA = item.thumb;
-      }
-    }
-  }
-
-  function updateSourceB() {
-    if (bgPrevious >= 0 && bgPrevious < (adapter ? adapter.items.length : 0)) {
-      const item = adapter.items[bgPrevious];
-      if (!item)
-        return;
-      if (item.type === "local") {
-        const p = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, item.path);
-        if (p) {
-          _bgSourceB = "file://" + p;
-        } else if (!item.isVideo && !item.isGif) {
-          _bgSourceB = "file://" + item.path;
-        } else {
-          _bgSourceB = "";
-        }
-      } else if (item.type === "remote" && item.thumb) {
-        _bgSourceB = item.thumb;
-      }
-    }
-  }
-
-  // Refresh background sources when cache is updated (new _bg.png generated)
-  Connections {
-    target: cacheService
-    function onThumbCacheVersionChanged() {
-      if (bgCurrent >= 0)
-        updateSourceA();
-      if (bgPrevious >= 0)
-        updateSourceB();
-    }
-  }
-
-  function updateBackground(index) {
-    if (index !== bgCurrent && index >= 0 && index < (adapter ? adapter.items.length : 0)) {
-      bgPrevious = bgCurrent;
-      bgCurrent = index;
-      bgSlideProgress = 0;
-      bgSlideAnim.restart();
-      const item = adapter.items[index];
       if (item && item.type === "local")
         colorExtractor.run(item.path);
       else
@@ -181,8 +112,8 @@ PanelWindow {
       adapter.setSearch(root.searchText);
     if (root.searchText) {
       displayManager.scrollTo(0);
+      bgCurrent = -1;
       bgCurrent = 0;
-      bgSlideProgress = 1.0;
       if (adapter.items.length > 0) {
         const item = adapter.items[0];
         if (item.type === "local")
@@ -203,11 +134,9 @@ PanelWindow {
     Qt.callLater(function () {
       displayManager.queueVisibleThumbnails();
     });
-    bgPrevious = -1;
     bgCurrent = -1;
-    bgSlideProgress = 1.0;
+    bgCurrent = 0;
     if (adapter && adapter.items.length > 0) {
-      bgCurrent = 0;
       const item = adapter.items[0];
       if (item.type === "local")
         colorExtractor.run(item.path);
@@ -217,7 +146,6 @@ PanelWindow {
   function switchFolder(folder) {
     if (adapter) {
       adapter.switchFolder(folder);
-      // Qt.callLater ensures adapter.items has fully updated before reset
       Qt.callLater(applyFolderSelection);
     }
   }
@@ -244,8 +172,6 @@ PanelWindow {
     switchFolder(fs[prevIdx]);
   }
 
-  // ========== Components ==========
-
   DisplayManager {
     id: displayManager
     anchors.fill: parent
@@ -254,6 +180,11 @@ PanelWindow {
     z: 1
 
     displayMode: Config.previewStyle
+
+    adapter: root.adapter
+    cacheService: root.cacheService
+    wallpaperApplier: root.wallpaperApplier
+    checkService: root.checkService
 
     onRequestQuit: {
       if (root.settingsOpen) {
@@ -296,16 +227,6 @@ PanelWindow {
     onRequestRefresh: refreshCache()
   }
 
-  PropertyAnimation {
-    id: bgSlideAnim
-    target: root
-    properties: "bgSlideProgress"
-    from: 0
-    to: 1.0
-    duration: root.bgSlideDuration
-    easing.type: Style.easingOutQuad
-  }
-
   ColorExtractor {
     id: colorExtractor
     thumbHashToPath: cacheService ? cacheService.thumbHashToPath : ({})
@@ -319,20 +240,27 @@ PanelWindow {
     onTriggered: _doSearch()
   }
 
-  // ========== UI ==========
+  Timer {
+    id: bgUpdateDebounce
+    interval: 150
+    repeat: false
+    onTriggered: {
+      if (displayManager.currentIndex >= 0 && displayManager.currentIndex < (adapter ? adapter.items.length : 0)) {
+        root.bgCurrent = displayManager.currentIndex;
+      }
+    }
+  }
 
   BackgroundManager {
     anchors.fill: parent
-    sourceA: _bgSourceA
-    sourceB: _bgSourceB
-    crossfadeProgress: bgSlideProgress
+    currentWallpaperItem: (root.bgCurrent >= 0 && adapter && root.bgCurrent < adapter.items.length) ? adapter.items[root.bgCurrent] : null
     parallaxX: displayManager.contentOffset * bgParallaxFactor
     dominantColor: root.dominantColor
     overlayOpacity: root.bgOverlayOpacity
     showPreview: root.showBgPreview
+    slideDuration: root.bgSlideDuration
   }
 
-  // ========== StatusBar ==========
   StatusBar {
     id: statusBar
     anchors.top: parent.top
@@ -385,7 +313,6 @@ PanelWindow {
     }
   }
 
-  // Wallhaven Filter Panel (Separate from StatusBar)
   property var _whResultsConn: null
   property var _whDlAppliedConn: null
 
@@ -435,6 +362,7 @@ PanelWindow {
     showShadow: root.showShadow
     showBgPreview: root.showBgPreview
     bgOverlayOpacity: root.bgOverlayOpacity
+    videoBackend: root.videoBackend
     wallpaperDirs: Config.data.wallpaperDirs
     cacheDir: Config.data.cacheDir
     wallhavenApiKey: Config.data.wallhaven.apiKey

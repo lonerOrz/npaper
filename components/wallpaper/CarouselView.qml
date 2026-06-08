@@ -6,9 +6,9 @@ import qs.services
 FocusScope {
   id: root
 
-  readonly property var adapter: ServiceLocator.adapter
-  readonly property var cacheService: ServiceLocator.cacheService
-  readonly property var checkService: ServiceLocator.checks
+  property var adapter: null
+  property var cacheService: null
+  property var checkService: null
   readonly property var whService: root.adapter ? root.adapter.whService : null
 
   property int carouselSpacing: 20
@@ -51,8 +51,12 @@ FocusScope {
   function queueVisibleThumbnails() {
     if (!root.adapter || !root.cacheService)
       return;
-    for (let i = root.baseIndex; i <= root.maxIndex && i < root.adapter.items.length; i++) {
-      const item = root.adapter.items[i];
+    var items = root.adapter.items;
+    if (!items)
+      return;
+    var count = items.count !== undefined ? items.count : items.length;
+    for (let i = root.baseIndex; i <= root.maxIndex && i < count; i++) {
+      const item = items.get !== undefined ? items.get(i) : items[i];
       if (item && item.type === "local")
         root.cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
     }
@@ -84,7 +88,6 @@ FocusScope {
     property real centerX: width / 2
     property real centerY: height / 2
 
-    // ── Mouse wheel scrolling ──
     MouseArea {
       anchors.fill: parent
       propagateComposedEvents: true
@@ -134,10 +137,14 @@ FocusScope {
         return;
       }
       if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        if (root.adapter && root.adapter.items.length > 0) {
-          var item = root.adapter.items[root.currentIndex];
-          if (item)
-            root.adapter.smartApply(item);
+        if (root.adapter && root.adapter.items) {
+          var items = root.adapter.items;
+          var count = items.count !== undefined ? items.count : items.length;
+          if (count > 0) {
+            var item = items.get !== undefined ? items.get(root.currentIndex) : items[root.currentIndex];
+            if (item)
+              root.adapter.smartApply(item);
+          }
         }
         event.accepted = true;
         return;
@@ -145,7 +152,6 @@ FocusScope {
       if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
         const dir = event.key === Qt.Key_Left ? -1 : 1;
         event.modifiers & Qt.ShiftModifier ? (dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight()) : (dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight());
-        // Auto-load more when scrolling right at the end (Wallhaven remote mode)
         if (dir === 1 && root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.hasMore && !root.whService.loading && root.maxIndex >= root.adapter.count - 2) {
           root.whService.loadMore();
         }
@@ -178,7 +184,15 @@ FocusScope {
         required property int index
         property int realIndex: scrollController.baseIndex + index
 
-        readonly property var _item: realIndex < (root.adapter ? root.adapter.items.length : 0) ? root.adapter.items[realIndex] : null
+        readonly property var _item: {
+          if (!root.adapter || !root.adapter.items) return null;
+          var items = root.adapter.items;
+          var count = items.count !== undefined ? items.count : items.length;
+          if (realIndex >= 0 && realIndex < count) {
+            return items.get !== undefined ? items.get(realIndex) : items[realIndex];
+          }
+          return null;
+        }
         wallpaperPath: _item ? (_item.type === "remote" ? _item.thumb : _item.path) : ""
         filename: _item ? _item.filename : ""
         isVideo: _item ? _item.isVideo : false
@@ -191,11 +205,14 @@ FocusScope {
         showShadow: root.showShadow
         downloadPath: _item && _item.type === "remote" ? _item.path : ""
 
-        // Pre-computed visual values to avoid JS object re-creation per frame
+        thumbHashToPath: root.cacheService ? root.cacheService.thumbHashToPath : ({})
+        whService: root.whService
+        itemIndex: realIndex
+
         readonly property real _absOffset: Math.abs(realIndex - scrollController.scrollTarget)
         readonly property real _cos: Math.cos(Math.min(_absOffset, 3) * 0.523599)
         readonly property real _perspScale: 1.0 / (1.0 + _absOffset * root.carouselPerspective)
-        readonly property real _visualScale: _perspScale * (0.85 + _cos * 0.15) + (isCenter ? 0.06 : 0)
+        readonly property real _visualScale: _perspScale * (0.85 + _cos * 0.15) + (Math.max(0, 1 - _absOffset) * 0.06)
         readonly property real _visualOpacity: _absOffset > 6 ? 0 : Math.pow(Math.max(0, 1 - _absOffset * 0.12), 2.5)
         readonly property real _visualRotationY: (realIndex - scrollController.scrollTarget) * -root.carouselRotation
         readonly property int _visualZ: 100 - _absOffset * 50
@@ -225,7 +242,6 @@ FocusScope {
       anchors.horizontalCenter: parent.horizontalCenter
       radius: Style.radiusRound
       color: Color.mSurfaceContainer
-      opacity: 0.85
 
       Text {
         anchors.centerIn: parent

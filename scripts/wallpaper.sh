@@ -37,31 +37,17 @@
 
 set -euo pipefail
 
-# =============================================================================
-# Configuration
-# =============================================================================
-
-# Wallpaper directories: pipe-delimited list from env, or default
-readonly _WP_DIRS_RAW="${NPAPER_WALLPAPER_DIRS:-$HOME/Pictures/wallpapers}"
+_WP_DIRS_RAW="${NPAPER_WALLPAPER_DIRS:-$HOME/Pictures/wallpapers}"
 mapfile -t WALLPAPER_DIRS < <(echo "$_WP_DIRS_RAW" | tr '|' '\n')
 
-# awww transition settings
 readonly AWWW_TRANSITION_TYPE="fade"
 readonly AWWW_TRANSITION_DURATION="0.5"
 readonly AWWW_TRANSITION_FPS="60"
 readonly AWWW_RESIZE="crop"
 readonly AWWW_FILTER="Lanczos3"
 
-# =============================================================================
-# Global Variables
-# =============================================================================
-
 declare -a WALLPAPER_FILES=()
 declare -a WALLPAPER_FOLDERS=()
-
-# =============================================================================
-# Collect Wallpapers
-# =============================================================================
 
 collect_wallpapers() {
     local -a tmp_files=()
@@ -87,14 +73,9 @@ collect_wallpapers() {
     done
 
     if (( ${#tmp_files[@]} > 0 )); then
-        # Deduplicate while preserving order (by directory sequence)
         mapfile -t WALLPAPER_FILES < <(printf '%s\n' "${tmp_files[@]}" | awk '!seen[$0]++')
     fi
 
-    # Collect folder names in WALLPAPER_DIRS order
-    # For root files: use directory basename
-    # For subfolder files: use subfolder name
-    # Maintain order: root folders first (by config order), then subfolders (alphabetical)
     local -A seen_folders=()
     local -a root_folders=()
     local -a sub_folders=()
@@ -104,14 +85,12 @@ collect_wallpapers() {
             if [[ "$file" == "$canonical_dir"/* ]]; then
                 rel_path="${file#$canonical_dir/}"
                 folder_name="${rel_path%%/*}"
-                # If file is directly in root (no subdirectory), use directory basename as folder
                 if [[ "$folder_name" == "$rel_path" ]]; then
-                    folder_name=$(basename "$canonical_dir")
+                    folder_name="${canonical_dir##*/}"
                 fi
-                # Track root folders in config order
                 if [[ -z "${seen_folders[$folder_name]+x}" ]]; then
                     seen_folders["$folder_name"]=1
-                    if [[ "$folder_name" == "$(basename "$canonical_dir")" ]]; then
+                    if [[ "$folder_name" == "${canonical_dir##*/}" ]]; then
                         root_folders+=("$folder_name")
                     else
                         sub_folders+=("$folder_name")
@@ -122,20 +101,13 @@ collect_wallpapers() {
         done
     done
 
-    # Sort sub-folders alphabetically
     local -a sorted_sub=()
     if (( ${#sub_folders[@]} > 0 )); then
         mapfile -t sorted_sub < <(printf '%s\n' "${sub_folders[@]}" | sort)
     fi
 
-    # Final order: root folders (by config order) + sorted sub-folders
     WALLPAPER_FOLDERS=("${root_folders[@]}" "${sorted_sub[@]}")
 }
-
-# =============================================================================
-# Collect Wallpapers with folder info
-# Output format: folder_name|full_path
-# =============================================================================
 
 collect_wallpapers_with_folder() {
     collect_wallpapers
@@ -151,9 +123,8 @@ collect_wallpapers_with_folder() {
             if [[ "$file" == "$canonical_dir"/* ]]; then
                 rel_path="${file#$canonical_dir/}"
                 folder_name="${rel_path%%/*}"
-                # If file is directly in root (no subdirectory), use directory basename as folder
                 if [[ "$folder_name" == "$rel_path" ]]; then
-                    folder_name=$(basename "$canonical_dir")
+                    folder_name="${canonical_dir##*/}"
                 fi
                 echo "${folder_name}|${file}"
                 break
@@ -161,10 +132,6 @@ collect_wallpapers_with_folder() {
         done
     done
 }
-
-# =============================================================================
-# Ensure awww Daemon Running
-# =============================================================================
 
 ensure_awww() {
     if awww query >/dev/null 2>&1; then
@@ -183,10 +150,6 @@ ensure_awww() {
 
     echo "Warning: awww daemon may not be running" >&2
 }
-
-# =============================================================================
-# Apply Image Wallpaper
-# =============================================================================
 
 apply_image_wallpaper() {
     local path="$1"
@@ -216,26 +179,31 @@ apply_image_wallpaper() {
     fi
 }
 
-# =============================================================================
-# Apply Video Wallpaper
-# =============================================================================
-
 apply_video_wallpaper() {
     local path="$1"
+    local backend="${NPAPER_VIDEO_BACKEND:-mpvpaper}"
 
-    if ! command -v mpvpaper >/dev/null 2>&1; then
-        echo "Error: mpvpaper not installed" >&2
-        exit 1
-    fi
-
-    pkill mpvpaper 2>/dev/null || true
-
-    mpvpaper -f -p '*' -o "no-audio loop" "$path"
+    case "$backend" in
+        phonto)
+            if ! command -v phonto >/dev/null 2>&1; then
+                echo "Error: phonto not installed" >&2
+                exit 1
+            fi
+            pkill mpvpaper 2>/dev/null || true
+            pkill phonto 2>/dev/null || true
+            phonto --scale fill --layer background "$path"
+            ;;
+        mpvpaper|*)
+            if ! command -v mpvpaper >/dev/null 2>&1; then
+                echo "Error: mpvpaper not installed" >&2
+                exit 1
+            fi
+            pkill mpvpaper 2>/dev/null || true
+            pkill phonto 2>/dev/null || true
+            mpvpaper -f -p '*' -o "no-audio loop --no-config" "$path"
+            ;;
+    esac
 }
-
-# =============================================================================
-# Apply Wallpaper (Auto-detect type)
-# =============================================================================
 
 apply_wallpaper() {
     local path="$1"
@@ -249,10 +217,6 @@ apply_wallpaper() {
     fi
 }
 
-# =============================================================================
-# Commands
-# =============================================================================
-
 cmd_list() {
     collect_wallpapers
 
@@ -262,12 +226,10 @@ cmd_list() {
     done
 }
 
-# Output wallpapers with folder info: folder_name|full_path
 cmd_list_with_folder() {
     collect_wallpapers_with_folder
 }
 
-# Output folder names, one per line
 cmd_list_folders() {
     collect_wallpapers
 
@@ -296,7 +258,6 @@ cmd_apply() {
 
     apply_wallpaper "$file"
 
-    # Execute config.sh with the wallpaper path if it exists in the same directory
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local config_script="$script_dir/config.sh"
@@ -324,10 +285,6 @@ Supported formats:
   Videos: MP4, MKV, MOV, WEBM
 EOF
 }
-
-# =============================================================================
-# Main
-# =============================================================================
 
 main() {
     local mode=""

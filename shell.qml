@@ -80,6 +80,7 @@ ShellRoot {
         id: wallpaperApplier
         dirs: Config.data.wallpaperDirs
         scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
+        videoBackend: Config.data.videoBackend || "mpvpaper"
       }
 
       // Computed wallpaper dirs: user dirs + wallhaven download dir (if configured)

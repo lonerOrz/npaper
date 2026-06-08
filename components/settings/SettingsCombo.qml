@@ -4,7 +4,7 @@ import qs.services
 
 /*
 * SettingsCombo — labeled dropdown selector.
-* Enhanced with better visual hierarchy and menu styling.
+* Uses Popup + ListView for reliable dropdown behavior with scroll support.
 *
 * Usage:
 *   SettingsCombo {
@@ -28,13 +28,13 @@ Column {
   Text {
     width: parent.width
     text: root.label
-    color: Color.mOutline
-    font.pixelSize: Style.fontXS + 1
+    color: Color.mOnSurfaceVariant
+    font.pixelSize: Style.fontXS
     font.weight: Font.Medium
-    font.letterSpacing: 1.2
   }
 
   Rectangle {
+    id: displayRect
     width: parent.width
     height: Style.barSearchHeight + 6
     radius: Style.barRadius + 2
@@ -77,7 +77,7 @@ Column {
       width: 12
       height: 12
       radius: 2
-      rotation: comboPopup.visible ? 180 : 0
+      rotation: comboPopup.opened ? 180 : 0
       color: "transparent"
 
       Canvas {
@@ -112,14 +112,22 @@ Column {
     }
   }
 
-  Menu {
+  Popup {
     id: comboPopup
+    x: 0
+    y: displayRect.height
+    width: parent.width
     modal: true
-    dim: false
+    focus: true
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    parent: displayRect
 
-    // Style the menu
+    // Height bound: scale with items but cap at 280px
+    readonly property real _itemH: 36
+    readonly property real _pad: 12
+    height: Math.min(root.items.length * _itemH + _pad, 280)
+
     background: Rectangle {
-      implicitWidth: root.width
       radius: Style.radiusM
       color: Color.mSurfaceContainer
       border.color: Color.mOutlineVariant
@@ -135,13 +143,34 @@ Column {
       }
     }
 
-    onAboutToShow: {
-      comboPopup.clear();
-      for (var i = 0; i < root.items.length; i++) {
-        var action = comboPopup.addAction(root.items[i]);
-        action.triggered.connect(function () {
-          root.select(root.items[i]);
-        });
+    contentItem: ListView {
+      id: _listView
+      model: root.items
+      clip: true
+      interactive: contentHeight > height
+
+      delegate: ItemDelegate {
+        width: ListView.view.width
+        height: 36
+        text: modelData
+
+        background: Rectangle {
+          color: hovered ? Qt.rgba(Color.mPrimary.r, Color.mPrimary.g, Color.mPrimary.b, 0.1) : "transparent"
+        }
+
+        contentItem: Text {
+          text: parent.text
+          color: Color.mOnSurface
+          font.pixelSize: Style.fontS
+          font.family: "monospace"
+          verticalAlignment: Text.AlignVCenter
+          leftPadding: Style.spaceM
+        }
+
+        onClicked: {
+          root.select(modelData);
+          comboPopup.close();
+        }
       }
     }
   }
