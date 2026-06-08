@@ -14,6 +14,7 @@ import Quickshell.Io
 *   4. UI writes: Config.update("carousel.spacing", 25) → modifies data → debounced save
 *   5. Hot-reload: FileView watches config.json → re-read → merge → QML bindings auto-update
 *   */
+
 Singleton {
   id: root
 
@@ -21,12 +22,10 @@ Singleton {
   property bool isLoaded: false
   property bool _isSaving: false
 
-  // QML-accessible properties (trackable by QML bindings)
   property string previewStyle: "carousel"
 
   signal dataLoaded
 
-  // ── Hardcoded defaults ──────────────────────────────────
   readonly property var _defaults: ({
                                       "wallpaperDirs": ["$HOME/Pictures/wallpapers"],
                                       "cacheDir": "$HOME/.cache/wallpaper_thumbs",
@@ -49,7 +48,6 @@ Singleton {
                                       }
                                     })
 
-  // ── Merged data (pure JS object) ────────────────────────
   property var data: ({})
 
   property Timer _saveTimer: Timer {
@@ -58,58 +56,16 @@ Singleton {
     onTriggered: _doSave()
   }
 
-  // ── Boot ─────────────────────────────────────────────────
   Component.onCompleted: {
-    // Initialize data to defaults first
     root.data = _deepClone(_defaults);
     Quickshell.execDetached(["mkdir", "-p", Quickshell.env("HOME") + "/.config/npaper"]);
-    _readConfig();
-  }
-
-  // Read config.json via Process
-  function _readConfig() {
-    _readProc.command = ["cat", root.configPath];
-    _readProc.exec({});
-  }
-
-  Process {
-    id: _readProc
-    stdout: StdioCollector {
-      id: _readStdout
-    }
-    stderr: StdioCollector {
-      id: _readStderr
-    }
-    onExited: function (code) {
-      var raw = _readStdout.text;
-      if (code !== 0 || !raw || String(raw).trim().length === 0) {
-        Logger.i("Config", "No config file — creating defaults at", root.configPath);
-        root.data = _resolvePaths(_deepClone(_defaults));
-        root.isLoaded = true;
-        root.previewStyle = root.data.previewStyle || "carousel";
-        root.dataLoaded();
-        _doSave();
-        return;
+    Qt.callLater(function() {
+      if (!root.isLoaded) {
+        root._parseAndApplyConfig();
       }
-      try {
-        var user = JSON.parse(String(raw).trim());
-        root.data = _deepMerge(_deepClone(_defaults), user);
-        root.data = _resolvePaths(root.data);
-        root.previewStyle = root.data.previewStyle || "carousel";
-        Logger.i("Config", "Loaded user config");
-        root.isLoaded = true;
-        root.dataLoaded();
-      } catch (e) {
-        Logger.w("Config", "Parse error, using defaults:", e);
-        root.data = _deepClone(_defaults);
-        root.previewStyle = root.data.previewStyle || "carousel";
-        root.isLoaded = true;
-        root.dataLoaded();
-      }
-    }
+    });
   }
 
-  // FileView for hot-reload only
   FileView {
     id: _fileView
     path: root.configPath
@@ -117,15 +73,42 @@ Singleton {
     watchChanges: true
 
     onFileChanged: {
-      if (root._isSaving)
-      return;
-      _readConfig();
+      if (root._isSaving) {
+        root._isSaving = false;
+        return;
+      }
+      root._parseAndApplyConfig();
     }
   }
 
-  // ── Public API ───────────────────────────────────────────
+  function _parseAndApplyConfig() {
+    var raw = _fileView.text();
+    if (!raw || String(raw).trim().length === 0) {
+      Logger.i("Config", "No config file or empty — creating defaults at", root.configPath);
+      root.data = _resolvePaths(_deepClone(_defaults));
+      root.isLoaded = true;
+      root.previewStyle = root.data.previewStyle || "carousel";
+      root.dataLoaded();
+      _doSave();
+      return;
+    }
+    try {
+      var user = JSON.parse(String(raw).trim());
+      root.data = _deepMerge(_deepClone(_defaults), user);
+      root.data = _resolvePaths(root.data);
+      root.previewStyle = root.data.previewStyle || "carousel";
+      Logger.i("Config", "Loaded user config");
+      root.isLoaded = true;
+      root.dataLoaded();
+    } catch (e) {
+      Logger.w("Config", "Parse error, using defaults:", e);
+      root.data = _deepClone(_defaults);
+      root.previewStyle = root.data.previewStyle || "carousel";
+      root.isLoaded = true;
+      root.dataLoaded();
+    }
+  }
 
-  // Safe read: Config.get("carousel.spacing", 20)
   function get(path, def) {
     var parts = path.split(".");
     var obj = root.data;
@@ -139,7 +122,6 @@ Singleton {
     return obj;
   }
 
-  // Write: Config.update("carousel.spacing", 25)
   function update(path, value) {
     Logger.i("Config", "update:", path, "=", value);
     var parts = path.split(".");
@@ -150,9 +132,7 @@ Singleton {
       obj = obj[parts[i]];
     }
     obj[parts[parts.length - 1]] = value;
-    // Re-assign to trigger QML binding re-evaluation
     root.data = JSON.parse(JSON.stringify(root.data));
-    // Sync QML property for trackable bindings
     if (path === "previewStyle")
       root.previewStyle = value;
     if (_saveTimer.running) {
@@ -162,10 +142,8 @@ Singleton {
     }
   }
 
-  // ── Save ─────────────────────────────────────────────────
   function _doSave() {
     root._isSaving = true;
-    // Resolve $HOME paths before writing
     var resolvedData = _resolvePaths(root.data);
     var ordered = {
       "wallpaperDirs": resolvedData.wallpaperDirs,
@@ -177,20 +155,8 @@ Singleton {
       "appearance": _pick(resolvedData.appearance, ["showBorderGlow", "showShadow", "showBgPreview", "bgOverlayOpacity"])
     };
     var jsonStr = JSON.stringify(ordered, null, 2);
-    _writeProc.command = ["python3", "-c", "import sys, json; json.dump(json.loads(sys.argv[1]), open(sys.argv[2], 'w'), indent=2)", jsonStr, root.configPath];
-    _writeProc.exec({});
+    _fileView.setText(jsonStr);
   }
-
-  Process {
-    id: _writeProc
-    onExited: function (code) {
-      root._isSaving = false;
-      if (code !== 0)
-        Logger.w("Config", "Write failed, exit code =", code);
-    }
-  }
-
-  // ── Helpers ──────────────────────────────────────────────
 
   function _deepMerge(base, user) {
     var result = _deepClone(base);
