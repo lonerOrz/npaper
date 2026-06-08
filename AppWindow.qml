@@ -101,7 +101,7 @@ PanelWindow {
   Connections {
     target: displayManager
     function onCurrentIndexChanged() {
-      updateBackground(displayManager.currentIndex);
+      bgUpdateDebounce.restart();
     }
   }
 
@@ -318,6 +318,15 @@ PanelWindow {
     id: searchDebounce
     interval: Style.searchDebounceMs
     onTriggered: _doSearch()
+  }
+
+  Timer {
+    id: bgUpdateDebounce
+    interval: 150
+    repeat: false
+    onTriggered: {
+      updateBackground(displayManager.currentIndex);
+    }
   }
 
   // ========== UI ==========
