@@ -11,6 +11,7 @@ import qs.services
 * Outputs unified items:
 *   { id, type:"local", path, thumb, filename, resolution, fileSize, apply }
 */
+
 Item {
   id: root
 
@@ -24,24 +25,32 @@ Item {
   property var wallpaperMap: ({})
   property string searchText: ""
 
-  // Unified item list for current folder
-  readonly property var items: _filterItems()
+  property var items: []
 
   signal dataLoaded
 
-  // ========== Logic ==========
+  onCurrentFolderChanged: _updateItems()
+  onSearchTextChanged: _updateItems()
+  onWallpaperMapChanged: _updateItems()
 
-  function _filterItems() {
+  function _updateItems() {
     const folder = root.wallpaperMap[root.currentFolder];
     if (!folder) {
       if (root.debugMode)
         Logger.d("LocalSource: No folder found:", root.currentFolder);
-      return [];
+      root.items = [];
+      return;
     }
-    if (!root.searchText)
-      return folder.map(p => _makeItem(p));
-    const lower = root.searchText.toLowerCase();
-    return folder.filter(p => p.toLowerCase().includes(lower)).map(p => _makeItem(p));
+
+    let filtered;
+    if (!root.searchText) {
+      filtered = folder;
+    } else {
+      const lower = root.searchText.toLowerCase();
+      filtered = folder.filter(p => p.toLowerCase().includes(lower));
+    }
+
+    root.items = filtered.map(p => _makeItem(p));
   }
 
   function _makeItem(path) {
@@ -76,13 +85,11 @@ Item {
   function refresh(cacheService) {
     if (root.debugMode)
       Logger.d("LocalSource: Refresh — re-scanning all directories");
-    const prevFolder = root.currentFolder;  // save current folder
-    var _cs = cacheService; // capture reference for callback
+    const prevFolder = root.currentFolder;
+    var _cs = cacheService;
     var _onDone = function () {
-      // Restore previously selected folder
       if (prevFolder && root.folders.includes(prevFolder))
         root.currentFolder = prevFolder;
-      // Refresh thumbnail cache for current folder after re-scan
       if (_cs && root.currentFolder && root.wallpaperMap[root.currentFolder]) {
         _cs.refreshAndQueue(root.wallpaperMap[root.currentFolder], root.currentFolder);
       }
@@ -98,36 +105,8 @@ Item {
         Logger.d("LocalSource: Skipping load due to missing dirs or scriptPath");
       return;
     }
-    folderListProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-folders', "npaper-fl", (root.dirs || []).join("|"), root.scriptPath];
     listProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-with-folders', "npaper-lwf", (root.dirs || []).join("|"), root.scriptPath];
-    folderListProcess.exec({});
-  }
-
-  // ========== Processes ==========
-
-  Process {
-    id: folderListProcess
-    stdout: StdioCollector {
-      onStreamFinished: {
-        const f = text.trim().split('\n').filter(s => s.length > 0);
-        root.folders = f;
-        // Only switch to first folder if current is gone
-        if (f.length > 0 && !f.includes(root.currentFolder))
-          root.currentFolder = f[0];
-        if (root.debugMode)
-          Logger.d("LocalSource: Folders:", f);
-        listProcess.exec({});
-      }
-    }
-    onExited: function (exitCode, exitStatus) {
-      if (exitCode !== 0) {
-        if (root.debugMode)
-          Logger.d("LocalSource: folderListProcess failed, falling back");
-        root.folders = ["wallpapers"];
-        root.currentFolder = "wallpapers";
-        listProcess.exec({});
-      }
-    }
+    listProcess.exec({});
   }
 
   Process {
@@ -136,18 +115,26 @@ Item {
       onStreamFinished: {
         const lines = text.trim().split('\n').filter(l => l.length > 0);
         const folderMap = {};
+        const folderList = [];
         lines.forEach(line => {
                         const sepIdx = line.indexOf('|');
                         if (sepIdx > 0) {
                           const folder = line.substring(0, sepIdx);
                           const path = line.substring(sepIdx + 1);
-                          if (!folderMap[folder])
-                          folderMap[folder] = [];
+                          if (!folderMap[folder]) {
+                            folderMap[folder] = [];
+                            folderList.push(folder);
+                          }
                           folderMap[folder].push(path);
                         }
                       });
         root.wallpaperMap = folderMap;
-        Logger.i("LocalSource: loaded", lines.length, "wallpapers into", Object.keys(folderMap).length, "folders");
+        root.folders = folderList;
+        if (folderList.length > 0 && !folderList.includes(root.currentFolder)) {
+          root.currentFolder = folderList[0];
+        }
+        root._updateItems();
+        Logger.i("LocalSource: loaded", lines.length, "wallpapers into", folderList.length, "folders");
         root.dataLoaded();
       }
     }

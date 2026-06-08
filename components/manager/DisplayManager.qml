@@ -21,6 +21,9 @@ FocusScope {
   property int scrollContinueInterval: Config.data.animation ? Config.data.animation.scrollContinueInterval : Style.defaultScrollContinueInterval
   property int parallaxFactor: Config.data.animation ? Config.data.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
 
+  property bool _carouselLoaded: root.displayMode !== "grid"
+  property bool _gridLoaded: root.displayMode === "grid"
+
   readonly property var _activeView: root.displayMode !== "grid" ? carouselLoader.item : gridLoader.item
 
   signal toggleViewMode
@@ -66,6 +69,11 @@ FocusScope {
   }
 
   onDisplayModeChanged: {
+    if (root.displayMode === "grid")
+      _gridLoaded = true;
+    else
+      _carouselLoaded = true;
+
     _syncIndexAndFocus();
   }
 
@@ -92,7 +100,7 @@ FocusScope {
   Loader {
     id: carouselLoader
     anchors.fill: parent
-    active: true
+    active: root._carouselLoaded
     visible: root.displayMode !== "grid"
     asynchronous: true
     focus: visible
@@ -140,7 +148,7 @@ FocusScope {
   Loader {
     id: gridLoader
     anchors.fill: parent
-    active: true
+    active: root._gridLoaded
     visible: root.displayMode === "grid"
     asynchronous: true
     focus: visible
