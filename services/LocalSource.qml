@@ -34,25 +34,6 @@ Item {
   onCurrentFolderChanged: _updateItems()
   onSearchTextChanged: _updateItems()
   onWallpaperMapChanged: _updateItems()
-  onThumbHashToPathChanged: _updateItems()
-
-  Connections {
-    target: root.cacheService || null
-    function onThumbnailGenerated(path, thumbPath, bgPath, animPath) {
-      let len = root.items.length;
-      for (let i = 0; i < len; i++) {
-        if (root.items[i].path === path) {
-          let updatedItem = Object.assign({}, root.items[i], {
-            thumb: "file://" + thumbPath
-          });
-          let newItems = root.items.slice();
-          newItems[i] = updatedItem;
-          root.items = newItems;
-          break;
-        }
-      }
-    }
-  }
 
   function _updateItems() {
     const folder = root.wallpaperMap[root.currentFolder];

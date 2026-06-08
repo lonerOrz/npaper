@@ -96,31 +96,24 @@ Item {
         if (!_path)
           return [];
 
-        if (!_needAnim()) {
-          switch (step) {
-          case 0:
-            return ["mkdir", "-p", outDir];
-          case 1:
-            return ["ffmpeg", "-y", "-i", target, "-vframes", "1", "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`, "-q:v", "2", _bgPath];
-          case 2:
-            return ["ffmpeg", "-y", "-i", target, "-vframes", "1", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-q:v", "4", _thumbPath];
-          default:
-            return [];
-          }
+        if (step === 0) {
+          return ["mkdir", "-p", outDir];
         }
 
-        switch (step) {
-        case 0:
-          return ["mkdir", "-p", outDir];
-        case 1:
-          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-vframes", "1", "-vf", `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}`, "-q:v", "2", _bgPath];
-        case 2:
-          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-vframes", "1", "-vf", `scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}`, "-q:v", "4", _thumbPath];
-        case 3:
-          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-r", "30", "-vf", `scale=${root.animWidth}:${root.animHeight}:force_original_aspect_ratio=increase,crop=${root.animWidth}:${root.animHeight}`, "-t", "10", _animPath];
-        default:
-          return [];
+        if (step === 1) {
+          return [
+            "ffmpeg", "-y", ..._ssArgs, "-i", target,
+            "-filter_complex", `[0:v]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}[bg]; [0:v]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}[thumb]`,
+            "-map", "[bg]", "-vframes", "1", "-q:v", "2", _bgPath,
+            "-map", "[thumb]", "-vframes", "1", "-q:v", "4", _thumbPath
+          ];
         }
+
+        if (step === 2 && _needAnim()) {
+          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-r", "30", "-vf", `scale=${root.animWidth}:${root.animHeight}:force_original_aspect_ratio=increase,crop=${root.animWidth}:${root.animHeight}`, "-t", "10", _animPath];
+        }
+
+        return [];
       }
 
       function _needAnim() {
@@ -128,7 +121,7 @@ Item {
       }
 
       function _totalSteps() {
-        return _needAnim() ? 4 : 3;
+        return _needAnim() ? 3 : 2;
       }
 
       function runNext() {
@@ -145,6 +138,23 @@ Item {
         }
       }
 
+      onExited: function (exitCode, exitStatus) {
+        if (exitCode !== 0) {
+          if (root.debugMode)
+            Logger.d("Worker", _workerId, "failed at step", _step, ":", _path, "code:", exitCode);
+          _reset();
+          root.processQueue();
+          return;
+        }
+
+        _step++;
+        if (_step >= _totalSteps()) {
+          _finish();
+        } else {
+          runNext();
+        }
+      }
+
       function _finish() {
         var updated = Object.assign({}, root.thumbHashToPath);
         const folderKey = _folder + '/';
@@ -152,7 +162,7 @@ Item {
         updated[bgKey] = _bgPath;
         var thumbKey = _thumbPath.substring(_thumbPath.indexOf(folderKey));
         updated[thumbKey] = _thumbPath;
-        if (_animPath) {
+        if (_animPath && _needAnim()) {
           var animKey = _animPath.substring(_animPath.indexOf(folderKey));
           updated[animKey] = _animPath;
         }
@@ -160,7 +170,7 @@ Item {
         root.cachedFileCount = Object.keys(updated).length;
         root.thumbCacheVersion++;
 
-        root.thumbnailGenerated(_path, _thumbPath, _bgPath, _animPath);
+        root.thumbnailGenerated(_path, _thumbPath, _bgPath, _needAnim() ? _animPath : "");
         _reset();
         root.processQueue();
       }
@@ -226,6 +236,8 @@ Item {
                             const hash = HashUtils.getThumbnailHash(path);
                             validKeys[folder + '/' + hash + '_bg.jpg'] = true;
                             validKeys[folder + '/' + hash + '_thumb.jpg'] = true;
+                            validKeys[folder + '/' + hash + '_bg.png'] = true;
+                            validKeys[folder + '/' + hash + '_thumb.png'] = true;
                             validKeys[folder + '/' + hash + '_anim.gif'] = true;
                           });
 

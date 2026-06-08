@@ -169,6 +169,8 @@ FocusScope {
     model: (root.adapter && root.adapter.currentSource === "remote") ? remoteResultsModel : (root.adapter ? root.adapter.items : null)
     clip: false
 
+    cacheBuffer: cellHeight * 3
+
     Behavior on width {
       NumberAnimation {
         duration: Style.animNormal
@@ -502,14 +504,15 @@ FocusScope {
               return "";
             if (root.adapter && root.adapter.currentSource === "remote")
               return gridItem.modelData.thumbLarge || gridItem.modelData.thumb || "";
-            return CacheUtils.getStaticThumbSource(root.cacheService ? root.cacheService.thumbHashToPath : {}, gridItem.modelData);
+            const hashToPath = root.cacheService ? root.cacheService.thumbHashToPath : {};
+            return CacheUtils.getStaticThumbSource(hashToPath, gridItem.modelData);
           }
           visible: source !== ""
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
           cache: true
           smooth: true
-          mipmap: true
+          mipmap: false
           sourceSize: Qt.size(root._gridCellW, root._gridCellH)
           opacity: status === Image.Ready ? 1.0 : (status === Image.Error ? 0.3 : 0.0)
 
@@ -522,7 +525,7 @@ FocusScope {
           }
           Behavior on opacity {
             NumberAnimation {
-              duration: Style.animFast
+              duration: 100
             }
           }
         }

@@ -147,8 +147,7 @@ Item {
       smooth: root.isCenter || root.isRemote
       mipmap: false
       sourceSize: Qt.size(root.itemWidth, root.itemHeight)
-      opacity: status === Image.Ready ? 1.0 : (status === Image.Error ? 0.3 : 0.0)
-
+      opacity: status === Image.Ready ? 1.0 : 0.0
       Behavior on opacity {
         NumberAnimation {
           duration: 100
