@@ -84,7 +84,6 @@ FocusScope {
     property real centerX: width / 2
     property real centerY: height / 2
 
-    // ── Mouse wheel scrolling ──
     MouseArea {
       anchors.fill: parent
       propagateComposedEvents: true
@@ -145,7 +144,6 @@ FocusScope {
       if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
         const dir = event.key === Qt.Key_Left ? -1 : 1;
         event.modifiers & Qt.ShiftModifier ? (dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight()) : (dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight());
-        // Auto-load more when scrolling right at the end (Wallhaven remote mode)
         if (dir === 1 && root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.hasMore && !root.whService.loading && root.maxIndex >= root.adapter.count - 2) {
           root.whService.loadMore();
         }
@@ -191,7 +189,9 @@ FocusScope {
         showShadow: root.showShadow
         downloadPath: _item && _item.type === "remote" ? _item.path : ""
 
-        // Pre-computed visual values to avoid JS object re-creation per frame
+        thumbHashToPath: root.cacheService ? root.cacheService.thumbHashToPath : ({})
+        whService: root.whService
+
         readonly property real _absOffset: Math.abs(realIndex - scrollController.scrollTarget)
         readonly property real _cos: Math.cos(Math.min(_absOffset, 3) * 0.523599)
         readonly property real _perspScale: 1.0 / (1.0 + _absOffset * root.carouselPerspective)
@@ -225,7 +225,6 @@ FocusScope {
       anchors.horizontalCenter: parent.horizontalCenter
       radius: Style.radiusRound
       color: Color.mSurfaceContainer
-      opacity: 0.85
 
       Text {
         anchors.centerIn: parent

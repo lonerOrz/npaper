@@ -1,11 +1,13 @@
 import QtQuick
 import QtQuick.Effects
-import QtQuick.Shapes
 import "../../utils/CacheUtils.js" as CacheUtils
 import qs.services
 
 Item {
   id: root
+
+  property var thumbHashToPath: ({})
+  property var whService: null
 
   property string wallpaperPath: ""
   property string filename: ""
@@ -30,8 +32,6 @@ Item {
   property bool showShadow: true
   property bool isCenter: false
 
-  readonly property var thumbHashToPath: ServiceLocator.cacheService ? ServiceLocator.cacheService.thumbHashToPath : {}
-  readonly property var whService: ServiceLocator.adapter ? ServiceLocator.adapter.whService : null
   readonly property var downloadStatus: (whService && whService.downloadStatus) ? whService.downloadStatus : ({})
   readonly property var downloadProgress: (whService && whService.downloadProgress) ? whService.downloadProgress : ({})
   readonly property var downloadPaths: (whService && whService.downloadPaths) ? whService.downloadPaths : ({})
@@ -74,62 +74,15 @@ Item {
 
   Item {
     id: roundMask
-    width: itemWidth
-    height: itemHeight
+    anchors.fill: parent
     visible: false
     layer.enabled: true
 
-    Shape {
+    Rectangle {
       anchors.fill: parent
+      radius: root.itemRadius
+      color: "white"
       antialiasing: true
-      preferredRendererType: Shape.CurveRenderer
-      ShapePath {
-        fillColor: "white"
-        strokeColor: "transparent"
-        strokeWidth: 0
-        startX: root.itemRadius
-        startY: 0
-        PathLine {
-          x: root.itemWidth - root.itemRadius
-          y: 0
-        }
-        PathArc {
-          x: root.itemWidth
-          y: root.itemRadius
-          radiusX: root.itemRadius
-          radiusY: root.itemRadius
-        }
-        PathLine {
-          x: root.itemWidth
-          y: root.itemHeight - root.itemRadius
-        }
-        PathArc {
-          x: root.itemWidth - root.itemRadius
-          y: root.itemHeight
-          radiusX: root.itemRadius
-          radiusY: root.itemRadius
-        }
-        PathLine {
-          x: root.itemRadius
-          y: root.itemHeight
-        }
-        PathArc {
-          x: 0
-          y: root.itemHeight - root.itemRadius
-          radiusX: root.itemRadius
-          radiusY: root.itemRadius
-        }
-        PathLine {
-          x: 0
-          y: root.itemRadius
-        }
-        PathArc {
-          x: root.itemRadius
-          y: 0
-          radiusX: root.itemRadius
-          radiusY: root.itemRadius
-        }
-      }
     }
   }
 
@@ -271,69 +224,24 @@ Item {
     }
   }
 
-  Shape {
+  Rectangle {
     anchors.fill: parent
-    antialiasing: true
-    preferredRendererType: Shape.CurveRenderer
+    radius: root.itemRadius
+    color: "transparent"
     visible: !(root.isCenter && root.showBorderGlow)
+    border.width: root.isCenter ? Style.borderM + 1 : (root._isHovered ? Style.borderS : 0)
+    border.color: {
+      if (root.isCenter)
+        return Color.mPrimary;
+      if (root._isHovered)
+        return Qt.lighter(Color.mPrimaryContainer, 1.15);
+      return "transparent";
+    }
 
-    ShapePath {
-      fillColor: "transparent"
-      strokeColor: {
-        if (root.isCenter)
-          return Color.mPrimary;
-        if (root._isHovered)
-          return Qt.lighter(Color.mPrimaryContainer, 1.15);
-        return "transparent";
-      }
-      Behavior on strokeColor {
-        ColorAnimation {
-          duration: Style.animNormal
-          easing.type: Easing.OutCubic
-        }
-      }
-      strokeWidth: root.isCenter ? Style.borderM + 1 : (root._isHovered ? Style.borderS : 0)
-      startX: root.itemRadius
-      startY: 0
-      PathLine {
-        x: root.itemWidth - root.itemRadius
-        y: 0
-      }
-      PathArc {
-        x: root.itemWidth
-        y: root.itemRadius
-        radiusX: root.itemRadius
-        radiusY: root.itemRadius
-      }
-      PathLine {
-        x: root.itemWidth
-        y: root.itemHeight - root.itemRadius
-      }
-      PathArc {
-        x: root.itemWidth - root.itemRadius
-        y: root.itemHeight
-        radiusX: root.itemRadius
-        radiusY: root.itemRadius
-      }
-      PathLine {
-        x: root.itemRadius
-        y: root.itemHeight
-      }
-      PathArc {
-        x: 0
-        y: root.itemHeight - root.itemRadius
-        radiusX: root.itemRadius
-        radiusY: root.itemRadius
-      }
-      PathLine {
-        x: 0
-        y: root.itemRadius
-      }
-      PathArc {
-        x: root.itemRadius
-        y: 0
-        radiusX: root.itemRadius
-        radiusY: root.itemRadius
+    Behavior on border.color {
+      ColorAnimation {
+        duration: Style.animNormal
+        easing.type: Easing.OutCubic
       }
     }
   }
@@ -356,7 +264,6 @@ Item {
     fragmentShader: Qt.resolvedUrl("../../shaders/borderGlow.frag.qsb")
   }
 
-  // Download overlay
   Rectangle {
     anchors.fill: parent
     radius: root.itemRadius
