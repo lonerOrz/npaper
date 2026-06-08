@@ -6,9 +6,9 @@ import qs.services
 FocusScope {
   id: root
 
-  readonly property var adapter: ServiceLocator.adapter
-  readonly property var cacheService: ServiceLocator.cacheService
-  readonly property var checkService: ServiceLocator.checks
+  property var adapter: null
+  property var cacheService: null
+  property var checkService: null
   readonly property var whService: root.adapter ? root.adapter.whService : null
 
   property int carouselSpacing: 20

@@ -9,6 +9,11 @@ FocusScope {
 
   property string displayMode: Config.previewStyle
 
+  property var adapter: null
+  property var cacheService: null
+  property var wallpaperApplier: null
+  property var checkService: null
+
   property int carouselSpacing: Config.data.carousel ? Config.data.carousel.spacing : Style.defaultCarouselSpacing
   property int carouselRotation: Config.data.carousel ? Config.data.carousel.rotation : Style.defaultCarouselRotation
   property real carouselPerspective: Config.data.carousel ? Config.data.carousel.perspective : Style.defaultCarouselPerspective
@@ -50,9 +55,9 @@ FocusScope {
   }
 
   function queueVisibleThumbnails() {
-    if (!ServiceLocator.ready)
+    if (!root.cacheService || !root.adapter)
       return;
-    if (ServiceLocator.adapter && ServiceLocator.adapter.currentSource !== "local")
+    if (root.adapter.currentSource !== "local")
       return;
     if (root.displayMode !== "grid" && carouselLoader.item)
       carouselLoader.item.queueVisibleThumbnails();
@@ -69,12 +74,10 @@ FocusScope {
       return;
 
     if (root.displayMode === "grid") {
-      // Carousel -> Grid
       let savedIdx = carouselLoader.item.currentIndex;
       gridLoader.item.scrollTo(savedIdx);
       gridLoader.item.focusView();
     } else {
-      // Grid -> Carousel
       let savedIdx = gridLoader.item.currentIndex;
       carouselLoader.item.scrollTo(savedIdx);
       carouselLoader.item.focusView();
@@ -106,6 +109,10 @@ FocusScope {
     }
 
     sourceComponent: CarouselView {
+      adapter: root.adapter
+      cacheService: root.cacheService
+      checkService: root.checkService
+
       carouselSpacing: root.carouselSpacing
       carouselRotation: root.carouselRotation
       carouselPerspective: root.carouselPerspective
@@ -150,6 +157,9 @@ FocusScope {
     }
 
     sourceComponent: GridView {
+      adapter: root.adapter
+      cacheService: root.cacheService
+
       onRequestQuit: root.requestQuit()
       onRequestSettings: root.requestSettings()
       onRequestPrevFolder: root.requestPrevFolder()

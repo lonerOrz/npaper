@@ -53,8 +53,6 @@ PanelWindow {
 
   property int bgCurrent: -1
 
-  // ========== Logic ==========
-
   Component.onCompleted: {
     Style.uiScaleRatio = screen.height / 1080;
     if (adapter) {
@@ -67,7 +65,6 @@ PanelWindow {
       adapter.load();
     }
 
-    // ── Status Bar Blur ──
     if (BlurService.available) {
       Qt.callLater(_initAllBlur);
     }
@@ -77,7 +74,6 @@ PanelWindow {
     if (!BlurService.available)
       return;
     try {
-      // Build a single Region tree with all panels as children
       const qml = `
         import Quickshell
         Region {
@@ -116,7 +112,7 @@ PanelWindow {
       adapter.setSearch(root.searchText);
     if (root.searchText) {
       displayManager.scrollTo(0);
-      bgCurrent = -1; // 强制变动重置
+      bgCurrent = -1;
       bgCurrent = 0;
       if (adapter.items.length > 0) {
         const item = adapter.items[0];
@@ -150,7 +146,6 @@ PanelWindow {
   function switchFolder(folder) {
     if (adapter) {
       adapter.switchFolder(folder);
-      // Qt.callLater ensures adapter.items has fully updated before reset
       Qt.callLater(applyFolderSelection);
     }
   }
@@ -177,8 +172,6 @@ PanelWindow {
     switchFolder(fs[prevIdx]);
   }
 
-  // ========== Components ==========
-
   DisplayManager {
     id: displayManager
     anchors.fill: parent
@@ -187,6 +180,11 @@ PanelWindow {
     z: 1
 
     displayMode: Config.previewStyle
+
+    adapter: root.adapter
+    cacheService: root.cacheService
+    wallpaperApplier: root.wallpaperApplier
+    checkService: root.checkService
 
     onRequestQuit: {
       if (root.settingsOpen) {
@@ -253,8 +251,6 @@ PanelWindow {
     }
   }
 
-  // ========== UI ==========
-
   BackgroundManager {
     anchors.fill: parent
     currentWallpaperItem: (root.bgCurrent >= 0 && adapter && root.bgCurrent < adapter.items.length) ? adapter.items[root.bgCurrent] : null
@@ -265,7 +261,6 @@ PanelWindow {
     slideDuration: root.bgSlideDuration
   }
 
-  // ========== StatusBar ==========
   StatusBar {
     id: statusBar
     anchors.top: parent.top
@@ -318,7 +313,6 @@ PanelWindow {
     }
   }
 
-  // Wallhaven Filter Panel (Separate from StatusBar)
   property var _whResultsConn: null
   property var _whDlAppliedConn: null
 

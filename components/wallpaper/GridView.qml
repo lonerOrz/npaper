@@ -9,8 +9,8 @@ import qs.services
 FocusScope {
   id: root
 
-  readonly property var adapter: ServiceLocator.adapter
-  readonly property var cacheService: ServiceLocator.cacheService
+  property var adapter: null
+  property var cacheService: null
   readonly property var whService: root.adapter ? root.adapter.whService : null
 
   property bool gridScrollActive: false
@@ -743,7 +743,6 @@ FocusScope {
     anchors.horizontalCenter: parent.horizontalCenter
     radius: Style.radiusRound
     color: Color.mSurfaceContainer
-    opacity: 0.85
 
     Text {
       anchors.centerIn: parent
