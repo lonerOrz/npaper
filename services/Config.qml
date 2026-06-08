@@ -71,6 +71,7 @@ Singleton {
     path: root.configPath
     printErrors: false
     watchChanges: true
+    blockLoading: true
 
     onFileChanged: {
       if (root._isSaving) {

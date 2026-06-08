@@ -6,7 +6,7 @@ import Quickshell.Io
 import qs.services
 
 Popup {
-  id: root
+  id: pickerRoot
 
   property string title: "Select Folder"
   property string initialPath: Quickshell.env("HOME") || "/home"
@@ -30,13 +30,13 @@ Popup {
 
   function openPicker(startPath) {
     if (startPath) {
-      root.selectedPath = startPath;
+      pickerRoot.selectedPath = startPath;
       folderModel.folder = Qt.resolvedUrl("file://" + startPath);
       currentPath = startPath;
     } else {
-      root.selectedPath = root.initialPath;
-      folderModel.folder = Qt.resolvedUrl("file://" + root.initialPath);
-      currentPath = root.initialPath;
+      pickerRoot.selectedPath = pickerRoot.initialPath;
+      folderModel.folder = Qt.resolvedUrl("file://" + pickerRoot.initialPath);
+      currentPath = pickerRoot.initialPath;
     }
     open();
   }
@@ -45,7 +45,7 @@ Popup {
 
   FolderListModel {
     id: folderModel
-    folder: Qt.resolvedUrl("file://" + root.currentPath)
+    folder: Qt.resolvedUrl("file://" + pickerRoot.currentPath)
     showDirs: true
     showFiles: false
     showHidden: false
@@ -53,7 +53,7 @@ Popup {
     sortField: FolderListModel.Name
 
     onFolderChanged: {
-      root.currentPath = decodeURIComponent(folder.toString().replace("file://", ""));
+      pickerRoot.currentPath = decodeURIComponent(folder.toString().replace("file://", ""));
     }
   }
 
@@ -62,7 +62,7 @@ Popup {
     id: mkdirProc
     running: false
     onExited: {
-      folderModel.folder = Qt.resolvedUrl("file://" + root.currentPath);
+      folderModel.folder = Qt.resolvedUrl("file://" + pickerRoot.currentPath);
     }
   }
 
@@ -71,7 +71,7 @@ Popup {
     id: rmdirProc
     running: false
     onExited: {
-      folderModel.folder = Qt.resolvedUrl("file://" + root.currentPath);
+      folderModel.folder = Qt.resolvedUrl("file://" + pickerRoot.currentPath);
     }
   }
 
@@ -86,7 +86,7 @@ Popup {
       spacing: Style.spaceM
 
       Text {
-        text: root.title
+        text: pickerRoot.title
         font.pixelSize: Style.fontM
         font.weight: Font.Bold
         color: Color.mOnSurface
@@ -96,7 +96,7 @@ Popup {
 
       Text {
         id: pathText
-        text: root.currentPath
+        text: pickerRoot.currentPath
         font.pixelSize: Style.fontXS
         color: Color.mOnSurfaceVariant
         elide: Text.ElideMiddle
@@ -156,7 +156,7 @@ Popup {
               folderModel.folder = Qt.resolvedUrl("file://" + decodeURIComponent(folderModel.parentFolder.toString().replace("file://", "")));
             else if (index === 1) {
               folderModel.folder = Qt.resolvedUrl("file://" + Quickshell.env("HOME"));
-              root.currentPath = Quickshell.env("HOME");
+              pickerRoot.currentPath = Quickshell.env("HOME");
             } else if (index === 2)
               showNewFolder();
           }
@@ -169,7 +169,7 @@ Popup {
         height: 28
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
-        enabled: root.selectedPath !== ""
+        enabled: pickerRoot.selectedPath !== ""
 
         Rectangle {
           anchors.fill: parent
@@ -177,9 +177,9 @@ Popup {
           color: {
             if (parent.containsMouse)
               return Qt.rgba(1.0, 0.33, 0.33, 0.15);
-            return root.selectedPath !== "" ? Qt.rgba(Color.mSurfaceContainerHigh.r, Color.mSurfaceContainerHigh.g, Color.mSurfaceContainerHigh.b, Style.childBgAlpha) : "transparent";
+            return pickerRoot.selectedPath !== "" ? Qt.rgba(Color.mSurfaceContainerHigh.r, Color.mSurfaceContainerHigh.g, Color.mSurfaceContainerHigh.b, Style.childBgAlpha) : "transparent";
           }
-          border.color: root.selectedPath !== "" ? "#ff5555" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, Style.childBgAlpha)
+          border.color: pickerRoot.selectedPath !== "" ? "#ff5555" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, Style.childBgAlpha)
           border.width: Style.borderS
           Behavior on color {
             ColorAnimation {
@@ -193,14 +193,14 @@ Popup {
           text: "\uf014"
           font.pixelSize: Style.fontS
           font.family: "Symbols Nerd Font"
-          color: root.selectedPath !== "" ? (parent.containsMouse ? "#ff5555" : Color.mOnSurfaceVariant) : Color.mOnSurfaceVariant
+          color: pickerRoot.selectedPath !== "" ? (parent.containsMouse ? "#ff5555" : Color.mOnSurfaceVariant) : Color.mOnSurfaceVariant
         }
 
         onClicked: {
-          if (root.selectedPath !== "") {
-            rmdirProc.command = ["rmdir", root.selectedPath];
+          if (pickerRoot.selectedPath !== "") {
+            rmdirProc.command = ["rmdir", pickerRoot.selectedPath];
             rmdirProc.running = true;
-            root.selectedPath = "";
+            pickerRoot.selectedPath = "";
           }
         }
       }
@@ -209,7 +209,7 @@ Popup {
       TextField {
         width: parent.width - 130
         height: 28
-        text: root.currentPath
+        text: pickerRoot.currentPath
         font.pixelSize: Style.fontXS
         color: Color.mOnSurface
         placeholderText: "/path/to/folder"
@@ -222,7 +222,7 @@ Popup {
         }
         onAccepted: {
           folderModel.folder = Qt.resolvedUrl("file://" + text);
-          root.currentPath = text;
+          pickerRoot.currentPath = text;
         }
       }
     }
@@ -244,7 +244,7 @@ Popup {
       }
       onAccepted: {
         if (text.trim().length > 0) {
-          mkdirProc.command = ["mkdir", "-p", root.currentPath + "/" + text.trim()];
+          mkdirProc.command = ["mkdir", "-p", pickerRoot.currentPath + "/" + text.trim()];
           mkdirProc.running = true;
         }
         visible = false;
@@ -283,13 +283,13 @@ Popup {
             anchors.margins: Style.spaceXXS
             radius: Style.radiusS
             color: {
-              if (root.selectedPath === model.filePath)
+              if (pickerRoot.selectedPath === model.filePath)
                 return Qt.rgba(Color.mPrimary.r, Color.mPrimary.g, Color.mPrimary.b, 0.15);
               if (parent.containsMouse)
                 return Qt.rgba(Color.mSurfaceContainerHighest.r, Color.mSurfaceContainerHighest.g, Color.mSurfaceContainerHighest.b, Style.childBgAlpha);
               return "transparent";
             }
-            border.color: root.selectedPath === model.filePath ? Color.mPrimary : "transparent"
+            border.color: pickerRoot.selectedPath === model.filePath ? Color.mPrimary : "transparent"
             border.width: Style.borderS
             Behavior on color {
               ColorAnimation {
@@ -308,27 +308,27 @@ Popup {
               text: "\uf07b"
               font.family: "Symbols Nerd Font"
               font.pixelSize: Style.fontM
-              color: root.selectedPath === model.filePath ? Color.mPrimary : Color.mOnSurfaceVariant
+              color: pickerRoot.selectedPath === model.filePath ? Color.mPrimary : Color.mOnSurfaceVariant
               anchors.verticalCenter: parent.verticalCenter
             }
 
             Text {
               text: model.fileName
               font.pixelSize: Style.fontS
-              font.weight: root.selectedPath === model.filePath ? Font.Medium : Font.Normal
-              color: root.selectedPath === model.filePath ? Color.mPrimary : Color.mOnSurface
+              font.weight: pickerRoot.selectedPath === model.filePath ? Font.Medium : Font.Normal
+              color: pickerRoot.selectedPath === model.filePath ? Color.mPrimary : Color.mOnSurface
               elide: Text.ElideMiddle
               anchors.verticalCenter: parent.verticalCenter
               width: parent.width - 40
             }
           }
 
-          onClicked: root.selectedPath = model.filePath
+          onClicked: pickerRoot.selectedPath = model.filePath
 
           onDoubleClicked: {
             folderModel.folder = Qt.resolvedUrl("file://" + model.filePath);
-            root.currentPath = model.filePath;
-            root.selectedPath = model.filePath;
+            pickerRoot.currentPath = model.filePath;
+            pickerRoot.selectedPath = model.filePath;
           }
         }
       }
@@ -352,8 +352,8 @@ Popup {
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
         onClicked: {
-          root.cancelled();
-          root.close();
+          pickerRoot.cancelled();
+          pickerRoot.close();
         }
 
         Rectangle {
@@ -384,10 +384,10 @@ Popup {
         height: 28
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
-        enabled: root.selectedPath !== ""
+        enabled: pickerRoot.selectedPath !== ""
         onClicked: {
-          root.accepted(root.selectedPath);
-          root.close();
+          pickerRoot.accepted(pickerRoot.selectedPath);
+          pickerRoot.close();
         }
 
         Rectangle {
