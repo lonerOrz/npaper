@@ -16,7 +16,7 @@ FocusScope {
   property int scrollContinueInterval: Config.data.animation ? Config.data.animation.scrollContinueInterval : Style.defaultScrollContinueInterval
   property int parallaxFactor: Config.data.animation ? Config.data.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
 
-  readonly property var _activeView: carouselLoader.active && carouselLoader.item ? carouselLoader.item : (gridLoader.item || null)
+  readonly property var _activeView: root.displayMode !== "grid" ? carouselLoader.item : gridLoader.item
 
   signal toggleViewMode
   readonly property int currentIndex: _activeView ? _activeView.currentIndex : 0
@@ -54,10 +54,32 @@ FocusScope {
       return;
     if (ServiceLocator.adapter && ServiceLocator.adapter.currentSource !== "local")
       return;
-    if (carouselLoader.item)
+    if (root.displayMode !== "grid" && carouselLoader.item)
       carouselLoader.item.queueVisibleThumbnails();
-    if (gridLoader.item)
+    else if (root.displayMode === "grid" && gridLoader.item)
       gridLoader.item.queueVisibleThumbnails();
+  }
+
+  onDisplayModeChanged: {
+    _syncIndexAndFocus();
+  }
+
+  function _syncIndexAndFocus() {
+    if (!carouselLoader.item || !gridLoader.item)
+      return;
+
+    if (root.displayMode === "grid") {
+      // Carousel -> Grid
+      let savedIdx = carouselLoader.item.currentIndex;
+      gridLoader.item.scrollTo(savedIdx);
+      gridLoader.item.focusView();
+    } else {
+      // Grid -> Carousel
+      let savedIdx = gridLoader.item.currentIndex;
+      carouselLoader.item.scrollTo(savedIdx);
+      carouselLoader.item.focusView();
+    }
+    root.queueVisibleThumbnails();
   }
 
   Component.onCompleted: {
@@ -67,13 +89,18 @@ FocusScope {
   Loader {
     id: carouselLoader
     anchors.fill: parent
-    active: root.displayMode !== "grid"
+    active: true
+    visible: root.displayMode !== "grid"
     asynchronous: true
-    focus: active
+    focus: visible
 
     onLoaded: {
       if (item) {
-        item.focusView();
+        if (root.displayMode !== "grid") {
+          item.focusView();
+        } else if (gridLoader.item) {
+          item.scrollTo(gridLoader.item.currentIndex);
+        }
         root.queueVisibleThumbnails();
       }
     }
@@ -106,13 +133,18 @@ FocusScope {
   Loader {
     id: gridLoader
     anchors.fill: parent
-    active: root.displayMode === "grid"
+    active: true
+    visible: root.displayMode === "grid"
     asynchronous: true
-    focus: active
+    focus: visible
 
     onLoaded: {
       if (item) {
-        item.focusView();
+        if (root.displayMode === "grid") {
+          item.focusView();
+        } else if (carouselLoader.item) {
+          item.scrollTo(carouselLoader.item.currentIndex);
+        }
         root.queueVisibleThumbnails();
       }
     }
