@@ -15,14 +15,8 @@ FocusScope {
 
   property bool gridScrollActive: false
 
-  // Wallhaven infinite scroll state
   property bool _whLoadingMore: false
 
-  // Wallhaven infinite scroll: use a ListModel for remote mode
-  // so the model reference stays stable (no scroll reset on loadMore).
-  // We append empty objects ({}) to match whService.results.length.
-  // The delegate reads actual data from whService.results[index],
-  // so the ListModel acts only as a row count placeholder.
   ListModel {
     id: remoteResultsModel
   }
@@ -39,12 +33,9 @@ FocusScope {
       var isNewSearch = (total < remoteResultsModel.count) || (root.whService.currentPage === 1);
       if (isNewSearch) {
         remoteResultsModel.clear();
-        var toAdd = total - remoteResultsModel.count;
-        if (toAdd > 0) {
-          var batch = [];
-          for (var i = 0; i < toAdd; i++)
-            batch.push({});
-          remoteResultsModel.append(batch);
+        var toAdd = total;
+        for (var i = 0; i < toAdd; i++) {
+          remoteResultsModel.append(root.whService.results[i]);
         }
         Qt.callLater(function () {
           thumbGridView.positionViewAtBeginning();
@@ -55,10 +46,10 @@ FocusScope {
         if (toAdd2 > 0) {
           var savedY = thumbGridView.contentY;
           thumbGridView._modelChanging = true;
-          var batch2 = [];
-          for (var j = 0; j < toAdd2; j++)
-            batch2.push({});
-          remoteResultsModel.append(batch2);
+          var startIdx = remoteResultsModel.count;
+          for (var j = startIdx; j < total; j++) {
+            remoteResultsModel.append(root.whService.results[j]);
+          }
           thumbGridView.contentY = savedY;
           Qt.callLater(function () {
             thumbGridView._modelChanging = false;
@@ -75,10 +66,10 @@ FocusScope {
       if (root.adapter && root.adapter.currentSource === "remote") {
         remoteResultsModel.clear();
         if (root.whService && root.whService.results && root.whService.results.length > 0) {
-          var batch = [];
-          for (var i = 0; i < root.whService.results.length; i++)
-            batch.push({});
-          remoteResultsModel.append(batch);
+          var len = root.whService.results.length;
+          for (var i = 0; i < len; i++) {
+            remoteResultsModel.append(root.whService.results[i]);
+          }
         }
         remoteResultsConn.enabled = true;
       } else {
@@ -88,15 +79,13 @@ FocusScope {
     }
   }
 
-  // Initialize remoteResultsModel on component creation (for view mode switches)
   Component.onCompleted: {
     if (root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.results) {
       var total = root.whService.results.length;
       if (total > 0) {
-        var batch = [];
-        for (var i = 0; i < total; i++)
-          batch.push({});
-        remoteResultsModel.append(batch);
+        for (var i = 0; i < total; i++) {
+          remoteResultsModel.append(root.whService.results[i]);
+        }
       }
     }
   }
@@ -208,7 +197,6 @@ FocusScope {
     highlightMoveDuration: Style.animNormal
     highlight: Item {}
 
-    // Track contentY so we can restore it after model changes
     property real _savedContentY: 0
     property bool _modelChanging: false
 
@@ -224,7 +212,6 @@ FocusScope {
       }
     }
 
-    // When model reference changes (e.g. local ↔ remote switch), restore scroll
     onModelChanged: {
       _modelChanging = true;
       var savedY = _savedContentY;
@@ -234,8 +221,6 @@ FocusScope {
       });
     }
 
-    // Auto-load more Wallhaven results when scrolled to bottom
-    // Use a debounced check to avoid triggering during animation
     Timer {
       id: _whLoadMoreTimer
       interval: 300
@@ -369,8 +354,8 @@ FocusScope {
 
       function _resolveItem() {
         if (root.adapter && root.adapter.currentSource === "remote") {
-          if (root.whService && root.whService.results && index < root.whService.results.length)
-            return root.whService.results[index];
+          if (index >= 0 && index < remoteResultsModel.count)
+            return remoteResultsModel.get(index);
           return null;
         }
         var m = thumbGridView.model;
@@ -384,7 +369,6 @@ FocusScope {
         gridItem.modelData = gridItem._resolveItem();
       }
 
-      // Refresh data when remote results change (infinite scroll append)
       Connections {
         target: root.whService
         function onResultsUpdated() {
@@ -563,7 +547,6 @@ FocusScope {
         }
       }
 
-      // Download indicator for remote items (only shown if not yet downloaded)
       readonly property bool _needsDownload: {
         if (!(root.adapter && root.adapter.currentSource === "remote"))
           return false;
@@ -620,7 +603,6 @@ FocusScope {
         }
       }
 
-      // Wallhaven download overlay
       Rectangle {
         anchors.fill: parent
         radius: Style.radiusL
