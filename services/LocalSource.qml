@@ -26,21 +26,47 @@ Item {
   property var folders: []
   property var wallpaperMap: ({})
   property string searchText: ""
+  property bool _internalUpdate: false
 
-  property var items: []
+  readonly property alias items: localModel
 
   signal dataLoaded
 
   onCurrentFolderChanged: _updateItems()
   onSearchTextChanged: _updateItems()
-  onWallpaperMapChanged: _updateItems()
+  onWallpaperMapChanged: {
+    if (!_internalUpdate) {
+      _updateItems();
+    }
+  }
+
+  ListModel {
+    id: localModel
+  }
+
+Connections {
+    target: root.cacheService || null
+    function onCacheScanned() {
+      root._updateItems();
+    }
+    function onThumbnailGenerated(path, thumbPath, bgPath, animPath) {
+      let len = localModel.count;
+      for (let i = 0; i < len; i++) {
+        let item = localModel.get(i);
+        if (item && item.path === path) {
+          localModel.setProperty(i, "thumb", "file://" + thumbPath);
+          break;
+        }
+      }
+    }
+  }
 
   function _updateItems() {
+    localModel.clear();
     const folder = root.wallpaperMap[root.currentFolder];
     if (!folder) {
       if (root.debugMode)
         Logger.d("LocalSource: No folder found:", root.currentFolder);
-      root.items = [];
       return;
     }
 
@@ -52,7 +78,10 @@ Item {
       filtered = folder.filter(p => p.toLowerCase().includes(lower));
     }
 
-    root.items = filtered.map(p => _makeItem(p));
+    let len = filtered.length;
+    for (let i = 0; i < len; i++) {
+      localModel.append(_makeItem(filtered[i]));
+    }
   }
 
   function _makeItem(path) {
@@ -122,6 +151,86 @@ Item {
     }
     listProcess.command = ["bash", "-c", 'NPAPER_WALLPAPER_DIRS="$1" "$2" --list-with-folders', "npaper-lwf", (root.dirs || []).join("|"), root.scriptPath];
     listProcess.exec({});
+  }
+
+  function deleteWallpaper(path, idx) {
+    if (!path) return;
+
+    if (idx >= 0 && idx < localModel.count) {
+      localModel.remove(idx);
+    }
+
+    let folder = root.currentFolder;
+    let map = Object.assign({}, root.wallpaperMap);
+    if (map[folder]) {
+      map[folder] = map[folder].filter(p => p !== path);
+      root._internalUpdate = true;
+      root.wallpaperMap = map;
+      root._internalUpdate = false;
+    }
+
+    deleteProcess.command = ["rm", "-f", path];
+    deleteProcess.exec({});
+  }
+
+  function moveWallpaper(path, targetFolder, idx) {
+    if (!path || !targetFolder) return;
+
+    if (idx >= 0 && idx < localModel.count) {
+      localModel.remove(idx);
+    }
+
+    let srcFolder = root.currentFolder;
+    let map = Object.assign({}, root.wallpaperMap);
+    if (map[srcFolder]) {
+      map[srcFolder] = map[srcFolder].filter(p => p !== path);
+    }
+
+    let dest = _getDestinationPath(path, targetFolder);
+    if (dest) {
+      if (!map[targetFolder]) {
+        map[targetFolder] = [];
+      }
+      map[targetFolder].push(dest);
+      root._internalUpdate = true;
+      root.wallpaperMap = map;
+      root._internalUpdate = false;
+
+      let destDir = dest.substring(0, dest.lastIndexOf('/'));
+      moveProcess.command = ["sh", "-c", "mkdir -p \"$1\" && mv \"$2\" \"$3\"", "npaper-mv", destDir, path, dest];
+      moveProcess.exec({});
+    }
+  }
+
+  function _getDestinationPath(path, targetFolder) {
+    const filename = path.split('/').pop();
+    let baseDir = "";
+    for (let i = 0; i < root.dirs.length; i++) {
+      let d = root.dirs[i];
+      if (path.indexOf(d) === 0) {
+        baseDir = d;
+        break;
+      }
+    }
+    if (!baseDir) return "";
+
+    for (let j = 0; j < root.dirs.length; j++) {
+      let d = root.dirs[j];
+      let baseName = d.split('/').filter(s => s !== "").pop();
+      if (baseName === targetFolder) {
+        return d + "/" + filename;
+      }
+    }
+
+    return baseDir + "/" + targetFolder + "/" + filename;
+  }
+
+  Process {
+    id: deleteProcess
+  }
+
+  Process {
+    id: moveProcess
   }
 
   Process {

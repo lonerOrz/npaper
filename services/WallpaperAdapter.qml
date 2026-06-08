@@ -19,7 +19,7 @@ import qs.services
 Item {
   id: root
 
-  property string currentSource: "local"  // "local" | "remote"
+  property string currentSource: "local" // "local" | "remote"
   property string searchText: ""
   property var wallpaperDirs: []
   property string scriptPath: ""
@@ -30,7 +30,7 @@ Item {
   readonly property var items: currentSource === "local" ? localSource.items : remoteSource.items
   readonly property var folders: localSource.folders
   readonly property string currentFolder: localSource.currentFolder
-  readonly property int count: items.length
+  readonly property int count: items ? (items.count !== undefined ? items.count : (items.length !== undefined ? items.length : 0)) : 0
   readonly property var remoteSource: remoteSource
   readonly property var whService: wallhavenService
 
@@ -42,6 +42,7 @@ Item {
     scriptPath: root.scriptPath
     debugMode: root.debugMode
     thumbHashToPath: root.cacheService ? root.cacheService.thumbHashToPath : {}
+    cacheService: root.cacheService
     onDataLoaded: root.dataLoaded()
   }
 
@@ -91,6 +92,14 @@ Item {
 
   function refresh() {
     localSource.refresh(root.cacheService);
+  }
+
+  function deleteWallpaper(path, idx) {
+    localSource.deleteWallpaper(path, idx);
+  }
+
+  function moveWallpaper(path, targetFolder, idx) {
+    localSource.moveWallpaper(path, targetFolder, idx);
   }
 
   function apply(item) {

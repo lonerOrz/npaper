@@ -53,20 +53,25 @@ Item {
   Rectangle {
     anchors.fill: parent
     radius: root.parent ? (root.parent.radius || 0) : 0
-    color: Qt.rgba(0, 0, 0, 0.50)
+    gradient: Gradient {
+      GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.20) }
+      GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.70) }
+    }
   }
 
   Row {
     anchors.centerIn: parent
-    spacing: Style.spaceXS
+    spacing: Style.spaceM
     visible: !root.isDownloading
 
     Rectangle {
       id: btnDl
-      width: Math.max(85, btnDlText.implicitWidth + Style.spaceL)
-      height: Style.spaceXL * 2 - Style.spaceS
+      width: Math.max(96, btnDlText.implicitWidth + Style.spaceL)
+      height: 32
       radius: height / 2
-      color: dlMouse.containsMouse ? Qt.lighter(Color.mPrimary, 1.08) : Color.mPrimary
+      color: dlMouse.containsMouse ? Color.mPrimary : Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, 0.6)
+      border.width: dlMouse.containsMouse ? 0 : 1
+      border.color: dlMouse.containsMouse ? "transparent" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, 0.3)
       visible: !root.isLocallyAvailable
       scale: dlMouse.containsMouse ? 1.05 : 1.0
 
@@ -77,10 +82,10 @@ Item {
         id: btnDlText
         anchors.centerIn: parent
         text: "\uf019  Download"
-        font.pixelSize: Style.fontXXS
+        font.pixelSize: Style.fontXS
         font.family: "Symbols Nerd Font"
         font.weight: Font.Bold
-        color: Color.mSurfaceContainerLowest
+        color: dlMouse.containsMouse ? Color.mSurfaceContainerLowest : Color.mOnSurface
       }
 
       MouseArea {
@@ -97,10 +102,12 @@ Item {
 
     Rectangle {
       id: btnApply
-      width: Math.max(85, btnApplyText.implicitWidth + Style.spaceL)
-      height: Style.spaceXL * 2 - Style.spaceS
+      width: Math.max(96, btnApplyText.implicitWidth + Style.spaceL)
+      height: 32
       radius: height / 2
-      color: applyMouse.containsMouse ? Qt.lighter(Color.mPrimary, 1.08) : Color.mPrimary
+      color: applyMouse.containsMouse ? Color.mPrimary : Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, 0.6)
+      border.width: applyMouse.containsMouse ? 0 : 1
+      border.color: applyMouse.containsMouse ? "transparent" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, 0.3)
       scale: applyMouse.containsMouse ? 1.05 : 1.0
 
       Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
@@ -110,10 +117,10 @@ Item {
         id: btnApplyText
         anchors.centerIn: parent
         text: "\uf04b  Apply"
-        font.pixelSize: Style.fontXXS
+        font.pixelSize: Style.fontXS
         font.family: "Symbols Nerd Font"
         font.weight: Font.Bold
-        color: Color.mSurfaceContainerLowest
+        color: applyMouse.containsMouse ? Color.mSurfaceContainerLowest : Color.mOnSurface
       }
 
       MouseArea {
@@ -142,7 +149,7 @@ Item {
     Text {
       anchors.horizontalCenter: parent.horizontalCenter
       text: "Downloading..."
-      font.pixelSize: Style.fontXXS
+      font.pixelSize: Style.fontXS
       font.weight: Font.Medium
       color: Color.mPrimary
     }

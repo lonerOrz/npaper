@@ -217,9 +217,8 @@ FocusScope {
 
     onModelChanged: {
       _modelChanging = true;
-      var savedY = _savedContentY;
       Qt.callLater(function () {
-        thumbGridView.contentY = savedY;
+        thumbGridView.contentY = thumbGridView._savedContentY;
         _modelChanging = false;
       });
     }
@@ -355,14 +354,18 @@ FocusScope {
       required property int index
       property var modelData: null
 
+      HoverHandler {
+        id: gridItemHover
+      }
+
+      readonly property bool isCurrent: GridView.isCurrentItem
+      readonly property bool isHovered: gridItemHover.hovered
+
       function _resolveItem() {
-        if (root.adapter && root.adapter.currentSource === "remote") {
-          if (index >= 0 && index < remoteResultsModel.count)
-            return remoteResultsModel.get(index);
-          return null;
-        }
         var m = thumbGridView.model;
-        return (m && index < m.length) ? m[index] : null;
+        if (m && index >= 0 && index < m.count)
+          return m.get(index);
+        return null;
       }
 
       Component.onCompleted: {
@@ -378,9 +381,6 @@ FocusScope {
           gridItem.modelData = gridItem._resolveItem();
         }
       }
-
-      readonly property bool isCurrent: GridView.isCurrentItem
-      readonly property bool isHovered: itemMouse.containsMouse
 
       scale: isCurrent ? 1.05 : 1.0
       z: isCurrent ? 20 : 0
@@ -499,14 +499,7 @@ FocusScope {
         Image {
           id: thumbImage
           anchors.fill: parent
-          source: {
-            if (!gridItem.modelData)
-              return "";
-            if (root.adapter && root.adapter.currentSource === "remote")
-              return gridItem.modelData.thumbLarge || gridItem.modelData.thumb || "";
-            const hashToPath = root.cacheService ? root.cacheService.thumbHashToPath : {};
-            return CacheUtils.getStaticThumbSource(hashToPath, gridItem.modelData);
-          }
+          source: gridItem.modelData ? (gridItem.modelData.thumbLarge || gridItem.modelData.thumb || "") : ""
           visible: source !== ""
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
@@ -585,6 +578,7 @@ FocusScope {
         anchors.fill: parent
         radius: Style.radiusL
         color: "transparent"
+        z: 20
         border.color: {
           if (gridItem.isCurrent)
             return Color.mPrimary;
@@ -639,10 +633,32 @@ FocusScope {
         }
       }
 
+      Rectangle {
+        anchors.fill: parent
+        radius: Style.radiusL
+        color: "transparent"
+        visible: root.adapter && root.adapter.currentSource === "local" && !!gridItem.modelData
+        opacity: gridItem.isHovered ? 1 : 0
+        z: 15
+
+        Behavior on opacity {
+          NumberAnimation {
+            duration: Style.animFast
+          }
+        }
+
+        LocalOverlay {
+          opacity: parent.opacity
+          wallpaperPath: gridItem.modelData ? gridItem.modelData.path : ""
+          itemIndex: index
+        }
+      }
+
       MouseArea {
         id: itemMouse
         anchors.fill: parent
         hoverEnabled: true
+        z: 1
         cursorShape: Qt.PointingHandCursor
         onEntered: {
           thumbGridView.currentIndex = gridItem.index;

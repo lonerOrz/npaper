@@ -8,6 +8,7 @@ Item {
 
   property var thumbHashToPath: ({})
   property var whService: null
+  property int itemIndex: -1
 
   property string wallpaperPath: ""
   property string filename: ""
@@ -39,7 +40,7 @@ Item {
 
   signal clicked(string path)
 
-  property bool _isHovered: false
+  readonly property bool _isHovered: cardHover.hovered
 
   width: itemWidth
   height: itemHeight
@@ -47,12 +48,6 @@ Item {
   opacity: visualOpacity
   z: visualZ + (_isHovered ? 15 : 0)
   transformOrigin: Item.Center
-
-  Behavior on z {
-    NumberAnimation {
-      duration: Style.animFast
-    }
-  }
 
   transform: Rotation {
     axis {
@@ -63,6 +58,10 @@ Item {
     angle: visualRotationY
     origin.x: width / 2
     origin.y: height / 2
+  }
+
+  HoverHandler {
+    id: cardHover
   }
 
   Item {
@@ -113,13 +112,7 @@ Item {
       maskSpreadAtMin: 0.3
     }
 
-    scale: root._isHovered ? 1.03 : 1.0
-    Behavior on scale {
-      NumberAnimation {
-        duration: Style.animNormal
-        easing.type: Easing.OutCubic
-      }
-    }
+    scale: 1.0
 
     Rectangle {
       anchors.fill: parent
@@ -147,7 +140,8 @@ Item {
       smooth: root.isCenter || root.isRemote
       mipmap: false
       sourceSize: Qt.size(root.itemWidth, root.itemHeight)
-      opacity: status === Image.Ready ? 1.0 : 0.0
+      opacity: status === Image.Ready ? 1.0 : (status === Image.Error ? 0.3 : 0.0)
+
       Behavior on opacity {
         NumberAnimation {
           duration: 100
@@ -229,6 +223,7 @@ Item {
     anchors.fill: parent
     radius: root.itemRadius
     color: "transparent"
+    z: 20
     visible: !(root.isCenter && root.showBorderGlow)
     border.width: root.isCenter ? Style.borderM + 1 : (root._isHovered ? Style.borderS : 0)
     border.color: {
@@ -249,7 +244,7 @@ Item {
 
   ShaderEffect {
     anchors.fill: parent
-    z: 5
+    z: 21
     visible: root.isCenter && root.showBorderGlow
     property real time: 0
     property real innerWidth: width
@@ -293,10 +288,31 @@ Item {
     }
   }
 
+  Rectangle {
+    anchors.fill: parent
+    radius: root.itemRadius
+    color: "transparent"
+    visible: !root.isRemote
+    opacity: root._isHovered ? 1 : 0
+    z: 10
+
+    Behavior on opacity {
+      NumberAnimation {
+        duration: Style.animFast
+      }
+    }
+
+    LocalOverlay {
+      opacity: parent.opacity
+      wallpaperPath: root.wallpaperPath
+      itemIndex: root.itemIndex
+    }
+  }
+
   MouseArea {
     anchors.fill: parent
-    hoverEnabled: true
-    onContainsMouseChanged: root._isHovered = containsMouse
+    z: 1
+    cursorShape: Qt.PointingHandCursor
     onClicked: root.clicked(root.wallpaperPath)
   }
 }
