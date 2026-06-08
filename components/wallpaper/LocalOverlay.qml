@@ -26,8 +26,14 @@ Item {
     anchors.fill: parent
     radius: root.parent ? (root.parent.radius || 0) : 0
     gradient: Gradient {
-      GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.20) }
-      GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.70) }
+      GradientStop {
+        position: 0.0
+        color: Qt.rgba(0, 0, 0, 0.20)
+      }
+      GradientStop {
+        position: 1.0
+        color: Qt.rgba(0, 0, 0, 0.70)
+      }
     }
   }
 
@@ -46,8 +52,16 @@ Item {
       border.color: moveMouse.containsMouse ? "transparent" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, 0.3)
       scale: moveMouse.containsMouse ? 1.05 : 1.0
 
-      Behavior on scale { NumberAnimation { duration: 100 } }
-      Behavior on color { ColorAnimation { duration: 100 } }
+      Behavior on scale {
+        NumberAnimation {
+          duration: 100
+        }
+      }
+      Behavior on color {
+        ColorAnimation {
+          duration: 100
+        }
+      }
 
       Text {
         anchors.centerIn: parent
@@ -73,16 +87,26 @@ Item {
       height: 32
       radius: height / 2
       color: {
-        if (root.confirmDelete) return "#ef4444"
-        if (deleteMouse.containsMouse) return "#ef4444"
-        return Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, 0.6)
+        if (root.confirmDelete)
+          return "#ef4444";
+        if (deleteMouse.containsMouse)
+          return "#ef4444";
+        return Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, 0.6);
       }
       border.width: (root.confirmDelete || deleteMouse.containsMouse) ? 0 : 1
       border.color: (root.confirmDelete || deleteMouse.containsMouse) ? "transparent" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, 0.3)
       scale: deleteMouse.containsMouse ? 1.05 : 1.0
 
-      Behavior on scale { NumberAnimation { duration: 100 } }
-      Behavior on color { ColorAnimation { duration: 100 } }
+      Behavior on scale {
+        NumberAnimation {
+          duration: 100
+        }
+      }
+      Behavior on color {
+        ColorAnimation {
+          duration: 100
+        }
+      }
 
       Text {
         anchors.centerIn: parent
@@ -179,7 +203,11 @@ Item {
             color: parent.containsMouse ? Qt.rgba(Color.mPrimary.r, Color.mPrimary.g, Color.mPrimary.b, 0.25) : Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
             border.width: 1
             border.color: parent.containsMouse ? Color.mPrimary : Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.childBgAlpha)
-            Behavior on color { ColorAnimation { duration: 100 } }
+            Behavior on color {
+              ColorAnimation {
+                duration: 100
+              }
+            }
           }
 
           Text {

@@ -54,8 +54,14 @@ Item {
     anchors.fill: parent
     radius: root.parent ? (root.parent.radius || 0) : 0
     gradient: Gradient {
-      GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.20) }
-      GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.70) }
+      GradientStop {
+        position: 0.0
+        color: Qt.rgba(0, 0, 0, 0.20)
+      }
+      GradientStop {
+        position: 1.0
+        color: Qt.rgba(0, 0, 0, 0.70)
+      }
     }
   }
 
@@ -75,8 +81,17 @@ Item {
       visible: !root.isLocallyAvailable
       scale: dlMouse.containsMouse ? 1.05 : 1.0
 
-      Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
-      Behavior on color { ColorAnimation { duration: 100 } }
+      Behavior on scale {
+        NumberAnimation {
+          duration: 100
+          easing.type: Easing.OutCubic
+        }
+      }
+      Behavior on color {
+        ColorAnimation {
+          duration: 100
+        }
+      }
 
       Text {
         id: btnDlText
@@ -110,8 +125,17 @@ Item {
       border.color: applyMouse.containsMouse ? "transparent" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, 0.3)
       scale: applyMouse.containsMouse ? 1.05 : 1.0
 
-      Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
-      Behavior on color { ColorAnimation { duration: 100 } }
+      Behavior on scale {
+        NumberAnimation {
+          duration: 100
+          easing.type: Easing.OutCubic
+        }
+      }
+      Behavior on color {
+        ColorAnimation {
+          duration: 100
+        }
+      }
 
       Text {
         id: btnApplyText

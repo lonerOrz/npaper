@@ -59,7 +59,7 @@ Singleton {
   Component.onCompleted: {
     root.data = _deepClone(_defaults);
     Quickshell.execDetached(["mkdir", "-p", Quickshell.env("HOME") + "/.config/npaper"]);
-    Qt.callLater(function() {
+    Qt.callLater(function () {
       if (!root.isLoaded) {
         root._parseAndApplyConfig();
       }

@@ -185,7 +185,8 @@ FocusScope {
         property int realIndex: scrollController.baseIndex + index
 
         readonly property var _item: {
-          if (!root.adapter || !root.adapter.items) return null;
+          if (!root.adapter || !root.adapter.items)
+            return null;
           var items = root.adapter.items;
           var count = items.count !== undefined ? items.count : items.length;
           if (realIndex >= 0 && realIndex < count) {

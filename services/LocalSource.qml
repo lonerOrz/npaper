@@ -44,7 +44,7 @@ Item {
     id: localModel
   }
 
-Connections {
+  Connections {
     target: root.cacheService || null
     function onCacheScanned() {
       root._updateItems();
@@ -154,7 +154,8 @@ Connections {
   }
 
   function deleteWallpaper(path, idx) {
-    if (!path) return;
+    if (!path)
+      return;
 
     if (idx >= 0 && idx < localModel.count) {
       localModel.remove(idx);
@@ -174,7 +175,8 @@ Connections {
   }
 
   function moveWallpaper(path, targetFolder, idx) {
-    if (!path || !targetFolder) return;
+    if (!path || !targetFolder)
+      return;
 
     if (idx >= 0 && idx < localModel.count) {
       localModel.remove(idx);
@@ -212,7 +214,8 @@ Connections {
         break;
       }
     }
-    if (!baseDir) return "";
+    if (!baseDir)
+      return "";
 
     for (let j = 0; j < root.dirs.length; j++) {
       let d = root.dirs[j];

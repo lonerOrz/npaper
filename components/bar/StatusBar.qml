@@ -80,8 +80,16 @@ Item {
       border.width: searchInput.activeFocus ? 2 : 1
       border.color: searchInput.activeFocus ? Color.mPrimary : Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, 0.2)
 
-      Behavior on border.color { ColorAnimation { duration: 150 } }
-      Behavior on border.width { NumberAnimation { duration: 150 } }
+      Behavior on border.color {
+        ColorAnimation {
+          duration: 150
+        }
+      }
+      Behavior on border.width {
+        NumberAnimation {
+          duration: 150
+        }
+      }
 
       Rectangle {
         anchors.fill: parent
@@ -90,7 +98,11 @@ Item {
         color: Color.mPrimary
         opacity: searchInput.activeFocus ? 0.08 : 0
         visible: opacity > 0.01
-        Behavior on opacity { NumberAnimation { duration: 150 } }
+        Behavior on opacity {
+          NumberAnimation {
+            duration: 150
+          }
+        }
       }
 
       TextInput {

@@ -101,12 +101,8 @@ Item {
         }
 
         if (step === 1) {
-          return [
-            "ffmpeg", "-y", ..._ssArgs, "-i", target,
-            "-filter_complex", `[0:v]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}[bg]; [0:v]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}[thumb]`,
-            "-map", "[bg]", "-vframes", "1", "-q:v", "2", _bgPath,
-            "-map", "[thumb]", "-vframes", "1", "-q:v", "4", _thumbPath
-          ];
+          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-filter_complex", `[0:v]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh}[bg]; [0:v]scale=${tw}:${th}:force_original_aspect_ratio=increase,crop=${tw}:${th}[thumb]`, "-map", "[bg]", "-vframes", "1", "-q:v", "2", _bgPath, "-map", "[thumb]", "-vframes", "1", "-q:v", "4",
+                  _thumbPath];
         }
 
         if (step === 2 && _needAnim()) {
