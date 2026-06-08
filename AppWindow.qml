@@ -52,10 +52,6 @@ PanelWindow {
   property var _blurRoot: null
 
   property int bgCurrent: -1
-  property int bgPrevious: -1
-  property real bgSlideProgress: 0.0
-  property string _bgSourceA: ""
-  property string _bgSourceB: ""
 
   // ========== Logic ==========
 
@@ -106,70 +102,8 @@ PanelWindow {
   }
 
   onBgCurrentChanged: {
-    updateSourceA();
-  }
-  onBgPreviousChanged: {
-    updateSourceB();
-  }
-
-  function updateSourceA() {
-    if (bgCurrent >= 0 && bgCurrent < (adapter ? adapter.items.length : 0)) {
+    if (bgCurrent >= 0 && adapter && bgCurrent < adapter.items.length) {
       const item = adapter.items[bgCurrent];
-      if (!item)
-        return;
-      if (item.type === "local") {
-        const p = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, item.path);
-        if (p) {
-          _bgSourceA = "file://" + p;
-        } else if (!item.isVideo && !item.isGif) {
-          _bgSourceA = "file://" + item.path;
-        } else {
-          _bgSourceA = "";
-        }
-      } else if (item.type === "remote" && item.thumb) {
-        _bgSourceA = item.thumb;
-      }
-    }
-  }
-
-  function updateSourceB() {
-    if (bgPrevious >= 0 && bgPrevious < (adapter ? adapter.items.length : 0)) {
-      const item = adapter.items[bgPrevious];
-      if (!item)
-        return;
-      if (item.type === "local") {
-        const p = CacheUtils.getCachedBgPreview(cacheService.thumbHashToPath, item.path);
-        if (p) {
-          _bgSourceB = "file://" + p;
-        } else if (!item.isVideo && !item.isGif) {
-          _bgSourceB = "file://" + item.path;
-        } else {
-          _bgSourceB = "";
-        }
-      } else if (item.type === "remote" && item.thumb) {
-        _bgSourceB = item.thumb;
-      }
-    }
-  }
-
-  // Refresh background sources when cache is updated (new _bg.png generated)
-  Connections {
-    target: cacheService
-    function onThumbCacheVersionChanged() {
-      if (bgCurrent >= 0)
-        updateSourceA();
-      if (bgPrevious >= 0)
-        updateSourceB();
-    }
-  }
-
-  function updateBackground(index) {
-    if (index !== bgCurrent && index >= 0 && index < (adapter ? adapter.items.length : 0)) {
-      bgPrevious = bgCurrent;
-      bgCurrent = index;
-      bgSlideProgress = 0;
-      bgSlideAnim.restart();
-      const item = adapter.items[index];
       if (item && item.type === "local")
         colorExtractor.run(item.path);
       else
@@ -182,8 +116,8 @@ PanelWindow {
       adapter.setSearch(root.searchText);
     if (root.searchText) {
       displayManager.scrollTo(0);
+      bgCurrent = -1; // 强制变动重置
       bgCurrent = 0;
-      bgSlideProgress = 1.0;
       if (adapter.items.length > 0) {
         const item = adapter.items[0];
         if (item.type === "local")
@@ -204,11 +138,9 @@ PanelWindow {
     Qt.callLater(function () {
       displayManager.queueVisibleThumbnails();
     });
-    bgPrevious = -1;
     bgCurrent = -1;
-    bgSlideProgress = 1.0;
+    bgCurrent = 0;
     if (adapter && adapter.items.length > 0) {
-      bgCurrent = 0;
       const item = adapter.items[0];
       if (item.type === "local")
         colorExtractor.run(item.path);
@@ -297,16 +229,6 @@ PanelWindow {
     onRequestRefresh: refreshCache()
   }
 
-  PropertyAnimation {
-    id: bgSlideAnim
-    target: root
-    properties: "bgSlideProgress"
-    from: 0
-    to: 1.0
-    duration: root.bgSlideDuration
-    easing.type: Style.easingOutQuad
-  }
-
   ColorExtractor {
     id: colorExtractor
     thumbHashToPath: cacheService ? cacheService.thumbHashToPath : ({})
@@ -325,7 +247,9 @@ PanelWindow {
     interval: 150
     repeat: false
     onTriggered: {
-      updateBackground(displayManager.currentIndex);
+      if (displayManager.currentIndex >= 0 && displayManager.currentIndex < (adapter ? adapter.items.length : 0)) {
+        root.bgCurrent = displayManager.currentIndex;
+      }
     }
   }
 
@@ -333,13 +257,12 @@ PanelWindow {
 
   BackgroundManager {
     anchors.fill: parent
-    sourceA: _bgSourceA
-    sourceB: _bgSourceB
-    crossfadeProgress: bgSlideProgress
+    currentWallpaperItem: (root.bgCurrent >= 0 && adapter && root.bgCurrent < adapter.items.length) ? adapter.items[root.bgCurrent] : null
     parallaxX: displayManager.contentOffset * bgParallaxFactor
     dominantColor: root.dominantColor
     overlayOpacity: root.bgOverlayOpacity
     showPreview: root.showBgPreview
+    slideDuration: root.bgSlideDuration
   }
 
   // ========== StatusBar ==========
