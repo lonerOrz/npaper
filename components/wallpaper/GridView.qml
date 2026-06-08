@@ -8,6 +8,7 @@ import qs.services
 
 FocusScope {
   id: root
+  clip: true
 
   property var adapter: null
   property var cacheService: null
