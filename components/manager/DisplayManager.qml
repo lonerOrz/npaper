@@ -21,15 +21,30 @@ FocusScope {
   property int scrollContinueInterval: Config.data.animation ? Config.data.animation.scrollContinueInterval : Style.defaultScrollContinueInterval
   property int parallaxFactor: Config.data.animation ? Config.data.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
 
-  property bool _carouselLoaded: root.displayMode !== "grid"
+  property bool _carouselLoaded: root.displayMode === "carousel"
   property bool _gridLoaded: root.displayMode === "grid"
+  property bool _helixLoaded: root.displayMode === "helix"
 
-  readonly property var _activeView: root.displayMode !== "grid" ? carouselLoader.item : gridLoader.item
+  readonly property var _activeView: {
+    if (root.displayMode === "grid")
+      return gridLoader.item;
+    if (root.displayMode === "helix")
+      return helixLoader.item;
+    return carouselLoader.item;
+  }
 
   signal toggleViewMode
-  readonly property int currentIndex: _activeView ? _activeView.currentIndex : 0
-  readonly property real scrollTarget: _activeView ? _activeView.scrollTarget : 0
+  readonly property int currentIndex: _activeView ? _activeView.currentIndex : _lastActiveIndex
+  readonly property real scrollTarget: _activeView ? _activeView.scrollTarget : _lastActiveIndex
   readonly property real contentOffset: _activeView ? _activeView.scrollTarget - _activeView.currentIndex : 0
+
+  property int _lastActiveIndex: 0
+
+  onCurrentIndexChanged: {
+    if (_activeView) {
+      _lastActiveIndex = _activeView.currentIndex;
+    }
+  }
 
   signal requestQuit
   signal requestSettings
@@ -48,6 +63,7 @@ FocusScope {
   }
 
   function scrollTo(idx) {
+    _lastActiveIndex = idx;
     if (_activeView)
       _activeView.scrollTo(idx);
   }
@@ -62,38 +78,41 @@ FocusScope {
       return;
     if (root.adapter.currentSource !== "local")
       return;
-    if (root.displayMode !== "grid" && carouselLoader.item)
-      carouselLoader.item.queueVisibleThumbnails();
-    else if (root.displayMode === "grid" && gridLoader.item)
+    if (root.displayMode === "grid" && gridLoader.item)
       gridLoader.item.queueVisibleThumbnails();
+    else if (root.displayMode === "helix" && helixLoader.item)
+      helixLoader.item.queueVisibleThumbnails();
+    else if (carouselLoader.item)
+      carouselLoader.item.queueVisibleThumbnails();
   }
 
   onDisplayModeChanged: {
-    if (root.displayMode === "grid")
-      _gridLoaded = true;
-    else
+    if (root.displayMode === "carousel")
       _carouselLoaded = true;
+    else if (root.displayMode === "grid")
+      _gridLoaded = true;
+    else if (root.displayMode === "helix")
+      _helixLoaded = true;
 
     _syncIndexAndFocus();
   }
 
   function _syncIndexAndFocus() {
-    if (!carouselLoader.item || !gridLoader.item)
-      return;
-
-    if (root.displayMode === "grid") {
-      let savedIdx = carouselLoader.item.currentIndex;
-      gridLoader.item.scrollTo(savedIdx);
-      gridLoader.item.focusView();
-    } else {
-      let savedIdx = gridLoader.item.currentIndex;
-      carouselLoader.item.scrollTo(savedIdx);
-      carouselLoader.item.focusView();
+    if (_activeView) {
+      _activeView.scrollTo(_lastActiveIndex);
+      _activeView.focusView();
+      root.queueVisibleThumbnails();
     }
-    root.queueVisibleThumbnails();
   }
 
   Component.onCompleted: {
+    if (root.displayMode === "carousel")
+      _carouselLoaded = true;
+    else if (root.displayMode === "grid")
+      _gridLoaded = true;
+    else if (root.displayMode === "helix")
+      _helixLoaded = true;
+
     Qt.callLater(root.queueVisibleThumbnails);
   }
 
@@ -101,16 +120,15 @@ FocusScope {
     id: carouselLoader
     anchors.fill: parent
     active: root._carouselLoaded
-    visible: root.displayMode !== "grid"
+    visible: root.displayMode === "carousel"
     asynchronous: true
     focus: visible
 
     onLoaded: {
       if (item) {
-        if (root.displayMode !== "grid") {
+        item.scrollTo(root._lastActiveIndex);
+        if (root.displayMode === "carousel") {
           item.focusView();
-        } else if (gridLoader.item) {
-          item.scrollTo(gridLoader.item.currentIndex);
         }
         root.queueVisibleThumbnails();
       }
@@ -155,10 +173,9 @@ FocusScope {
 
     onLoaded: {
       if (item) {
+        item.scrollTo(root._lastActiveIndex);
         if (root.displayMode === "grid") {
           item.focusView();
-        } else if (carouselLoader.item) {
-          item.scrollTo(carouselLoader.item.currentIndex);
         }
         root.queueVisibleThumbnails();
       }
@@ -167,6 +184,50 @@ FocusScope {
     sourceComponent: GridView {
       adapter: root.adapter
       cacheService: root.cacheService
+
+      onRequestQuit: root.requestQuit()
+      onRequestSettings: root.requestSettings()
+      onRequestPrevFolder: root.requestPrevFolder()
+      onRequestNextFolder: root.requestNextFolder()
+      onRequestFocusSearch: root.requestFocusSearch()
+      onRequestApplyItem: function (item) {
+        root.requestApplyItem(item);
+      }
+      onRequestRandom: root.requestRandom()
+      onRequestToggleWallhaven: root.requestToggleWallhaven()
+      onRequestRefresh: root.requestRefresh()
+      onRequestToggleViewMode: root.requestToggleViewMode()
+    }
+  }
+
+  Loader {
+    id: helixLoader
+    anchors.fill: parent
+    active: root._helixLoaded
+    visible: root.displayMode === "helix"
+    asynchronous: true
+    focus: visible
+
+    onLoaded: {
+      if (item) {
+        item.scrollTo(root._lastActiveIndex);
+        if (root.displayMode === "helix") {
+          item.focusView();
+        }
+        root.queueVisibleThumbnails();
+      }
+    }
+
+    sourceComponent: HelixView {
+      adapter: root.adapter
+      cacheService: root.cacheService
+      checkService: root.checkService
+
+      scrollDuration: root.scrollDuration
+      scrollContinueInterval: root.scrollContinueInterval
+      parallaxFactor: root.parallaxFactor
+      showBorderGlow: Config.data.appearance ? Config.data.appearance.showBorderGlow : true
+      showShadow: Config.data.appearance ? Config.data.appearance.showShadow : true
 
       onRequestQuit: root.requestQuit()
       onRequestSettings: root.requestSettings()

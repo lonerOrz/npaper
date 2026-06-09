@@ -34,7 +34,7 @@ Item {
     }
 
     // Check cache first
-    const bg = CacheUtils.getCachedBgPreview(root.thumbHashToPath, wp);
+    const bg = CacheUtils.resolveBgPreview(root.thumbHashToPath, wp);
     if (bg) {
       _extractFrom(bg);
       return;

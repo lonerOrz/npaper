@@ -499,7 +499,7 @@ FocusScope {
         Image {
           id: thumbImage
           anchors.fill: parent
-          source: gridItem.modelData ? (gridItem.modelData.thumbLarge || gridItem.modelData.thumb || "") : ""
+          source: CacheUtils.resolveGridStaticSource(root.cacheService ? root.cacheService.thumbHashToPath : {}, gridItem.modelData)
           visible: source !== ""
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
@@ -508,14 +508,6 @@ FocusScope {
           mipmap: false
           sourceSize: Qt.size(root._gridCellW, root._gridCellH)
           opacity: status === Image.Ready ? 1.0 : (status === Image.Error ? 0.3 : 0.0)
-
-          onStatusChanged: {
-            if (status === Image.Error && source !== "") {
-              const item = gridItem.modelData;
-              if (item && item.path && !item.isVideo && !item.isGif)
-                source = "file://" + item.path;
-            }
-          }
           Behavior on opacity {
             NumberAnimation {
               duration: 100
@@ -526,7 +518,7 @@ FocusScope {
         AnimatedImage {
           id: animatedGif
           anchors.fill: parent
-          source: CacheUtils.getAnimatedPreviewSource(root.cacheService ? root.cacheService.thumbHashToPath : {}, gridItem.modelData)
+          source: CacheUtils.resolveGridAnimatedSource(root.cacheService ? root.cacheService.thumbHashToPath : {}, gridItem.modelData)
           visible: source !== "" && gridItem.isCurrent
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
@@ -534,7 +526,7 @@ FocusScope {
           mipmap: true
           cache: true
           sourceSize: Qt.size(root._gridCellW, root._gridCellH)
-          playing: visible && source !== ""
+          playing: source !== ""
           opacity: status === AnimatedImage.Ready ? 1.0 : 0.0
           Behavior on opacity {
             NumberAnimation {

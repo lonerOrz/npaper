@@ -149,10 +149,12 @@ Item {
     }
 
     SelectorPill {
-      model: ["Carousel", "Grid"]
-      activeIndex: Config.previewStyle === "grid" ? 1 : 0
+      model: Config.previewModes.map(function (m) {
+        return m.charAt(0).toUpperCase() + m.slice(1);
+      })
+      activeIndex: Math.max(0, Config.previewModes.indexOf(Config.previewStyle))
       onSelected: function (index, label) {
-        Config.update("previewStyle", label.toLowerCase());
+        Config.update("previewStyle", Config.previewModes[index]);
       }
     }
 

@@ -194,13 +194,11 @@ FocusScope {
           }
           return null;
         }
-        wallpaperPath: _item ? (_item.type === "remote" ? _item.thumb : _item.path) : ""
+        wallpaperPath: _item ? _item.path : ""
+        wallpaperItem: _item
         filename: _item ? _item.filename : ""
-        isVideo: _item ? _item.isVideo : false
-        isGif: _item ? _item.isGif : false
         isRemote: _item ? _item.type === "remote" : false
         remoteId: _item && _item.type === "remote" ? _item.id : ""
-        remoteThumb: _item && _item.type === "remote" ? _item.thumb : ""
         isCenter: realIndex === root.currentIndex
         showBorderGlow: root.showBorderGlow
         showShadow: root.showShadow

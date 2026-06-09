@@ -10,14 +10,12 @@ Item {
   property var whService: null
   property int itemIndex: -1
 
+  property var wallpaperItem: null
+
   property string wallpaperPath: ""
   property string filename: ""
-  property bool isVideo: false
-  property bool isGif: false
-
   property bool isRemote: false
   property string remoteId: ""
-  property string remoteThumb: ""
 
   property real itemWidth: Style.carouselItemWidth > 0 ? Style.carouselItemWidth : 480
   property real itemHeight: Style.carouselItemHeight > 0 ? Style.carouselItemHeight : 270
@@ -134,7 +132,7 @@ Item {
     Image {
       id: staticImage
       anchors.fill: parent
-      source: CacheUtils.getWallpaperStaticSource(root.thumbHashToPath, root.wallpaperPath, root.isVideo, root.isGif, root.isRemote, root.remoteThumb)
+      source: CacheUtils.resolveWallpaperStaticSource(root.thumbHashToPath, root.wallpaperItem)
       fillMode: Image.PreserveAspectCrop
       asynchronous: true
       smooth: root.isCenter || root.isRemote
@@ -171,12 +169,11 @@ Item {
     AnimatedImage {
       id: animatedGif
       anchors.fill: parent
-      source: CacheUtils.getWallpaperAnimatedSource(root.thumbHashToPath, root.wallpaperPath, root.isVideo, root.isGif, root.isCenter)
+      source: CacheUtils.resolveWallpaperAnimatedSource(root.thumbHashToPath, root.wallpaperItem, root.isCenter)
       visible: source !== ""
       fillMode: Image.PreserveAspectCrop
       asynchronous: true
       smooth: true
-      mipmap: true
       playing: visible
       sourceSize: Qt.size(Style.cacheAnimWidth, Style.cacheAnimHeight)
     }
