@@ -23,7 +23,7 @@ Singleton {
   property bool _isSaving: false
 
   property string previewStyle: "carousel"
-  readonly property var previewModes: ["carousel", "grid", "helix"]
+  readonly property var previewModes: ["carousel", "grid", "slanted"]
 
   signal dataLoaded
 

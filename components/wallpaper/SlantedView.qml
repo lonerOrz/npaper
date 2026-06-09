@@ -1,6 +1,6 @@
 import QtQuick
-import QtQuick.Shapes
 import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import "../../utils/CacheUtils.js" as CacheUtils
 import qs.components.common

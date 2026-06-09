@@ -23,13 +23,13 @@ FocusScope {
 
   property bool _carouselLoaded: root.displayMode === "carousel"
   property bool _gridLoaded: root.displayMode === "grid"
-  property bool _helixLoaded: root.displayMode === "helix"
+  property bool _slantedLoaded: root.displayMode === "slanted"
 
   readonly property var _activeView: {
     if (root.displayMode === "grid")
       return gridLoader.item;
-    if (root.displayMode === "helix")
-      return helixLoader.item;
+    if (root.displayMode === "slanted")
+      return slantedLoader.item;
     return carouselLoader.item;
   }
 
@@ -80,8 +80,8 @@ FocusScope {
       return;
     if (root.displayMode === "grid" && gridLoader.item)
       gridLoader.item.queueVisibleThumbnails();
-    else if (root.displayMode === "helix" && helixLoader.item)
-      helixLoader.item.queueVisibleThumbnails();
+    else if (root.displayMode === "slanted" && slantedLoader.item)
+      slantedLoader.item.queueVisibleThumbnails();
     else if (carouselLoader.item)
       carouselLoader.item.queueVisibleThumbnails();
   }
@@ -91,8 +91,8 @@ FocusScope {
       _carouselLoaded = true;
     else if (root.displayMode === "grid")
       _gridLoaded = true;
-    else if (root.displayMode === "helix")
-      _helixLoaded = true;
+    else if (root.displayMode === "slanted")
+      _slantedLoaded = true;
 
     _syncIndexAndFocus();
   }
@@ -110,8 +110,8 @@ FocusScope {
       _carouselLoaded = true;
     else if (root.displayMode === "grid")
       _gridLoaded = true;
-    else if (root.displayMode === "helix")
-      _helixLoaded = true;
+    else if (root.displayMode === "slanted")
+      _slantedLoaded = true;
 
     Qt.callLater(root.queueVisibleThumbnails);
   }
@@ -201,24 +201,24 @@ FocusScope {
   }
 
   Loader {
-    id: helixLoader
+    id: slantedLoader
     anchors.fill: parent
-    active: root._helixLoaded
-    visible: root.displayMode === "helix"
+    active: root._slantedLoaded
+    visible: root.displayMode === "slanted"
     asynchronous: true
     focus: visible
 
     onLoaded: {
       if (item) {
         item.scrollTo(root._lastActiveIndex);
-        if (root.displayMode === "helix") {
+        if (root.displayMode === "slanted") {
           item.focusView();
         }
         root.queueVisibleThumbnails();
       }
     }
 
-    sourceComponent: HelixView {
+    sourceComponent: SlantedView {
       adapter: root.adapter
       cacheService: root.cacheService
       checkService: root.checkService
