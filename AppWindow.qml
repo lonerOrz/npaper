@@ -203,7 +203,11 @@ PanelWindow {
         return;
       _toggleViewLock = true;
       Qt.callLater(function () {
-        var next = Config.previewStyle === "grid" ? "carousel" : "grid";
+        var modes = Config.previewModes;
+        var currentIdx = modes.indexOf(Config.previewStyle);
+        if (currentIdx === -1)
+          currentIdx = 0;
+        var next = modes[(currentIdx + 1) % modes.length];
         Config.update("previewStyle", next);
         _toggleViewLock = false;
       });

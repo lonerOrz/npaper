@@ -7,6 +7,7 @@ Item {
   id: root
 
   property var currentWallpaperItem: null
+  property var thumbHashToPath: ({})
   property real parallaxX: 0
   property color dominantColor: Color.mPrimary
   property real overlayOpacity: 0.4
@@ -33,10 +34,14 @@ Item {
     updateBackground(currentWallpaperItem);
   }
 
+  Component.onCompleted: {
+    root.thumbHashToPath = ServiceLocator.cacheService ? ServiceLocator.cacheService.thumbHashToPath : ({});
+  }
+
   Connections {
     target: ServiceLocator.cacheService || null
     function onThumbCacheVersionChanged() {
-      root._updateSources(root.currentWallpaperItem, root._prevItem);
+      root.thumbHashToPath = ServiceLocator.cacheService.thumbHashToPath;
     }
   }
 
@@ -58,28 +63,8 @@ Item {
   }
 
   function _updateSources(activeItem, outgoingItem) {
-    _sourceA = _resolvePath(activeItem);
-    _sourceB = _resolvePath(outgoingItem);
-  }
-
-  function _resolvePath(item) {
-    if (!item)
-      return "";
-    if (item.type === "local") {
-      const cacheService = ServiceLocator.cacheService;
-      const thumbMap = cacheService ? cacheService.thumbHashToPath : {};
-      const p = CacheUtils.getCachedBgPreview(thumbMap, item.path);
-      if (p) {
-        return "file://" + p;
-      } else if (!item.isVideo && !item.isGif) {
-        return "file://" + item.path;
-      } else {
-        return "";
-      }
-    } else if (item.type === "remote" && item.thumb) {
-      return item.thumb;
-    }
-    return "";
+    _sourceA = CacheUtils.resolveBgSource(root.thumbHashToPath, activeItem);
+    _sourceB = CacheUtils.resolveBgSource(root.thumbHashToPath, outgoingItem);
   }
 
   Image {

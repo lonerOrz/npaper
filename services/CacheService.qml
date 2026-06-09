@@ -72,6 +72,16 @@ Item {
     }
   }
 
+  Process {
+    id: cleanOrphanedAnimProcess
+    command: ["sh", "-c", `find "${root.cacheDir}" -name '*_anim.gif' -size 0 -delete 2>/dev/null`]
+  }
+
+  Process {
+    id: migrateOldFormatProcess
+    command: ["sh", "-c", `find "${root.cacheDir}" \\( -name '*.png' ! -name '*_bg.png' ! -name '*_thumb.png' \\) -delete 2>/dev/null && find "${root.cacheDir}" -name '*_bg.png' -delete 2>/dev/null`]
+  }
+
   Component {
     id: thumbWorkerComponent
     Process {
@@ -109,6 +119,10 @@ Item {
           return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-r", "30", "-vf", `scale=${root.animWidth}:${root.animHeight}:force_original_aspect_ratio=increase,crop=${root.animWidth}:${root.animHeight}`, "-t", "10", _animPath];
         }
 
+        if (step === 3 && _needAnim()) {
+          return ["sh", "-c", `test -s '${_animPath.replace(/'/g, "'\\''")}' || { rm -f '${_animPath.replace(/'/g, "'\\''")}'; exit 1; }`];
+        }
+
         return [];
       }
 
@@ -117,7 +131,7 @@ Item {
       }
 
       function _totalSteps() {
-        return _needAnim() ? 3 : 2;
+        return _needAnim() ? 4 : 2;
       }
 
       function runNext() {
@@ -136,6 +150,14 @@ Item {
 
       onExited: function (exitCode, exitStatus) {
         if (exitCode !== 0) {
+          if (_step === 3) {
+            if (root.debugMode)
+              Logger.d("Worker", _workerId, "invalid anim, skipping:", _animPath);
+            _animPath = "";
+            _step = _totalSteps();
+            _finish();
+            return;
+          }
           if (root.debugMode)
             Logger.d("Worker", _workerId, "failed at step", _step, ":", _path, "code:", exitCode);
           _reset();
@@ -220,7 +242,21 @@ Item {
   }
 
   function scanCache() {
-    scanCacheProcess.exec({});
+    cleanOrphanedAnimProcess.exec({});
+  }
+
+  Connections {
+    target: cleanOrphanedAnimProcess
+    function onExited() {
+      migrateOldFormatProcess.exec({});
+    }
+  }
+
+  Connections {
+    target: migrateOldFormatProcess
+    function onExited() {
+      scanCacheProcess.exec({});
+    }
   }
 
   function refreshAndQueue(wallpaperList, folder) {
@@ -271,10 +307,10 @@ Item {
 
     const isAnim = isVideo || isGif;
     if (isAnim) {
-      if (CacheHelpers.getCachedAnimatedGif(root.thumbHashToPath, wallpaperPath))
+      if (CacheHelpers.resolveAnimatedGif(root.thumbHashToPath, wallpaperPath))
         return;
     } else {
-      if (CacheHelpers.getCachedThumb(root.thumbHashToPath, wallpaperPath))
+      if (CacheHelpers.resolveThumb(root.thumbHashToPath, wallpaperPath))
         return;
     }
     if (root.queuedSet[wallpaperPath])

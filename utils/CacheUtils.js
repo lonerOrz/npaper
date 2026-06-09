@@ -32,71 +32,67 @@ function getAnimatedGifPath(cacheDir, wallpaperPath) {
     return cacheDir + '/' + folder + '/' + hash + '_anim.gif';
 }
 
-function getCachedAnimatedGif(thumbHashToPath, wallpaperPath) {
-    if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/'))
-        return "";
+function resolveThumb(thumbHashToPath, wallpaperPath) {
+    if (!wallpaperPath) return "";
     const hash = Hash.getThumbnailHash(wallpaperPath);
     const folder = getFolderName(wallpaperPath);
-    const key = folder + '/' + hash + '_anim.gif';
-    return thumbHashToPath[key] || "";
+    return thumbHashToPath[folder + '/' + hash + '_thumb.jpg'] || "";
 }
 
-function getCachedThumb(thumbHashToPath, wallpaperPath) {
-    if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/'))
-        return "";
+function resolveBgPreview(thumbHashToPath, wallpaperPath) {
+    if (!wallpaperPath) return "";
     const hash = Hash.getThumbnailHash(wallpaperPath);
     const folder = getFolderName(wallpaperPath);
-    const newKey = folder + '/' + hash + '_thumb.jpg';
-    if (thumbHashToPath[newKey]) return thumbHashToPath[newKey];
-    const oldKey = folder + '/' + hash + '.png';
-    return thumbHashToPath[oldKey] || "";
+    return thumbHashToPath[folder + '/' + hash + '_bg.jpg'] || "";
 }
 
-function getCachedBgPreview(thumbHashToPath, wallpaperPath) {
-    if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/'))
-        return "";
+function resolveAnimatedGif(thumbHashToPath, wallpaperPath) {
+    if (!wallpaperPath) return "";
     const hash = Hash.getThumbnailHash(wallpaperPath);
     const folder = getFolderName(wallpaperPath);
-    const key = folder + '/' + hash + '_bg.jpg';
-    if (thumbHashToPath[key]) return thumbHashToPath[key];
-    const oldKey = folder + '/' + hash + '_bg.png';
-    return thumbHashToPath[oldKey] || "";
+    return thumbHashToPath[folder + '/' + hash + '_anim.gif'] || "";
 }
 
-function getStaticThumbSource(thumbHashToPath, item) {
-    if (!item) return "";
-    if (item.type === "remote") return item.thumb;
-    const path = item.path;
-    if (!path || path.length === 0 || path.endsWith('/')) return "";
-    const thumb = getCachedThumb(thumbHashToPath, path);
-    if (thumb) return "file://" + thumb;
-    const bg = getCachedBgPreview(thumbHashToPath, path);
+function resolveWallpaperStaticSource(thumbHashToPath, item) {
+    if (!item || !item.path) return "";
+    if (item.type === "remote") return item.thumb || "";
+    const bg = resolveBgPreview(thumbHashToPath, item.path);
     if (bg) return "file://" + bg;
     if (item.isVideo || item.isGif) return "";
-    return "file://" + path;
+    return "file://" + item.path;
 }
 
-function getAnimatedPreviewSource(thumbHashToPath, item) {
-    if (!item || !item.path || item.path.length === 0) return "";
-    if (item.type === "remote") return "";
-    if (!item.isVideo && !item.isGif) return "";
-    const anim = getCachedAnimatedGif(thumbHashToPath, item.path);
-    return anim ? "file://" + anim : "";
-}
-
-function getWallpaperStaticSource(thumbHashToPath, wallpaperPath, isVideo, isGif, isRemote, remoteThumb) {
-    if (isRemote) return remoteThumb || "";
-    if (!wallpaperPath || wallpaperPath.length === 0 || wallpaperPath.endsWith('/')) return "";
-    const bg = getCachedBgPreview(thumbHashToPath, wallpaperPath);
-    if (bg) return "file://" + bg;
-    if (isVideo || isGif) return "";
-    return "file://" + wallpaperPath;
-}
-
-function getWallpaperAnimatedSource(thumbHashToPath, wallpaperPath, isVideo, isGif, isCenter) {
+function resolveWallpaperAnimatedSource(thumbHashToPath, item, isCenter) {
     if (!isCenter) return "";
-    if (!wallpaperPath || wallpaperPath.length === 0) return "";
-    if (!isVideo && !isGif) return "";
-    const anim = getCachedAnimatedGif(thumbHashToPath, wallpaperPath);
+    if (!item || !item.path) return "";
+    if (!item.isVideo && !item.isGif) return "";
+    const anim = resolveAnimatedGif(thumbHashToPath, item.path);
     return anim ? "file://" + anim : "";
+}
+
+function resolveGridStaticSource(thumbHashToPath, item) {
+    if (!item) return "";
+    if (item.type === "remote") return item.thumbLarge || item.thumb || "";
+    const thumb = resolveThumb(thumbHashToPath, item.path);
+    if (thumb) return "file://" + thumb;
+    const bg = resolveBgPreview(thumbHashToPath, item.path);
+    if (bg) return "file://" + bg;
+    if (!item.isVideo && !item.isGif) return "file://" + item.path;
+    return "";
+}
+
+function resolveGridAnimatedSource(thumbHashToPath, item) {
+    if (!item || !item.path || item.type === "remote") return "";
+    if (!item.isVideo && !item.isGif) return "";
+    const anim = resolveAnimatedGif(thumbHashToPath, item.path);
+    return anim ? "file://" + anim : "";
+}
+
+function resolveBgSource(thumbHashToPath, item) {
+    if (!item) return "";
+    if (item.type === "remote") return item.thumb || "";
+    const bg = resolveBgPreview(thumbHashToPath, item.path);
+    if (bg) return "file://" + bg;
+    if (!item.isVideo && !item.isGif) return "file://" + item.path;
+    return "";
 }

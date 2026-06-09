@@ -86,8 +86,8 @@ Item {
 
   function _makeItem(path) {
     const thumbMap = root.thumbHashToPath || {};
-    const cachedThumb = CacheUtils.getCachedThumb(thumbMap, path);
-    const cachedBg = CacheUtils.getCachedBgPreview(thumbMap, path);
+    const cachedThumb = CacheUtils.resolveThumb(thumbMap, path);
+    const cachedBg = CacheUtils.resolveBgPreview(thumbMap, path);
     let resolvedThumb = "";
 
     if (cachedThumb) {
