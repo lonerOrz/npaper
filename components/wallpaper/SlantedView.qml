@@ -181,8 +181,8 @@ FocusScope {
     cacheBuffer: Math.round(root.expandedWidth) * 3
 
     highlightRangeMode: ListView.StrictlyEnforceRange
-    preferredHighlightBegin: (listView.width - root.expandedWidth) / 2
-    preferredHighlightEnd: (listView.width + root.expandedWidth) / 2
+    preferredHighlightBegin: (listView.width - root.sliceWidth) / 2
+    preferredHighlightEnd: (listView.width + root.sliceWidth) / 2
     highlightMoveDuration: root.scrollDuration
     highlightFollowsCurrentItem: true
     highlight: Item {}
@@ -222,6 +222,26 @@ FocusScope {
       readonly property bool isLocal: itemData ? (!isRemote) : false
       readonly property real cardRadius: Style.radiusL
 
+      readonly property real targetTranslationX: {
+        if (index < listView.currentIndex) {
+          return -((root.expandedWidth - root.sliceWidth) / 2);
+        } else if (index > listView.currentIndex) {
+          return ((root.expandedWidth - root.sliceWidth) / 2);
+        } else {
+          return 0;
+        }
+      }
+
+      transform: Translate {
+        x: delegateItem.targetTranslationX
+        Behavior on x {
+          NumberAnimation {
+            duration: root.scrollDuration
+            easing.type: Easing.OutCubic
+          }
+        }
+      }
+
       HoverHandler {
         id: itemHover
       }
@@ -234,25 +254,18 @@ FocusScope {
       readonly property real _sk: root.skewOffset
       readonly property real _skAbs: Math.abs(_sk)
       readonly property real _topLeft: _sk >= 0 ? _skAbs : 0
-      readonly property real _topRight: _sk >= 0 ? width : width - _skAbs
-      readonly property real _botRight: _sk >= 0 ? width - _skAbs : width
+      readonly property real _topRight: _sk >= 0 ? flipContainer.width : flipContainer.width - _skAbs
+      readonly property real _botRight: _sk >= 0 ? flipContainer.width - _skAbs : flipContainer.width
       readonly property real _botLeft: _sk >= 0 ? 0 : _skAbs
 
       readonly property real _topLeftM: _sk >= 0 ? 0 : _skAbs
-      readonly property real _topRightM: _sk >= 0 ? width - _skAbs : width
-      readonly property real _botRightM: _sk >= 0 ? width : width - _skAbs
+      readonly property real _topRightM: _sk >= 0 ? flipContainer.width - _skAbs : flipContainer.width
+      readonly property real _botRightM: _sk >= 0 ? flipContainer.width : flipContainer.width - _skAbs
       readonly property real _botLeftM: _sk >= 0 ? _skAbs : 0
 
-      width: isCurrent ? root.expandedWidth : root.sliceWidth
+      width: root.sliceWidth
       height: listView.height
       property bool flipped: false
-
-      Behavior on width {
-        NumberAnimation {
-          duration: root.scrollDuration
-          easing.type: Easing.OutCubic
-        }
-      }
 
       onIsCurrentChanged: {
         if (isCurrent)
@@ -264,10 +277,11 @@ FocusScope {
         z: -1
         x: delegateItem.isCurrent ? 4 : 2
         y: delegateItem.isCurrent ? 10 : 5
-        width: delegateItem.width
+        width: flipContainer.width
         height: delegateItem.height
         opacity: delegateItem.isCurrent ? 0.4 : 0.15
         visible: root.showShadow
+        anchors.horizontalCenter: parent.horizontalCenter
 
         Behavior on x {
           NumberAnimation {
@@ -294,33 +308,33 @@ FocusScope {
           startX: delegateItem._topLeft + delegateItem.cardRadius
           startY: 0
           PathLine {
-            x: delegateItem._topRight - delegateItem.cardRadius
+            x: flipContainer.width - delegateItem.cardRadius
             y: 0
           }
           PathQuad {
-            x: delegateItem._topRight - (root.skewOffset * 0.12)
+            x: flipContainer.width - (root.skewOffset * 0.12)
             y: delegateItem.cardRadius
-            controlX: delegateItem._topRight
+            controlX: flipContainer.width
             controlY: 0
           }
           PathLine {
-            x: delegateItem._botRight + (root.skewOffset * 0.12)
+            x: (flipContainer.width - root.skewOffset) + (root.skewOffset * 0.12)
             y: shadowShape.height - delegateItem.cardRadius
           }
           PathQuad {
-            x: delegateItem._botRight - delegateItem.cardRadius
+            x: (flipContainer.width - root.skewOffset) - delegateItem.cardRadius
             y: shadowShape.height
-            controlX: delegateItem._botRight
+            controlX: (flipContainer.width - root.skewOffset)
             controlY: shadowShape.height
           }
           PathLine {
-            x: delegateItem._botLeft + delegateItem.cardRadius
+            x: delegateItem.cardRadius
             y: shadowShape.height
           }
           PathQuad {
-            x: delegateItem._botLeft + (root.skewOffset * 0.12)
+            x: (root.skewOffset * 0.12)
             y: shadowShape.height - delegateItem.cardRadius
-            controlX: delegateItem._botLeft
+            controlX: 0
             controlY: shadowShape.height
           }
           PathLine {
@@ -338,7 +352,7 @@ FocusScope {
 
       Item {
         id: sharedMask
-        width: delegateItem.width
+        width: flipContainer.width
         height: delegateItem.height
         visible: false
         layer.enabled: true
@@ -353,33 +367,33 @@ FocusScope {
             startX: delegateItem._topLeft + delegateItem.cardRadius
             startY: 0
             PathLine {
-              x: delegateItem._topRight - delegateItem.cardRadius
+              x: flipContainer.width - delegateItem.cardRadius
               y: 0
             }
             PathQuad {
-              x: delegateItem._topRight - (root.skewOffset * 0.12)
+              x: flipContainer.width - (root.skewOffset * 0.12)
               y: delegateItem.cardRadius
-              controlX: delegateItem._topRight
+              controlX: flipContainer.width
               controlY: 0
             }
             PathLine {
-              x: delegateItem._botRight + (root.skewOffset * 0.12)
+              x: (flipContainer.width - root.skewOffset) + (root.skewOffset * 0.12)
               y: sharedMask.height - delegateItem.cardRadius
             }
             PathQuad {
-              x: delegateItem._botRight - delegateItem.cardRadius
+              x: (flipContainer.width - root.skewOffset) - delegateItem.cardRadius
               y: sharedMask.height
-              controlX: delegateItem._botRight
+              controlX: (flipContainer.width - root.skewOffset)
               controlY: sharedMask.height
             }
             PathLine {
-              x: delegateItem._botLeft + delegateItem.cardRadius
+              x: delegateItem.cardRadius
               y: sharedMask.height
             }
             PathQuad {
-              x: delegateItem._botLeft + (root.skewOffset * 0.12)
+              x: (root.skewOffset * 0.12)
               y: sharedMask.height - delegateItem.cardRadius
-              controlX: delegateItem._botLeft
+              controlX: 0
               controlY: sharedMask.height
             }
             PathLine {
@@ -398,8 +412,11 @@ FocusScope {
 
       Item {
         id: flipContainer
-        anchors.fill: parent
+        anchors.horizontalCenter: parent.horizontalCenter
+        height: parent.height
         z: 2
+
+        width: isCurrent ? root.expandedWidth : root.sliceWidth
 
         transform: Rotation {
           origin.x: flipContainer.width / 2
@@ -511,33 +528,33 @@ FocusScope {
               startX: delegateItem._topLeft + delegateItem.cardRadius
               startY: 0
               PathLine {
-                x: delegateItem._topRight - delegateItem.cardRadius
+                x: flipContainer.width - delegateItem.cardRadius
                 y: 0
               }
               PathQuad {
-                x: delegateItem._topRight - (root.skewOffset * 0.12)
+                x: flipContainer.width - (root.skewOffset * 0.12)
                 y: delegateItem.cardRadius
-                controlX: delegateItem._topRight
+                controlX: flipContainer.width
                 controlY: 0
               }
               PathLine {
-                x: delegateItem._botRight + (root.skewOffset * 0.12)
+                x: (flipContainer.width - root.skewOffset) + (root.skewOffset * 0.12)
                 y: glowBorder.height - delegateItem.cardRadius
               }
               PathQuad {
-                x: delegateItem._botRight - delegateItem.cardRadius
+                x: (flipContainer.width - root.skewOffset) - delegateItem.cardRadius
                 y: glowBorder.height
-                controlX: delegateItem._botRight
+                controlX: (flipContainer.width - root.skewOffset)
                 controlY: glowBorder.height
               }
               PathLine {
-                x: delegateItem._botLeft + delegateItem.cardRadius
+                x: delegateItem.cardRadius
                 y: glowBorder.height
               }
               PathQuad {
-                x: delegateItem._botLeft + (root.skewOffset * 0.12)
+                x: (root.skewOffset * 0.12)
                 y: glowBorder.height - delegateItem.cardRadius
-                controlX: delegateItem._botLeft
+                controlX: 0
                 controlY: glowBorder.height
               }
               PathLine {
@@ -788,33 +805,33 @@ FocusScope {
               startX: delegateItem._topLeftM + delegateItem.cardRadius
               startY: 0
               PathLine {
-                x: delegateItem._topRightM - delegateItem.cardRadius
+                x: flipContainer.width - delegateItem._topLeftM - delegateItem.cardRadius
                 y: 0
               }
               PathQuad {
-                x: delegateItem._topRightM - (root.skewOffset * 0.12)
+                x: flipContainer.width - delegateItem._topLeftM - (root.skewOffset * 0.12)
                 y: delegateItem.cardRadius
-                controlX: delegateItem._topRightM
+                controlX: flipContainer.width - delegateItem._topLeftM
                 controlY: 0
               }
               PathLine {
-                x: delegateItem._botRightM + (root.skewOffset * 0.12)
+                x: (flipContainer.width - delegateItem._topLeftM - root.skewOffset) + (root.skewOffset * 0.12)
                 y: backBorderShape.height - delegateItem.cardRadius
               }
               PathQuad {
-                x: delegateItem._botRightM - delegateItem.cardRadius
+                x: (flipContainer.width - delegateItem._topLeftM - root.skewOffset) - delegateItem.cardRadius
                 y: backBorderShape.height
-                controlX: delegateItem._botRightM
+                controlX: (flipContainer.width - delegateItem._topLeftM - root.skewOffset)
                 controlY: backBorderShape.height
               }
               PathLine {
-                x: delegateItem._botLeftM + delegateItem.cardRadius
+                x: delegateItem.cardRadius
                 y: backBorderShape.height
               }
               PathQuad {
-                x: delegateItem._botLeftM + (root.skewOffset * 0.12)
+                x: (root.skewOffset * 0.12)
                 y: backBorderShape.height - delegateItem.cardRadius
-                controlX: delegateItem._botLeftM
+                controlX: 0
                 controlY: backBorderShape.height
               }
               PathLine {
