@@ -2,9 +2,20 @@
   "wallpaperDirs": ["$HOME/Pictures/wallpapers"],
   "cacheDir": "$HOME/.cache/wallpaper_thumbs",
   "debugMode": false,
-
-  "scrollDuration": 280,
-  "scrollContinueInterval": 230,
-  "bgSlideDuration": 250,
-  "bgParallaxFactor": 40
+  "previewStyle": "grid",
+  "videoBackend": "mpvpaper",
+  "wallhaven": {
+    "apiKey": "",
+    "downloadDir": "",
+    "defaultAtleast": "1920x1080",
+    "categories": "111",
+    "purity": "100",
+    "sorting": "toplist"
+  },
+  "appearance": {
+    "showBorderGlow": false,
+    "showShadow": true,
+    "showBgPreview": false,
+    "bgOverlayOpacity": 0.25
+  }
 }
