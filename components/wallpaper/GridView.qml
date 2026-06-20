@@ -4,6 +4,7 @@ import QtQuick.Effects
 import QtQuick.Shapes
 import Quickshell
 import "../../utils/CacheUtils.js" as CacheUtils
+import qs.components.common
 import qs.services
 
 FocusScope {
@@ -12,6 +13,8 @@ FocusScope {
 
   property var adapter: null
   property var cacheService: null
+  property var appViewModel: null
+  property var wallhavenFilter: null
 
   property bool gridScrollActive: false
 
@@ -43,12 +46,6 @@ FocusScope {
 
   function focusView() {
     thumbGridView.forceActiveFocus();
-  }
-
-  function _currentItems() {
-    if (root.adapter && root.adapter.currentSource === "remote" && root.adapter.whService)
-      return root.adapter.whService.results;
-    return root.adapter ? root.adapter.items : [];
   }
 
   function queueVisibleThumbnails() {
@@ -121,6 +118,7 @@ FocusScope {
     boundsBehavior: Flickable.StopAtBounds
     keyNavigationEnabled: true
     keyNavigationWraps: false
+    focus: true
     highlightMoveDuration: Style.animNormal
     highlight: Item {}
 
@@ -587,61 +585,25 @@ FocusScope {
       }
     }
 
-    Keys.onPressed: function (event) {
-      if (event.key === Qt.Key_Escape) {
-        root.requestQuit();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_S && !event.modifiers) {
-        root.requestSettings();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_W && !event.modifiers) {
-        root.requestToggleWallhaven();
-        thumbGridView.forceActiveFocus();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-        event.key === Qt.Key_Tab ? root.requestNextFolder() : root.requestPrevFolder();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft || event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
-        event.accepted = true;
-        root.requestToggleViewMode();
-        return;
-      }
-      if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
-        root.requestFocusSearch();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        var items = root._currentItems();
-        if (items.length > 0 && thumbGridView.currentIndex < items.length) {
-          var item = items[thumbGridView.currentIndex];
+    KeyboardHandler {
+      id: kbdHandler
+      appViewModel: root.appViewModel
+      wallhavenFilter: root.wallhavenFilter
+      onApplyRequested: {
+        if (root.adapter.count > 0 && thumbGridView.currentIndex < root.adapter.count) {
+          var item = root.adapter.getItem(thumbGridView.currentIndex);
           if (item)
             root.adapter.smartApply(item);
         }
-        event.accepted = true;
-        return;
       }
-      if (event.key === Qt.Key_R && !event.modifiers) {
-        var rItems = root._currentItems();
-        if (rItems.length > 0)
-          thumbGridView.currentIndex = Math.floor(Math.random() * rItems.length);
-        root.requestRandom();
-        event.accepted = true;
-        return;
+      onRandomRequested: {
+        if (root.adapter.count > 0)
+          thumbGridView.currentIndex = Math.floor(Math.random() * root.adapter.count);
       }
-      if (event.key === Qt.Key_F5) {
-        root.requestRefresh();
-        event.accepted = true;
-        return;
-      }
+      onWallhavenToggled: thumbGridView.forceActiveFocus()
+    }
+    Keys.onPressed: function (event) {
+      kbdHandler.handleKeyPress(event);
     }
   }
 

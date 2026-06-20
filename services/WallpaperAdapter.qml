@@ -163,6 +163,17 @@ Item {
     localSource.moveWallpaper(path, targetFolder, idx);
   }
 
+  function getItem(index) {
+    var src = items;
+    if (!src)
+      return null;
+    if (src.get !== undefined)
+      return src.get(index);
+    if (index >= 0 && index < src.length)
+      return src[index];
+    return null;
+  }
+
   function apply(item) {
     if (!item)
       return;

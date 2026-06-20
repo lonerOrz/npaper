@@ -9,6 +9,8 @@ FocusScope {
   property var adapter: null
   property var cacheService: null
   property var checkService: null
+  property var appViewModel: null
+  property var wallhavenFilter: null
   readonly property var whService: root.adapter ? root.adapter.whService : null
 
   property int carouselSpacing: 20
@@ -104,68 +106,30 @@ FocusScope {
       onClicked: mouse => mouse.accepted = false
     }
 
-    Keys.onPressed: function (event) {
-      if (event.key === Qt.Key_Escape) {
-        root.requestQuit();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_S && !event.modifiers) {
-        root.requestSettings();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_W && !event.modifiers) {
-        root.requestToggleWallhaven();
-        pathViewContainer.forceActiveFocus();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-        event.key === Qt.Key_Tab ? root.requestNextFolder() : root.requestPrevFolder();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft || event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
-        event.accepted = true;
-        root.requestToggleViewMode();
-        return;
-      }
-      if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
-        root.requestFocusSearch();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        if (root.adapter && root.adapter.items) {
-          var items = root.adapter.items;
-          var count = items.count !== undefined ? items.count : items.length;
-          if (count > 0) {
-            var item = items.get !== undefined ? items.get(root.currentIndex) : items[root.currentIndex];
-            if (item)
-              root.adapter.smartApply(item);
-          }
+    KeyboardHandler {
+      id: kbdHandler
+      appViewModel: root.appViewModel
+      wallhavenFilter: root.wallhavenFilter
+      onApplyRequested: {
+        if (root.adapter && root.adapter.count > 0) {
+          var item = root.adapter.getItem(root.currentIndex);
+          if (item)
+            root.adapter.smartApply(item);
         }
-        event.accepted = true;
-        return;
       }
+      onRandomRequested: scrollController.random()
+      onWallhavenToggled: pathViewContainer.forceActiveFocus()
+    }
+    Keys.onPressed: function (event) {
+      kbdHandler.handleKeyPress(event);
+      if (event.accepted)
+        return;
       if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
         const dir = event.key === Qt.Key_Left ? -1 : 1;
         event.modifiers & Qt.ShiftModifier ? (dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight()) : (dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight());
         if (dir === 1 && root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.hasMore && !root.whService.loading && root.maxIndex >= root.adapter.count - 2) {
           root.whService.loadMore();
         }
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_R && !event.modifiers) {
-        scrollController.random();
-        root.requestRandom();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_F5) {
-        root.requestRefresh();
         event.accepted = true;
         return;
       }

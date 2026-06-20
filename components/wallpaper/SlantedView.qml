@@ -12,6 +12,8 @@ FocusScope {
   property var adapter: null
   property var cacheService: null
   property var checkService: null
+  property var appViewModel: null
+  property var wallhavenFilter: null
   readonly property var whService: root.adapter ? root.adapter.whService : null
 
   property real parallaxFactor: 0.3
@@ -887,41 +889,26 @@ FocusScope {
       }
     }
 
-    Keys.onEscapePressed: root.requestQuit()
-    Keys.onPressed: function (event) {
-      if (event.key === Qt.Key_S && !event.modifiers) {
-        root.requestSettings();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_W && !event.modifiers) {
-        root.requestToggleWallhaven();
-        listView.forceActiveFocus();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-        event.key === Qt.Key_Tab ? root.requestNextFolder() : root.requestPrevFolder();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft || event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
-        root.requestToggleViewMode();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
-        root.requestFocusSearch();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        var item = root._getItem(listView.currentIndex);
+    KeyboardHandler {
+      id: kbdHandler
+      appViewModel: root.appViewModel
+      wallhavenFilter: root.wallhavenFilter
+      onApplyRequested: {
+        var item = root.adapter.getItem(listView.currentIndex);
         if (item)
           root.adapter.smartApply(item);
-        event.accepted = true;
-        return;
       }
+      onRandomRequested: {
+        var count = root.adapter.count;
+        if (count > 0)
+          listView.currentIndex = Math.floor(Math.random() * count);
+      }
+      onWallhavenToggled: listView.forceActiveFocus()
+    }
+    Keys.onPressed: function (event) {
+      kbdHandler.handleKeyPress(event);
+      if (event.accepted)
+        return;
       if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
         var dir = event.key === Qt.Key_Left ? -1 : 1;
         var target = listView.currentIndex + dir;
@@ -935,19 +922,6 @@ FocusScope {
         if (dir === 1 && listView.currentIndex >= listView.count - 3 && root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.hasMore && !root.whService.loading) {
           root.whService.loadMore();
         }
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_R && !event.modifiers) {
-        var count = root._itemCount();
-        if (count > 0)
-          listView.currentIndex = Math.floor(Math.random() * count);
-        root.requestRandom();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_F5) {
-        root.requestRefresh();
         event.accepted = true;
         return;
       }

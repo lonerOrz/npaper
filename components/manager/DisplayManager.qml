@@ -129,6 +129,8 @@ FocusScope {
       adapter: root.adapter
       cacheService: root.cacheService
       checkService: root.checkService
+      appViewModel: root.appViewModel
+      wallhavenFilter: root.wallhavenFilter
 
       carouselSpacing: root.carouselSpacing
       carouselRotation: root.carouselRotation
@@ -174,6 +176,8 @@ FocusScope {
     sourceComponent: GridView {
       adapter: root.adapter
       cacheService: root.cacheService
+      appViewModel: root.appViewModel
+      wallhavenFilter: root.wallhavenFilter
 
       onRequestQuit: root.appViewModel ? root.appViewModel.handleRequestQuit() : null
       onRequestSettings: root.appViewModel ? root.appViewModel.toggleSettings() : null
@@ -211,6 +215,8 @@ FocusScope {
       adapter: root.adapter
       cacheService: root.cacheService
       checkService: root.checkService
+      appViewModel: root.appViewModel
+      wallhavenFilter: root.wallhavenFilter
 
       scrollDuration: root.scrollDuration
       scrollContinueInterval: root.scrollContinueInterval
