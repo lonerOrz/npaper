@@ -10,6 +10,7 @@ QtObject {
   property var wallpaperApplier: null
   property var cacheService: null
   property var configViewModel: null
+  property var statusBar: null
 
   property bool settingsOpen: false
   property string searchText: ""
@@ -77,6 +78,15 @@ QtObject {
           root.dominantColor = color;
       });
     }
+  }
+
+  function bindStatusBar(sb) {
+    root.statusBar = sb;
+  }
+
+  function focusSearch() {
+    if (root.statusBar)
+      root.statusBar.focusSearch();
   }
 
   function onBgCurrentChanged() {

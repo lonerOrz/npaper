@@ -40,6 +40,7 @@ PanelWindow {
     if (appViewModel) {
       appViewModel.bindDisplayManager(displayManager);
       appViewModel.bindColorExtractor(colorExtractor);
+      appViewModel.bindStatusBar(statusBar);
       appViewModel.init();
     }
 
@@ -80,23 +81,12 @@ PanelWindow {
     displayMode: Config.previewStyle
 
     configViewModel: root.configViewModel
+    appViewModel: root.appViewModel
+    wallhavenFilter: wallhavenFilter
     adapter: root.adapter
     cacheService: root.cacheService
     wallpaperApplier: root.wallpaperApplier
     checkService: root.checkService
-
-    onRequestQuit: appViewModel ? appViewModel.handleRequestQuit() : Qt.quit()
-    onRequestSettings: appViewModel ? appViewModel.toggleSettings() : null
-    onRequestToggleViewMode: appViewModel ? appViewModel.handleRequestToggleViewMode() : null
-    onRequestPrevFolder: appViewModel ? appViewModel.prevFolder() : null
-    onRequestNextFolder: appViewModel ? appViewModel.nextFolder() : null
-    onRequestFocusSearch: statusBar.focusSearch()
-    onRequestApplyItem: function (item) {
-      appViewModel ? appViewModel.applyItem(item) : null;
-    }
-    onRequestRandom: {}
-    onRequestToggleWallhaven: appViewModel ? appViewModel.handleRequestToggleWallhaven(wallhavenFilter) : null
-    onRequestRefresh: appViewModel ? appViewModel.refreshCache() : null
   }
 
   ColorExtractor {

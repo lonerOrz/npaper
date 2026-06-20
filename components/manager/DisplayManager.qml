@@ -14,6 +14,8 @@ FocusScope {
   property var wallpaperApplier: null
   property var checkService: null
   property var configViewModel: null
+  property var appViewModel: null
+  property var wallhavenFilter: null
 
   property int carouselSpacing: configViewModel ? configViewModel.carousel.spacing : Style.defaultCarouselSpacing
   property int carouselRotation: configViewModel ? configViewModel.carousel.rotation : Style.defaultCarouselRotation
@@ -34,7 +36,6 @@ FocusScope {
     return carouselLoader.item;
   }
 
-  signal toggleViewMode
   readonly property int currentIndex: _activeView ? _activeView.currentIndex : _lastActiveIndex
   readonly property real scrollTarget: _activeView ? _activeView.scrollTarget : _lastActiveIndex
   readonly property real contentOffset: _activeView ? _activeView.scrollTarget - _activeView.currentIndex : 0
@@ -46,17 +47,6 @@ FocusScope {
       _lastActiveIndex = _activeView.currentIndex;
     }
   }
-
-  signal requestQuit
-  signal requestSettings
-  signal requestPrevFolder
-  signal requestNextFolder
-  signal requestFocusSearch
-  signal requestApplyItem(var item)
-  signal requestRandom
-  signal requestToggleWallhaven
-  signal requestRefresh
-  signal requestToggleViewMode
 
   function reset() {
     if (_activeView)
@@ -149,18 +139,17 @@ FocusScope {
       showBorderGlow: root.configViewModel ? root.configViewModel.appearance.showBorderGlow : true
       showShadow: root.configViewModel ? root.configViewModel.appearance.showShadow : true
 
-      onRequestQuit: root.requestQuit()
-      onRequestSettings: root.requestSettings()
-      onRequestPrevFolder: root.requestPrevFolder()
-      onRequestNextFolder: root.requestNextFolder()
-      onRequestFocusSearch: root.requestFocusSearch()
+      onRequestQuit: root.appViewModel ? root.appViewModel.handleRequestQuit() : null
+      onRequestSettings: root.appViewModel ? root.appViewModel.toggleSettings() : null
+      onRequestPrevFolder: root.appViewModel ? root.appViewModel.prevFolder() : null
+      onRequestNextFolder: root.appViewModel ? root.appViewModel.nextFolder() : null
+      onRequestFocusSearch: root.appViewModel ? root.appViewModel.focusSearch() : null
       onRequestApplyItem: function (item) {
-        root.requestApplyItem(item);
+        root.appViewModel ? root.appViewModel.applyItem(item) : null;
       }
-      onRequestRandom: root.requestRandom()
-      onRequestToggleWallhaven: root.requestToggleWallhaven()
-      onRequestRefresh: root.requestRefresh()
-      onRequestToggleViewMode: root.requestToggleViewMode()
+      onRequestToggleWallhaven: root.appViewModel ? root.appViewModel.handleRequestToggleWallhaven(root.wallhavenFilter) : null
+      onRequestRefresh: root.appViewModel ? root.appViewModel.refreshCache() : null
+      onRequestToggleViewMode: root.appViewModel ? root.appViewModel.handleRequestToggleViewMode() : null
     }
   }
 
@@ -186,18 +175,17 @@ FocusScope {
       adapter: root.adapter
       cacheService: root.cacheService
 
-      onRequestQuit: root.requestQuit()
-      onRequestSettings: root.requestSettings()
-      onRequestPrevFolder: root.requestPrevFolder()
-      onRequestNextFolder: root.requestNextFolder()
-      onRequestFocusSearch: root.requestFocusSearch()
+      onRequestQuit: root.appViewModel ? root.appViewModel.handleRequestQuit() : null
+      onRequestSettings: root.appViewModel ? root.appViewModel.toggleSettings() : null
+      onRequestPrevFolder: root.appViewModel ? root.appViewModel.prevFolder() : null
+      onRequestNextFolder: root.appViewModel ? root.appViewModel.nextFolder() : null
+      onRequestFocusSearch: root.appViewModel ? root.appViewModel.focusSearch() : null
       onRequestApplyItem: function (item) {
-        root.requestApplyItem(item);
+        root.appViewModel ? root.appViewModel.applyItem(item) : null;
       }
-      onRequestRandom: root.requestRandom()
-      onRequestToggleWallhaven: root.requestToggleWallhaven()
-      onRequestRefresh: root.requestRefresh()
-      onRequestToggleViewMode: root.requestToggleViewMode()
+      onRequestToggleWallhaven: root.appViewModel ? root.appViewModel.handleRequestToggleWallhaven(root.wallhavenFilter) : null
+      onRequestRefresh: root.appViewModel ? root.appViewModel.refreshCache() : null
+      onRequestToggleViewMode: root.appViewModel ? root.appViewModel.handleRequestToggleViewMode() : null
     }
   }
 
@@ -230,18 +218,17 @@ FocusScope {
       showBorderGlow: root.configViewModel ? root.configViewModel.appearance.showBorderGlow : true
       showShadow: root.configViewModel ? root.configViewModel.appearance.showShadow : true
 
-      onRequestQuit: root.requestQuit()
-      onRequestSettings: root.requestSettings()
-      onRequestPrevFolder: root.requestPrevFolder()
-      onRequestNextFolder: root.requestNextFolder()
-      onRequestFocusSearch: root.requestFocusSearch()
+      onRequestQuit: root.appViewModel ? root.appViewModel.handleRequestQuit() : null
+      onRequestSettings: root.appViewModel ? root.appViewModel.toggleSettings() : null
+      onRequestPrevFolder: root.appViewModel ? root.appViewModel.prevFolder() : null
+      onRequestNextFolder: root.appViewModel ? root.appViewModel.nextFolder() : null
+      onRequestFocusSearch: root.appViewModel ? root.appViewModel.focusSearch() : null
       onRequestApplyItem: function (item) {
-        root.requestApplyItem(item);
+        root.appViewModel ? root.appViewModel.applyItem(item) : null;
       }
-      onRequestRandom: root.requestRandom()
-      onRequestToggleWallhaven: root.requestToggleWallhaven()
-      onRequestRefresh: root.requestRefresh()
-      onRequestToggleViewMode: root.requestToggleViewMode()
+      onRequestToggleWallhaven: root.appViewModel ? root.appViewModel.handleRequestToggleWallhaven(root.wallhavenFilter) : null
+      onRequestRefresh: root.appViewModel ? root.appViewModel.refreshCache() : null
+      onRequestToggleViewMode: root.appViewModel ? root.appViewModel.handleRequestToggleViewMode() : null
     }
   }
 }
