@@ -53,14 +53,14 @@ Item {
       if (isNewSearch) {
         remoteItems.clear();
         for (var i = 0; i < total; i++) {
-          remoteItems.append(wallhavenService.results[i]);
+          remoteItems.append(root._normalizeRemoteItem(wallhavenService.results[i]));
         }
       } else {
         var toAdd = total - remoteItems.count;
         if (toAdd > 0) {
           var startIdx = remoteItems.count;
           for (var j = startIdx; j < total; j++) {
-            remoteItems.append(wallhavenService.results[j]);
+            remoteItems.append(root._normalizeRemoteItem(wallhavenService.results[j]));
           }
         }
       }
@@ -75,7 +75,7 @@ Item {
         remoteItems.clear();
         if (wallhavenService && wallhavenService.results && wallhavenService.results.length > 0) {
           for (var i = 0; i < wallhavenService.results.length; i++) {
-            remoteItems.append(wallhavenService.results[i]);
+            remoteItems.append(root._normalizeRemoteItem(wallhavenService.results[i]));
           }
         }
       } else {
@@ -89,10 +89,29 @@ Item {
       var total = wallhavenService.results.length;
       if (total > 0) {
         for (var i = 0; i < total; i++) {
-          remoteItems.append(wallhavenService.results[i]);
+          remoteItems.append(root._normalizeRemoteItem(wallhavenService.results[i]));
         }
       }
     }
+  }
+
+  function _normalizeRemoteItem(r) {
+    var safeId = r.id ? String(r.id).replace(/[^a-zA-Z0-9-]/g, "") : "unknown";
+    return {
+      id: r.id,
+      type: "remote",
+      path: r.path || "",
+      thumb: r.thumbLarge || "",
+      thumbLarge: r.thumbLarge || "",
+      thumbSmall: r.thumbSmall || "",
+      filename: "wallhaven-" + safeId + (r.resolution ? " (" + r.resolution + ")" : ""),
+      resolution: r.resolution || "",
+      fileSize: r.fileSize || 0,
+      purity: r.purity || "",
+      category: r.category || "",
+      isVideo: false,
+      isGif: false
+    };
   }
 
   signal dataLoaded

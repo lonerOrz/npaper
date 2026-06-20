@@ -6,9 +6,9 @@ Item {
   property var appViewModel: null
   property var wallhavenFilter: null
 
-  signal applyRequested()
-  signal randomRequested()
-  signal wallhavenToggled()
+  signal applyRequested
+  signal randomRequested
+  signal wallhavenToggled
 
   function handleKeyPress(event) {
     if (event.key === Qt.Key_Escape) {

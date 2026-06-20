@@ -27,12 +27,10 @@ FocusScope {
   property bool showShadow: true
   property int scrollDuration: 300
 
-  property bool _whLoadingMore: false
-
   readonly property int currentIndex: listView.currentIndex
   readonly property real scrollTarget: listView.currentIndex
   readonly property int baseIndex: Math.max(0, listView.currentIndex - 4)
-  readonly property int maxIndex: Math.min(listView.currentIndex + 4, _itemCount() - 1)
+  readonly property int maxIndex: Math.min(listView.currentIndex + 4, (root.adapter ? root.adapter.count : 0) - 1)
 
   signal requestQuit
   signal requestSettings
@@ -45,89 +43,16 @@ FocusScope {
   signal requestRefresh
   signal requestToggleViewMode
 
-  ListModel {
-    id: remoteResultsModel
-  }
-
   Connections {
-    id: remoteResultsConn
     target: root.whService
-    enabled: root.adapter && root.adapter.currentSource === "remote"
-
     function onResultsUpdated() {
-      if (!root.whService || !root.whService.results)
+      if (!root.whService || root.whService.currentPage !== 1)
         return;
-      var total = root.whService.results.length;
-      var isNewSearch = (total < remoteResultsModel.count) || (root.whService.currentPage === 1);
-      if (isNewSearch) {
-        remoteResultsModel.clear();
-        var toAdd = total;
-        for (var i = 0; i < toAdd; i++) {
-          remoteResultsModel.append(root.whService.results[i]);
-        }
-        Qt.callLater(function () {
-          listView.positionViewAtBeginning();
-          listView.currentIndex = 0;
-        });
-      } else {
-        var toAdd2 = total - remoteResultsModel.count;
-        if (toAdd2 > 0) {
-          listView._modelChanging = true;
-          var startIdx = remoteResultsModel.count;
-          for (var j = startIdx; j < total; j++) {
-            remoteResultsModel.append(root.whService.results[j]);
-          }
-          Qt.callLater(function () {
-            listView._modelChanging = false;
-          });
-        }
-      }
-      root._whLoadingMore = false;
+      Qt.callLater(function () {
+        listView.positionViewAtBeginning();
+        listView.currentIndex = 0;
+      });
     }
-  }
-
-  Connections {
-    target: root.adapter
-    function onCurrentSourceChanged() {
-      if (root.adapter && root.adapter.currentSource === "remote") {
-        remoteResultsModel.clear();
-        if (root.whService && root.whService.results && root.whService.results.length > 0) {
-          var len = root.whService.results.length;
-          for (var i = 0; i < len; i++) {
-            remoteResultsModel.append(root.whService.results[i]);
-          }
-        }
-        remoteResultsConn.enabled = true;
-      } else {
-        remoteResultsModel.clear();
-        remoteResultsConn.enabled = false;
-      }
-    }
-  }
-
-  Component.onCompleted: {
-    if (root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.results) {
-      var total = root.whService.results.length;
-      if (total > 0) {
-        for (var i = 0; i < total; i++) {
-          remoteResultsModel.append(root.whService.results[i]);
-        }
-      }
-    }
-  }
-
-  function _itemCount() {
-    var m = listView.model;
-    if (!m)
-      return 0;
-    return m.count !== undefined ? m.count : m.length;
-  }
-
-  function _getItem(idx) {
-    var m = listView.model;
-    if (!m || idx < 0)
-      return null;
-    return m.get ? m.get(idx) : m[idx];
   }
 
   function reset() {
@@ -135,7 +60,7 @@ FocusScope {
   }
 
   function scrollTo(idx) {
-    listView.currentIndex = Math.max(0, Math.min(idx, _itemCount() - 1));
+    listView.currentIndex = Math.max(0, Math.min(idx, (root.adapter ? root.adapter.count : 0) - 1));
   }
 
   function positionToCurrent() {
@@ -154,7 +79,7 @@ FocusScope {
     if (!root.adapter || !root.cacheService || !root.cacheService.queueThumbnail)
       return;
     for (var i = root.baseIndex; i <= root.maxIndex; i++) {
-      var item = root._getItem(i);
+      var item = root.adapter.getItem(i);
       if (item && item.type === "local")
         root.cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
     }
@@ -172,7 +97,7 @@ FocusScope {
     anchors.topMargin: 20
 
     orientation: ListView.Horizontal
-    model: (root.adapter && root.adapter.currentSource === "remote") ? remoteResultsModel : (root.adapter ? root.adapter.items : null)
+    model: root.adapter ? root.adapter.items : null
 
     spacing: root.sliceSpacing - Math.abs(root.skewOffset)
 
@@ -189,8 +114,6 @@ FocusScope {
     highlightFollowsCurrentItem: true
     highlight: Item {}
     focus: true
-
-    property bool _modelChanging: false
 
     onCurrentIndexChanged: {
       queueVisibleThumbnails();
@@ -218,7 +141,7 @@ FocusScope {
     delegate: Item {
       id: delegateItem
       required property int index
-      readonly property var itemData: root._getItem(index)
+      readonly property var itemData: root.adapter.getItem(index)
 
       readonly property bool isRemote: itemData ? (itemData.type === "remote" || (itemData.path && (itemData.path.indexOf("http://") === 0 || itemData.path.indexOf("https://") === 0))) : false
       readonly property bool isLocal: itemData ? (!isRemote) : false

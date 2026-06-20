@@ -37,8 +37,7 @@ QtObject {
     interval: 150
     repeat: false
     onTriggered: {
-      if (root.displayManager && root.displayManager.currentIndex >= 0
-          && root.displayManager.currentIndex < (root.adapter ? root.adapter.items.length : 0)) {
+      if (root.displayManager && root.displayManager.currentIndex >= 0 && root.displayManager.currentIndex < (root.adapter ? root.adapter.items.length : 0)) {
         root.bgCurrent = root.displayManager.currentIndex;
       }
     }

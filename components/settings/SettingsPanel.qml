@@ -242,12 +242,7 @@ Item {
     property bool scrollActive: false
 
     contentWidth: width
-    contentHeight: Math.max(
-      pathsTab.implicitHeight,
-      wallhavenTab.implicitHeight,
-      videoTab.implicitHeight,
-      appearanceTab.implicitHeight
-    ) + Style.settingsPadding * 2
+    contentHeight: Math.max(pathsTab.implicitHeight, wallhavenTab.implicitHeight, videoTab.implicitHeight, appearanceTab.implicitHeight) + Style.settingsPadding * 2
     boundsBehavior: Flickable.StopAtBounds
     flickableDirection: Flickable.VerticalFlick
 
