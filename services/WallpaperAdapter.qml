@@ -5,7 +5,7 @@ import qs.services
 * WallpaperAdapter — unified interface for local and remote wallpaper sources.
 *
 * UI layer reads:
-*   adapter.items          → current source's filtered items
+*   adapter.items          → current source's filtered items (ListModel)
 *   adapter.currentSource  → "local" or "remote"
 *   adapter.folders        → local folders (empty for remote)
 *   adapter.currentFolder  → current local folder
@@ -27,12 +27,72 @@ Item {
   property string cacheDir: ""
   property var cacheService: null
 
-  readonly property var items: currentSource === "local" ? localSource.items : remoteSource.items
+  readonly property var items: currentSource === "local" ? localSource.items : remoteItems
   readonly property var folders: localSource.folders
   readonly property string currentFolder: localSource.currentFolder
   readonly property int count: items ? (items.count !== undefined ? items.count : (items.length !== undefined ? items.length : 0)) : 0
   readonly property var remoteSource: remoteSource
   readonly property var whService: wallhavenService
+
+  ListModel {
+    id: remoteItems
+  }
+
+  property bool _whLoadingMore: false
+
+  Connections {
+    target: wallhavenService
+    enabled: root.currentSource === "remote"
+
+    function onResultsUpdated() {
+      if (!wallhavenService || !wallhavenService.results)
+        return;
+      var total = wallhavenService.results.length;
+      var isNewSearch = (total < remoteItems.count) || (wallhavenService.currentPage === 1);
+      if (isNewSearch) {
+        remoteItems.clear();
+        for (var i = 0; i < total; i++) {
+          remoteItems.append(wallhavenService.results[i]);
+        }
+      } else {
+        var toAdd = total - remoteItems.count;
+        if (toAdd > 0) {
+          var startIdx = remoteItems.count;
+          for (var j = startIdx; j < total; j++) {
+            remoteItems.append(wallhavenService.results[j]);
+          }
+        }
+      }
+      root._whLoadingMore = false;
+    }
+  }
+
+  Connections {
+    target: root
+    function onCurrentSourceChanged() {
+      if (root.currentSource === "remote") {
+        remoteItems.clear();
+        if (wallhavenService && wallhavenService.results && wallhavenService.results.length > 0) {
+          for (var i = 0; i < wallhavenService.results.length; i++) {
+            remoteItems.append(wallhavenService.results[i]);
+          }
+        }
+      } else {
+        remoteItems.clear();
+      }
+    }
+  }
+
+  function _initRemoteItems() {
+    if (root.currentSource === "remote" && wallhavenService && wallhavenService.results) {
+      var total = wallhavenService.results.length;
+      if (total > 0) {
+        for (var i = 0; i < total; i++) {
+          remoteItems.append(wallhavenService.results[i]);
+        }
+      }
+    }
+  }
 
   signal dataLoaded
 
@@ -143,5 +203,6 @@ Item {
 
   function load() {
     localSource.load();
+    _initRemoteItems();
   }
 }

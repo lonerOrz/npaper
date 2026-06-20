@@ -12,84 +12,8 @@ FocusScope {
 
   property var adapter: null
   property var cacheService: null
-  readonly property var whService: root.adapter ? root.adapter.whService : null
 
   property bool gridScrollActive: false
-
-  property bool _whLoadingMore: false
-
-  ListModel {
-    id: remoteResultsModel
-  }
-
-  Connections {
-    id: remoteResultsConn
-    target: root.whService
-    enabled: root.adapter && root.adapter.currentSource === "remote"
-
-    function onResultsUpdated() {
-      if (!root.whService || !root.whService.results)
-        return;
-      var total = root.whService.results.length;
-      var isNewSearch = (total < remoteResultsModel.count) || (root.whService.currentPage === 1);
-      if (isNewSearch) {
-        remoteResultsModel.clear();
-        var toAdd = total;
-        for (var i = 0; i < toAdd; i++) {
-          remoteResultsModel.append(root.whService.results[i]);
-        }
-        Qt.callLater(function () {
-          thumbGridView.positionViewAtBeginning();
-          thumbGridView.currentIndex = 0;
-        });
-      } else {
-        var toAdd2 = total - remoteResultsModel.count;
-        if (toAdd2 > 0) {
-          var savedY = thumbGridView.contentY;
-          thumbGridView._modelChanging = true;
-          var startIdx = remoteResultsModel.count;
-          for (var j = startIdx; j < total; j++) {
-            remoteResultsModel.append(root.whService.results[j]);
-          }
-          thumbGridView.contentY = savedY;
-          Qt.callLater(function () {
-            thumbGridView._modelChanging = false;
-          });
-        }
-      }
-      root._whLoadingMore = false;
-    }
-  }
-
-  Connections {
-    target: root.adapter
-    function onCurrentSourceChanged() {
-      if (root.adapter && root.adapter.currentSource === "remote") {
-        remoteResultsModel.clear();
-        if (root.whService && root.whService.results && root.whService.results.length > 0) {
-          var len = root.whService.results.length;
-          for (var i = 0; i < len; i++) {
-            remoteResultsModel.append(root.whService.results[i]);
-          }
-        }
-        remoteResultsConn.enabled = true;
-      } else {
-        remoteResultsModel.clear();
-        remoteResultsConn.enabled = false;
-      }
-    }
-  }
-
-  Component.onCompleted: {
-    if (root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.results) {
-      var total = root.whService.results.length;
-      if (total > 0) {
-        for (var i = 0; i < total; i++) {
-          remoteResultsModel.append(root.whService.results[i]);
-        }
-      }
-    }
-  }
 
   readonly property int currentIndex: thumbGridView.currentIndex
   readonly property real scrollTarget: thumbGridView.currentIndex
@@ -122,8 +46,8 @@ FocusScope {
   }
 
   function _currentItems() {
-    if (root.adapter && root.adapter.currentSource === "remote" && root.whService)
-      return root.whService.results;
+    if (root.adapter && root.adapter.currentSource === "remote" && root.adapter.whService)
+      return root.adapter.whService.results;
     return root.adapter ? root.adapter.items : [];
   }
 
@@ -166,7 +90,7 @@ FocusScope {
     anchors.bottom: parent.bottom
     anchors.bottomMargin: Style.keyboardHintBottomMargin + 40
     anchors.horizontalCenter: parent.horizontalCenter
-    model: (root.adapter && root.adapter.currentSource === "remote") ? remoteResultsModel : (root.adapter ? root.adapter.items : null)
+    model: root.adapter ? root.adapter.items : null
     clip: false
 
     cacheBuffer: cellHeight * 3
@@ -227,11 +151,11 @@ FocusScope {
       id: _whLoadMoreTimer
       interval: 300
       onTriggered: {
-        if (root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.hasMore && !root.whService.loading && !root._whLoadingMore) {
+        if (root.adapter && root.adapter.currentSource === "remote" && root.adapter.whService && root.adapter.whService.hasMore && !root.adapter.whService.loading && !root.adapter._whLoadingMore) {
           var maxY = thumbGridView.contentHeight - thumbGridView.height;
           if (maxY > 0 && thumbGridView.contentY >= maxY - Style.gridCellHeight) {
-            root._whLoadingMore = true;
-            root.whService.loadMore();
+            root.adapter._whLoadingMore = true;
+            root.adapter.whService.loadMore();
           }
         }
       }
@@ -376,7 +300,7 @@ FocusScope {
       }
 
       Connections {
-        target: root.whService
+        target: root.adapter ? root.adapter.whService : null
         function onResultsUpdated() {
           gridItem.modelData = gridItem._resolveItem();
         }
@@ -542,9 +466,10 @@ FocusScope {
         var id = gridItem.modelData ? gridItem.modelData.id.replace("wallhaven-", "") : "";
         if (!id)
           return false;
-        if (!root.whService || !root.whService.localWallhavenPaths)
+        var ws = root.adapter.whService;
+        if (!ws || !ws.localWallhavenPaths)
           return true;
-        return !root.whService.localWallhavenPaths[id];
+        return !ws.localWallhavenPaths[id];
       }
 
       Rectangle {
@@ -611,10 +536,10 @@ FocusScope {
           opacity: parent.opacity
           whId: gridItem.modelData ? gridItem.modelData.id.replace("wallhaven-", "") : ""
           downloadPath: gridItem.modelData ? gridItem.modelData.path : ""
-          whService: root.whService
-          downloadStatus: (root.whService && root.whService.downloadStatus) ? root.whService.downloadStatus : ({})
-          downloadProgress: (root.whService && root.whService.downloadProgress) ? root.whService.downloadProgress : ({})
-          downloadPaths: (root.whService && root.whService.downloadPaths) ? root.whService.downloadPaths : ({})
+          whService: root.adapter ? root.adapter.whService : null
+          downloadStatus: (root.adapter && root.adapter.whService && root.adapter.whService.downloadStatus) ? root.adapter.whService.downloadStatus : ({})
+          downloadProgress: (root.adapter && root.adapter.whService && root.adapter.whService.downloadProgress) ? root.adapter.whService.downloadProgress : ({})
+          downloadPaths: (root.adapter && root.adapter.whService && root.adapter.whService.downloadPaths) ? root.adapter.whService.downloadPaths : ({})
           onApplyLocal: function (localPath) {
             var localItem = Object.assign({}, gridItem.modelData, {
                                             path: localPath,
