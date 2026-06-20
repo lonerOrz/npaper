@@ -9,6 +9,7 @@ QtObject {
   property var colorExtractor: null
   property var wallpaperApplier: null
   property var cacheService: null
+  property var configViewModel: null
 
   property bool settingsOpen: false
   property string searchText: ""
@@ -16,13 +17,13 @@ QtObject {
   property string dominantColor: Color.mPrimary
   property bool _toggleViewLock: false
 
-  property bool showBgPreview: Config.data.appearance ? Config.data.appearance.showBgPreview : true
-  property bool showShadow: Config.data.appearance ? Config.data.appearance.showShadow : true
-  property bool showBorderGlow: Config.data.appearance ? Config.data.appearance.showBorderGlow : true
-  property real bgOverlayOpacity: Config.data.appearance ? Config.data.appearance.bgOverlayOpacity : 0.4
-  property string videoBackend: Config.data.videoBackend || "mpvpaper"
-  property int bgSlideDuration: Config.data.animation ? Config.data.animation.bgSlideDuration : Style.defaultBgSlideDuration
-  property int bgParallaxFactor: Config.data.animation ? Config.data.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
+  property bool showBgPreview: configViewModel ? configViewModel.appearance.showBgPreview : true
+  property bool showShadow: configViewModel ? configViewModel.appearance.showShadow : true
+  property bool showBorderGlow: configViewModel ? configViewModel.appearance.showBorderGlow : true
+  property real bgOverlayOpacity: configViewModel ? configViewModel.appearance.bgOverlayOpacity : 0.4
+  property string videoBackend: configViewModel ? configViewModel.videoBackend : "mpvpaper"
+  property int bgSlideDuration: configViewModel ? configViewModel.animation.bgSlideDuration : Style.defaultBgSlideDuration
+  property int bgParallaxFactor: configViewModel ? configViewModel.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
 
   readonly property int count: adapter ? adapter.count : 0
 

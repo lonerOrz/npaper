@@ -79,6 +79,7 @@ PanelWindow {
 
     displayMode: Config.previewStyle
 
+    configViewModel: root.configViewModel
     adapter: root.adapter
     cacheService: root.cacheService
     wallpaperApplier: root.wallpaperApplier
@@ -222,12 +223,12 @@ PanelWindow {
     showBgPreview: appViewModel ? appViewModel.showBgPreview : true
     bgOverlayOpacity: appViewModel ? appViewModel.bgOverlayOpacity : 0.4
     videoBackend: appViewModel ? appViewModel.videoBackend : "mpvpaper"
-    wallpaperDirs: Config.data.wallpaperDirs
-    cacheDir: Config.data.cacheDir
-    wallhavenApiKey: Config.data.wallhaven.apiKey
-    wallhavenDownloadDir: Config.data.wallhaven.downloadDir
-    wallhavenCategories: Config.data.wallhaven.categories
-    wallhavenPurity: Config.data.wallhaven.purity
+    wallpaperDirs: configViewModel ? configViewModel.paths.wallpaperDirs : []
+    cacheDir: configViewModel ? configViewModel.paths.cacheDir : ""
+    wallhavenApiKey: configViewModel ? configViewModel.wallhaven.apiKey : ""
+    wallhavenDownloadDir: configViewModel ? configViewModel.wallhaven.downloadDir : ""
+    wallhavenCategories: configViewModel ? configViewModel.wallhaven.categories : "111"
+    wallhavenPurity: configViewModel ? configViewModel.wallhaven.purity : "100"
 
     onSettingChanged: function (key, val) {
       if (configViewModel)

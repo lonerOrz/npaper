@@ -95,15 +95,15 @@ ShellRoot {
       // Must be defined BEFORE Variants so it's available for injection
       WallpaperAdapter {
         id: wallpaperAdapter
+        configViewModel: bridge.viewModel
         wallpaperDirs: shellItem._effectiveWallpaperDirs
         scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
-        debugMode: Config.data.debugMode
-        cacheDir: Config.data.cacheDir
         cacheService: cacheService
       }
 
       ViewModel {
         id: appViewModel
+        configViewModel: bridge.viewModel
         adapter: wallpaperAdapter
         cacheService: cacheService
         wallpaperApplier: wallpaperApplier

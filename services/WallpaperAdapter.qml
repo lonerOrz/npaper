@@ -23,7 +23,8 @@ Item {
   property string searchText: ""
   property var wallpaperDirs: []
   property string scriptPath: ""
-  property bool debugMode: false
+  property var configViewModel: null
+  property bool debugMode: configViewModel ? configViewModel.debugMode : false
   property string cacheDir: ""
   property var cacheService: null
 
@@ -118,12 +119,12 @@ Item {
   WallhavenService {
     id: wallhavenService
     wallpaperDir: _whDownloadDir || (root.wallpaperDirs && root.wallpaperDirs.length > 0 ? root.wallpaperDirs[0] : "")
-    apiKey: Config.data.wallhaven.apiKey
-    categories: Config.data.wallhaven.categories
-    purity: Config.data.wallhaven.purity
+    apiKey: root.configViewModel ? root.configViewModel.wallhaven.apiKey : ""
+    categories: root.configViewModel ? root.configViewModel.wallhaven.categories : "111"
+    purity: root.configViewModel ? root.configViewModel.wallhaven.purity : "100"
   }
 
-  readonly property string _whDownloadDir: (Config.data.wallhaven && Config.data.wallhaven.downloadDir) ? Config.data.wallhaven.downloadDir : ""
+  readonly property string _whDownloadDir: root.configViewModel ? root.configViewModel.wallhaven.downloadDir : ""
 
   function switchSource(source) {
     root.currentSource = source;

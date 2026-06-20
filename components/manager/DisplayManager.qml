@@ -13,13 +13,14 @@ FocusScope {
   property var cacheService: null
   property var wallpaperApplier: null
   property var checkService: null
+  property var configViewModel: null
 
-  property int carouselSpacing: Config.data.carousel ? Config.data.carousel.spacing : Style.defaultCarouselSpacing
-  property int carouselRotation: Config.data.carousel ? Config.data.carousel.rotation : Style.defaultCarouselRotation
-  property real carouselPerspective: Config.data.carousel ? Config.data.carousel.perspective : Style.defaultCarouselPerspective
-  property int scrollDuration: Config.data.animation ? Config.data.animation.scrollDuration : Style.defaultScrollDuration
-  property int scrollContinueInterval: Config.data.animation ? Config.data.animation.scrollContinueInterval : Style.defaultScrollContinueInterval
-  property int parallaxFactor: Config.data.animation ? Config.data.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
+  property int carouselSpacing: configViewModel ? configViewModel.carousel.spacing : Style.defaultCarouselSpacing
+  property int carouselRotation: configViewModel ? configViewModel.carousel.rotation : Style.defaultCarouselRotation
+  property real carouselPerspective: configViewModel ? configViewModel.carousel.perspective : Style.defaultCarouselPerspective
+  property int scrollDuration: configViewModel ? configViewModel.animation.scrollDuration : Style.defaultScrollDuration
+  property int scrollContinueInterval: configViewModel ? configViewModel.animation.scrollContinueInterval : Style.defaultScrollContinueInterval
+  property int parallaxFactor: configViewModel ? configViewModel.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
 
   property bool _carouselLoaded: root.displayMode === "carousel"
   property bool _gridLoaded: root.displayMode === "grid"
@@ -145,8 +146,8 @@ FocusScope {
       scrollDuration: root.scrollDuration
       scrollContinueInterval: root.scrollContinueInterval
       parallaxFactor: root.parallaxFactor
-      showBorderGlow: Config.data.appearance ? Config.data.appearance.showBorderGlow : true
-      showShadow: Config.data.appearance ? Config.data.appearance.showShadow : true
+      showBorderGlow: root.configViewModel ? root.configViewModel.appearance.showBorderGlow : true
+      showShadow: root.configViewModel ? root.configViewModel.appearance.showShadow : true
 
       onRequestQuit: root.requestQuit()
       onRequestSettings: root.requestSettings()
@@ -226,8 +227,8 @@ FocusScope {
       scrollDuration: root.scrollDuration
       scrollContinueInterval: root.scrollContinueInterval
       parallaxFactor: root.parallaxFactor
-      showBorderGlow: Config.data.appearance ? Config.data.appearance.showBorderGlow : true
-      showShadow: Config.data.appearance ? Config.data.appearance.showShadow : true
+      showBorderGlow: root.configViewModel ? root.configViewModel.appearance.showBorderGlow : true
+      showShadow: root.configViewModel ? root.configViewModel.appearance.showShadow : true
 
       onRequestQuit: root.requestQuit()
       onRequestSettings: root.requestSettings()
