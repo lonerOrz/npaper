@@ -102,6 +102,13 @@ ShellRoot {
         cacheService: cacheService
       }
 
+      ViewModel {
+        id: appViewModel
+        adapter: wallpaperAdapter
+        cacheService: cacheService
+        wallpaperApplier: wallpaperApplier
+      }
+
       // Register into ServiceLocator for leaf components
       Component.onCompleted: {
         ServiceLocator.register({
@@ -116,7 +123,8 @@ ShellRoot {
         model: Quickshell.screens
         delegate: AppWindow {
           screen: modelData
-          viewModel: bridge.viewModel
+          configViewModel: bridge.viewModel
+          appViewModel: appViewModel
           adapter: wallpaperAdapter
           cacheService: cacheService
           wallpaperApplier: wallpaperApplier
