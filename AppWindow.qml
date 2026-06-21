@@ -16,13 +16,13 @@ PanelWindow {
   id: root
 
   property var modelData
-  property var viewModel
+  property var configViewModel
+  property var appViewModel
   property var adapter
   property var cacheService
   property var wallpaperApplier
   property var checkService
 
-  property bool settingsOpen: false
   screen: modelData
 
   visible: true
@@ -34,35 +34,14 @@ PanelWindow {
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
   WlrLayershell.exclusiveZone: -1
 
-  readonly property int count: adapter ? adapter.count : 0
-  property string dominantColor: Color.mPrimary
-
-  property bool showBgPreview: Config.data.appearance ? Config.data.appearance.showBgPreview : true
-  property bool showShadow: Config.data.appearance ? Config.data.appearance.showShadow : true
-  property bool showBorderGlow: Config.data.appearance ? Config.data.appearance.showBorderGlow : true
-  property real bgOverlayOpacity: Config.data.appearance ? Config.data.appearance.bgOverlayOpacity : 0.4
-  property string videoBackend: Config.data.videoBackend || "mpvpaper"
-
-  property int bgSlideDuration: Config.data.animation ? Config.data.animation.bgSlideDuration : Style.defaultBgSlideDuration
-  property int bgParallaxFactor: Config.data.animation ? Config.data.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
-
-  property string searchText: ""
-  property bool _toggleViewLock: false
-
-  property var _blurRoot: null
-
-  property int bgCurrent: -1
-
   Component.onCompleted: {
     Style.uiScaleRatio = screen.height / 1080;
-    if (adapter) {
-      adapter.dataLoaded.connect(applyFolderSelection);
-      adapter.wallpaperApplied.connect(function (path) {
-        if (wallpaperApplier)
-          wallpaperApplier.apply(path);
-        Qt.quit();
-      });
-      adapter.load();
+
+    if (appViewModel) {
+      appViewModel.bindDisplayManager(displayManager);
+      appViewModel.bindColorExtractor(colorExtractor);
+      appViewModel.bindStatusBar(statusBar);
+      appViewModel.init();
     }
 
     if (BlurService.available) {
@@ -90,87 +69,7 @@ PanelWindow {
     }
   }
 
-  Connections {
-    target: displayManager
-    function onCurrentIndexChanged() {
-      bgUpdateDebounce.restart();
-    }
-  }
-
-  onBgCurrentChanged: {
-    if (bgCurrent >= 0 && adapter && bgCurrent < adapter.items.length) {
-      const item = adapter.items[bgCurrent];
-      if (item && item.type === "local")
-        colorExtractor.run(item.path);
-      else
-        root.dominantColor = Color.mPrimary;
-    }
-  }
-
-  function _doSearch() {
-    if (adapter)
-      adapter.setSearch(root.searchText);
-    if (root.searchText) {
-      displayManager.scrollTo(0);
-      bgCurrent = -1;
-      bgCurrent = 0;
-      if (adapter.items.length > 0) {
-        const item = adapter.items[0];
-        if (item.type === "local")
-          colorExtractor.run(item.path);
-      }
-    } else {
-      adapter.resetSearch();
-    }
-  }
-
-  function refreshCache() {
-    if (adapter)
-      adapter.refresh();
-  }
-
-  function applyFolderSelection() {
-    displayManager.reset();
-    Qt.callLater(function () {
-      displayManager.queueVisibleThumbnails();
-    });
-    bgCurrent = -1;
-    bgCurrent = 0;
-    if (adapter && adapter.items.length > 0) {
-      const item = adapter.items[0];
-      if (item.type === "local")
-        colorExtractor.run(item.path);
-    }
-  }
-
-  function switchFolder(folder) {
-    if (adapter) {
-      adapter.switchFolder(folder);
-      Qt.callLater(applyFolderSelection);
-    }
-  }
-
-  function nextFolder() {
-    if (!adapter || adapter.currentSource !== "local")
-      return;
-    const fs = adapter.folders;
-    if (fs.length === 0)
-      return;
-    const idx = fs.indexOf(adapter.currentFolder);
-    const nextIdx = idx >= 0 && idx < fs.length - 1 ? idx + 1 : 0;
-    switchFolder(fs[nextIdx]);
-  }
-
-  function prevFolder() {
-    if (!adapter || adapter.currentSource !== "local")
-      return;
-    const fs = adapter.folders;
-    if (fs.length === 0)
-      return;
-    const idx = fs.indexOf(adapter.currentFolder);
-    const prevIdx = idx > 0 ? idx - 1 : fs.length - 1;
-    switchFolder(fs[prevIdx]);
-  }
+  property var _blurRoot: null
 
   DisplayManager {
     id: displayManager
@@ -181,88 +80,37 @@ PanelWindow {
 
     displayMode: Config.previewStyle
 
+    configViewModel: root.configViewModel
+    appViewModel: root.appViewModel
+    wallhavenFilter: wallhavenFilter
     adapter: root.adapter
     cacheService: root.cacheService
     wallpaperApplier: root.wallpaperApplier
     checkService: root.checkService
-
-    onRequestQuit: {
-      if (root.settingsOpen) {
-        root.settingsOpen = false;
-        displayManager.focusView();
-      } else {
-        Qt.quit();
-      }
-    }
-    onRequestSettings: {
-      root.settingsOpen = !root.settingsOpen;
-      root.settingsOpen ? settingsPanel.forceActiveFocus() : displayManager.focusView();
-    }
-    onRequestToggleViewMode: {
-      if (_toggleViewLock)
-        return;
-      _toggleViewLock = true;
-      Qt.callLater(function () {
-        var modes = Config.previewModes;
-        var currentIdx = modes.indexOf(Config.previewStyle);
-        if (currentIdx === -1)
-          currentIdx = 0;
-        var next = modes[(currentIdx + 1) % modes.length];
-        Config.update("previewStyle", next);
-        _toggleViewLock = false;
-      });
-    }
-    onRequestPrevFolder: prevFolder()
-    onRequestNextFolder: nextFolder()
-    onRequestFocusSearch: statusBar.focusSearch()
-    onRequestApplyItem: function (item) {
-      wallpaperApplier.apply(item.path);
-      Qt.quit();
-    }
-    onRequestRandom: {}
-    onRequestToggleWallhaven: {
-      wallhavenFilter.filterVisible = !wallhavenFilter.filterVisible;
-      if (wallhavenFilter.filterVisible && adapter)
-        adapter.switchSource("remote");
-      if (!wallhavenFilter.filterVisible && adapter)
-        adapter.switchSource("local");
-      displayManager.focusView();
-    }
-    onRequestRefresh: refreshCache()
   }
 
   ColorExtractor {
     id: colorExtractor
     thumbHashToPath: cacheService ? cacheService.thumbHashToPath : ({})
     hasImageMagick: checkService ? checkService.hasImagemagick : false
-    onColorChanged: root.dominantColor = color
   }
 
-  Timer {
-    id: searchDebounce
-    interval: Style.searchDebounceMs
-    onTriggered: _doSearch()
-  }
-
-  Timer {
-    id: bgUpdateDebounce
-    interval: 150
-    repeat: false
-    onTriggered: {
-      if (displayManager.currentIndex >= 0 && displayManager.currentIndex < (adapter ? adapter.items.length : 0)) {
-        root.bgCurrent = displayManager.currentIndex;
-      }
+  Connections {
+    target: colorExtractor
+    function onColorChanged(color) {
+      if (appViewModel && color)
+        appViewModel.dominantColor = color;
     }
   }
 
   BackgroundManager {
     anchors.fill: parent
-    currentWallpaperItem: (root.bgCurrent >= 0 && adapter && root.bgCurrent < adapter.items.length) ? adapter.items[root.bgCurrent] : null
-    parallaxX: displayManager.contentOffset * bgParallaxFactor
-    dominantColor: root.dominantColor
-    overlayOpacity: root.bgOverlayOpacity
-    showPreview: root.showBgPreview
-    slideDuration: root.bgSlideDuration
+    currentWallpaperItem: (appViewModel && appViewModel.bgCurrent >= 0 && adapter && appViewModel.bgCurrent < adapter.count) ? adapter.getItem(appViewModel.bgCurrent) : null
+    parallaxX: displayManager ? displayManager.contentOffset * (appViewModel ? appViewModel.bgParallaxFactor : Style.defaultBgParallaxFactor) : 0
+    dominantColor: appViewModel ? appViewModel.dominantColor : Color.mPrimary
+    overlayOpacity: appViewModel ? appViewModel.bgOverlayOpacity : 0.4
+    showPreview: appViewModel ? appViewModel.showBgPreview : true
+    slideDuration: appViewModel ? appViewModel.bgSlideDuration : Style.defaultBgSlideDuration
   }
 
   StatusBar {
@@ -275,36 +123,34 @@ PanelWindow {
     folders: adapter && adapter.currentSource === "local" ? adapter.folders : []
     activeFolder: adapter && adapter.currentSource === "local" ? adapter.currentFolder : ""
     onFolderClicked: function (folder) {
-      switchFolder(folder);
+      if (appViewModel)
+        appViewModel.switchFolder(folder);
     }
-    wallpaperCount: root.count
+    wallpaperCount: appViewModel ? appViewModel.count : 0
     cachedCount: cacheService ? cacheService.cachedFileCount : 0
     queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
-    dominantColor: root.dominantColor
-    settingsOpen: root.settingsOpen
+    dominantColor: appViewModel ? appViewModel.dominantColor : Color.mPrimary
+    settingsOpen: appViewModel ? appViewModel.settingsOpen : false
     isWallhaven: wallhavenFilter.filterVisible || (adapter && adapter.currentSource === "remote")
-    onSettingsToggled: {
-      root.settingsOpen = !root.settingsOpen;
-      if (!root.settingsOpen)
-        displayManager.focusView();
-    }
+    onSettingsToggled: appViewModel ? appViewModel.toggleSettings() : null
     onWallhavenToggled: wallhavenFilter.filterVisible = !wallhavenFilter.filterVisible
 
-    searchText: root.searchText
+    searchText: appViewModel ? appViewModel.searchText : ""
     onSearchInputChanged: function (text) {
-      root.searchText = text;
-      searchDebounce.restart();
+      if (appViewModel)
+        appViewModel.handleSearchInput(text);
     }
     onSearchCleared: {
-      root.searchText = "";
-      if (adapter)
-        adapter.resetSearch();
-      displayManager.focusView();
+      if (appViewModel) {
+        appViewModel.handleSearchClear();
+        displayManager.focusView();
+      }
     }
     onSearchSubmitted: {
-      _doSearch();
-      searchDebounce.stop();
-      displayManager.focusView();
+      if (appViewModel) {
+        appViewModel.handleSearchSubmit();
+        displayManager.focusView();
+      }
     }
   }
 
@@ -361,35 +207,32 @@ PanelWindow {
     anchors.bottomMargin: Style.spaceM
     anchors.horizontalCenter: statusBar.horizontalCenter
     z: 999
-    settingsOpen: root.settingsOpen
-    showBorderGlow: root.showBorderGlow
-    showShadow: root.showShadow
-    showBgPreview: root.showBgPreview
-    bgOverlayOpacity: root.bgOverlayOpacity
-    videoBackend: root.videoBackend
-    wallpaperDirs: Config.data.wallpaperDirs
-    cacheDir: Config.data.cacheDir
-    wallhavenApiKey: Config.data.wallhaven.apiKey
-    wallhavenDownloadDir: Config.data.wallhaven.downloadDir
-    wallhavenCategories: Config.data.wallhaven.categories
-    wallhavenPurity: Config.data.wallhaven.purity
+    settingsOpen: appViewModel ? appViewModel.settingsOpen : false
+    showShadow: appViewModel ? appViewModel.showShadow : true
+    showBgPreview: appViewModel ? appViewModel.showBgPreview : true
+    bgOverlayOpacity: appViewModel ? appViewModel.bgOverlayOpacity : 0.4
+    videoBackend: appViewModel ? appViewModel.videoBackend : "mpvpaper"
+    wallpaperDirs: configViewModel ? configViewModel.paths.wallpaperDirs : []
+    cacheDir: configViewModel ? configViewModel.paths.cacheDir : ""
+    wallhavenApiKey: configViewModel ? configViewModel.wallhaven.apiKey : ""
+    wallhavenDownloadDir: configViewModel ? configViewModel.wallhaven.downloadDir : ""
+    wallhavenCategories: configViewModel ? configViewModel.wallhaven.categories : "111"
+    wallhavenPurity: configViewModel ? configViewModel.wallhaven.purity : "100"
 
     onSettingChanged: function (key, val) {
-      var vm = viewModel;
-      if (vm)
-        vm.set(key, val);
+      if (configViewModel)
+        configViewModel.set(key, val);
     }
 
     onCloseRequested: {
-      root.settingsOpen = false;
-      displayManager.focusView();
+      if (appViewModel) {
+        appViewModel.settingsOpen = false;
+        displayManager.focusView();
+      }
     }
 
-    onSwitchToNextFolder: nextFolder()
-    onSwitchToPrevFolder: prevFolder()
-    onToggleSettings: {
-      root.settingsOpen = !root.settingsOpen;
-      root.settingsOpen ? settingsPanel.forceActiveFocus() : displayManager.focusView();
-    }
+    onSwitchToNextFolder: appViewModel ? appViewModel.nextFolder() : null
+    onSwitchToPrevFolder: appViewModel ? appViewModel.prevFolder() : null
+    onToggleSettings: appViewModel ? appViewModel.toggleSettings() : null
   }
 }

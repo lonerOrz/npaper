@@ -13,7 +13,6 @@
     "sorting": "toplist"
   },
   "appearance": {
-    "showBorderGlow": false,
     "showShadow": true,
     "showBgPreview": false,
     "bgOverlayOpacity": 0.25

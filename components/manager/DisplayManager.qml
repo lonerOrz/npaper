@@ -13,13 +13,16 @@ FocusScope {
   property var cacheService: null
   property var wallpaperApplier: null
   property var checkService: null
+  property var configViewModel: null
+  property var appViewModel: null
+  property var wallhavenFilter: null
 
-  property int carouselSpacing: Config.data.carousel ? Config.data.carousel.spacing : Style.defaultCarouselSpacing
-  property int carouselRotation: Config.data.carousel ? Config.data.carousel.rotation : Style.defaultCarouselRotation
-  property real carouselPerspective: Config.data.carousel ? Config.data.carousel.perspective : Style.defaultCarouselPerspective
-  property int scrollDuration: Config.data.animation ? Config.data.animation.scrollDuration : Style.defaultScrollDuration
-  property int scrollContinueInterval: Config.data.animation ? Config.data.animation.scrollContinueInterval : Style.defaultScrollContinueInterval
-  property int parallaxFactor: Config.data.animation ? Config.data.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
+  property int carouselSpacing: configViewModel ? configViewModel.carousel.spacing : Style.defaultCarouselSpacing
+  property int carouselRotation: configViewModel ? configViewModel.carousel.rotation : Style.defaultCarouselRotation
+  property real carouselPerspective: configViewModel ? configViewModel.carousel.perspective : Style.defaultCarouselPerspective
+  property int scrollDuration: configViewModel ? configViewModel.animation.scrollDuration : Style.defaultScrollDuration
+  property int scrollContinueInterval: configViewModel ? configViewModel.animation.scrollContinueInterval : Style.defaultScrollContinueInterval
+  property int parallaxFactor: configViewModel ? configViewModel.animation.bgParallaxFactor : Style.defaultBgParallaxFactor
 
   property bool _carouselLoaded: root.displayMode === "carousel"
   property bool _gridLoaded: root.displayMode === "grid"
@@ -33,7 +36,6 @@ FocusScope {
     return carouselLoader.item;
   }
 
-  signal toggleViewMode
   readonly property int currentIndex: _activeView ? _activeView.currentIndex : _lastActiveIndex
   readonly property real scrollTarget: _activeView ? _activeView.scrollTarget : _lastActiveIndex
   readonly property real contentOffset: _activeView ? _activeView.scrollTarget - _activeView.currentIndex : 0
@@ -45,17 +47,6 @@ FocusScope {
       _lastActiveIndex = _activeView.currentIndex;
     }
   }
-
-  signal requestQuit
-  signal requestSettings
-  signal requestPrevFolder
-  signal requestNextFolder
-  signal requestFocusSearch
-  signal requestApplyItem(var item)
-  signal requestRandom
-  signal requestToggleWallhaven
-  signal requestRefresh
-  signal requestToggleViewMode
 
   function reset() {
     if (_activeView)
@@ -138,6 +129,8 @@ FocusScope {
       adapter: root.adapter
       cacheService: root.cacheService
       checkService: root.checkService
+      appViewModel: root.appViewModel
+      wallhavenFilter: root.wallhavenFilter
 
       carouselSpacing: root.carouselSpacing
       carouselRotation: root.carouselRotation
@@ -145,21 +138,19 @@ FocusScope {
       scrollDuration: root.scrollDuration
       scrollContinueInterval: root.scrollContinueInterval
       parallaxFactor: root.parallaxFactor
-      showBorderGlow: Config.data.appearance ? Config.data.appearance.showBorderGlow : true
-      showShadow: Config.data.appearance ? Config.data.appearance.showShadow : true
+      showShadow: root.configViewModel ? root.configViewModel.appearance.showShadow : true
 
-      onRequestQuit: root.requestQuit()
-      onRequestSettings: root.requestSettings()
-      onRequestPrevFolder: root.requestPrevFolder()
-      onRequestNextFolder: root.requestNextFolder()
-      onRequestFocusSearch: root.requestFocusSearch()
+      onRequestQuit: root.appViewModel ? root.appViewModel.handleRequestQuit() : null
+      onRequestSettings: root.appViewModel ? root.appViewModel.toggleSettings() : null
+      onRequestPrevFolder: root.appViewModel ? root.appViewModel.prevFolder() : null
+      onRequestNextFolder: root.appViewModel ? root.appViewModel.nextFolder() : null
+      onRequestFocusSearch: root.appViewModel ? root.appViewModel.focusSearch() : null
       onRequestApplyItem: function (item) {
-        root.requestApplyItem(item);
+        root.appViewModel ? root.appViewModel.applyItem(item) : null;
       }
-      onRequestRandom: root.requestRandom()
-      onRequestToggleWallhaven: root.requestToggleWallhaven()
-      onRequestRefresh: root.requestRefresh()
-      onRequestToggleViewMode: root.requestToggleViewMode()
+      onRequestToggleWallhaven: root.appViewModel ? root.appViewModel.handleRequestToggleWallhaven(root.wallhavenFilter) : null
+      onRequestRefresh: root.appViewModel ? root.appViewModel.refreshCache() : null
+      onRequestToggleViewMode: root.appViewModel ? root.appViewModel.handleRequestToggleViewMode() : null
     }
   }
 
@@ -184,19 +175,20 @@ FocusScope {
     sourceComponent: GridView {
       adapter: root.adapter
       cacheService: root.cacheService
+      appViewModel: root.appViewModel
+      wallhavenFilter: root.wallhavenFilter
 
-      onRequestQuit: root.requestQuit()
-      onRequestSettings: root.requestSettings()
-      onRequestPrevFolder: root.requestPrevFolder()
-      onRequestNextFolder: root.requestNextFolder()
-      onRequestFocusSearch: root.requestFocusSearch()
+      onRequestQuit: root.appViewModel ? root.appViewModel.handleRequestQuit() : null
+      onRequestSettings: root.appViewModel ? root.appViewModel.toggleSettings() : null
+      onRequestPrevFolder: root.appViewModel ? root.appViewModel.prevFolder() : null
+      onRequestNextFolder: root.appViewModel ? root.appViewModel.nextFolder() : null
+      onRequestFocusSearch: root.appViewModel ? root.appViewModel.focusSearch() : null
       onRequestApplyItem: function (item) {
-        root.requestApplyItem(item);
+        root.appViewModel ? root.appViewModel.applyItem(item) : null;
       }
-      onRequestRandom: root.requestRandom()
-      onRequestToggleWallhaven: root.requestToggleWallhaven()
-      onRequestRefresh: root.requestRefresh()
-      onRequestToggleViewMode: root.requestToggleViewMode()
+      onRequestToggleWallhaven: root.appViewModel ? root.appViewModel.handleRequestToggleWallhaven(root.wallhavenFilter) : null
+      onRequestRefresh: root.appViewModel ? root.appViewModel.refreshCache() : null
+      onRequestToggleViewMode: root.appViewModel ? root.appViewModel.handleRequestToggleViewMode() : null
     }
   }
 
@@ -222,25 +214,25 @@ FocusScope {
       adapter: root.adapter
       cacheService: root.cacheService
       checkService: root.checkService
+      appViewModel: root.appViewModel
+      wallhavenFilter: root.wallhavenFilter
 
       scrollDuration: root.scrollDuration
       scrollContinueInterval: root.scrollContinueInterval
       parallaxFactor: root.parallaxFactor
-      showBorderGlow: Config.data.appearance ? Config.data.appearance.showBorderGlow : true
-      showShadow: Config.data.appearance ? Config.data.appearance.showShadow : true
+      showShadow: root.configViewModel ? root.configViewModel.appearance.showShadow : true
 
-      onRequestQuit: root.requestQuit()
-      onRequestSettings: root.requestSettings()
-      onRequestPrevFolder: root.requestPrevFolder()
-      onRequestNextFolder: root.requestNextFolder()
-      onRequestFocusSearch: root.requestFocusSearch()
+      onRequestQuit: root.appViewModel ? root.appViewModel.handleRequestQuit() : null
+      onRequestSettings: root.appViewModel ? root.appViewModel.toggleSettings() : null
+      onRequestPrevFolder: root.appViewModel ? root.appViewModel.prevFolder() : null
+      onRequestNextFolder: root.appViewModel ? root.appViewModel.nextFolder() : null
+      onRequestFocusSearch: root.appViewModel ? root.appViewModel.focusSearch() : null
       onRequestApplyItem: function (item) {
-        root.requestApplyItem(item);
+        root.appViewModel ? root.appViewModel.applyItem(item) : null;
       }
-      onRequestRandom: root.requestRandom()
-      onRequestToggleWallhaven: root.requestToggleWallhaven()
-      onRequestRefresh: root.requestRefresh()
-      onRequestToggleViewMode: root.requestToggleViewMode()
+      onRequestToggleWallhaven: root.appViewModel ? root.appViewModel.handleRequestToggleWallhaven(root.wallhavenFilter) : null
+      onRequestRefresh: root.appViewModel ? root.appViewModel.refreshCache() : null
+      onRequestToggleViewMode: root.appViewModel ? root.appViewModel.handleRequestToggleViewMode() : null
     }
   }
 }

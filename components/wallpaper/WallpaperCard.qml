@@ -27,7 +27,6 @@ Item {
   property int visualZ: 0
   property real visualYOffset: 0
   property real visualShadowOpacity: 0
-  property bool showBorderGlow: true
   property bool showShadow: true
   property bool isCenter: false
 
@@ -76,23 +75,34 @@ Item {
     }
   }
 
-  Rectangle {
+  Item {
     id: shadowItem
     anchors.fill: parent
-    anchors.topMargin: -Style.spaceS
-    anchors.leftMargin: -Style.spaceS
-    anchors.rightMargin: -Style.spaceS
-    anchors.bottomMargin: -Style.spaceS
-    radius: Style.radiusL
-    color: Color.mShadow
-    opacity: root.showShadow ? visualShadowOpacity : 0
+    anchors.topMargin: -8
+    anchors.leftMargin: -8
+    anchors.rightMargin: -8
+    anchors.bottomMargin: -8
     z: -1
     visible: root.showShadow && visualShadowOpacity > 0.01
 
-    Behavior on opacity {
-      NumberAnimation {
-        duration: Style.animNormal
-        easing.type: Easing.OutCubic
+    layer.enabled: visible
+    layer.effect: MultiEffect {
+      blurEnabled: true
+      blur: 1.0
+      blurMax: 32
+    }
+
+    Rectangle {
+      anchors.fill: parent
+      radius: root.itemRadius + 4
+      color: Color.mShadow
+      opacity: root.showShadow ? visualShadowOpacity * 2.5 : 0
+
+      Behavior on opacity {
+        NumberAnimation {
+          duration: Style.animNormal
+          easing.type: Easing.OutCubic
+        }
       }
     }
   }
@@ -101,8 +111,8 @@ Item {
     id: cardContent
     anchors.fill: parent
     visible: visualOpacity > 0.01
-    layer.enabled: true
-    layer.smooth: true
+    layer.enabled: root.isCenter
+    layer.smooth: root.isCenter
     layer.effect: MultiEffect {
       maskEnabled: true
       maskSource: roundMask
@@ -221,15 +231,9 @@ Item {
     radius: root.itemRadius
     color: "transparent"
     z: 20
-    visible: !(root.isCenter && root.showBorderGlow)
-    border.width: root.isCenter ? Style.borderM + 1 : (root._isHovered ? Style.borderS : 0)
-    border.color: {
-      if (root.isCenter)
-        return Color.mPrimary;
-      if (root._isHovered)
-        return Qt.lighter(Color.mPrimaryContainer, 1.15);
-      return "transparent";
-    }
+    visible: !root.isCenter && root._isHovered
+    border.width: Style.borderS
+    border.color: Qt.lighter(Color.mPrimaryContainer, 1.15)
 
     Behavior on border.color {
       ColorAnimation {
@@ -237,24 +241,6 @@ Item {
         easing.type: Easing.OutCubic
       }
     }
-  }
-
-  ShaderEffect {
-    anchors.fill: parent
-    z: 21
-    visible: root.isCenter && root.showBorderGlow
-    property real time: 0
-    property real innerWidth: width
-    property real innerHeight: height
-    property real innerRadius: itemRadius
-    NumberAnimation on time {
-      from: 0
-      to: 1000
-      duration: 30000
-      loops: Animation.Infinite
-      running: root.isCenter && root.showBorderGlow
-    }
-    fragmentShader: Qt.resolvedUrl("../../shaders/borderGlow.frag.qsb")
   }
 
   Rectangle {

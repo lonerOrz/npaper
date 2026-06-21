@@ -7,9 +7,9 @@ import qs.services
 * Usage:
 *   SettingsToggle {
 *     width: parent.width
-*     text: "Border Glow"
-*     checked: root.showBorderGlow
-*     onToggled: function (val) { root._emit("showBorderGlow", val) }
+*     text: "Card Shadow"
+*     checked: root.showShadow
+*     onToggled: function (val) { root.settingChanged("appearance.showShadow", val) }
 *   }
 */
 Item {

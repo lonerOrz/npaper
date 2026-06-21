@@ -4,6 +4,7 @@ import QtQuick.Effects
 import QtQuick.Shapes
 import Quickshell
 import "../../utils/CacheUtils.js" as CacheUtils
+import qs.components.common
 import qs.services
 
 FocusScope {
@@ -12,84 +13,10 @@ FocusScope {
 
   property var adapter: null
   property var cacheService: null
-  readonly property var whService: root.adapter ? root.adapter.whService : null
+  property var appViewModel: null
+  property var wallhavenFilter: null
 
   property bool gridScrollActive: false
-
-  property bool _whLoadingMore: false
-
-  ListModel {
-    id: remoteResultsModel
-  }
-
-  Connections {
-    id: remoteResultsConn
-    target: root.whService
-    enabled: root.adapter && root.adapter.currentSource === "remote"
-
-    function onResultsUpdated() {
-      if (!root.whService || !root.whService.results)
-        return;
-      var total = root.whService.results.length;
-      var isNewSearch = (total < remoteResultsModel.count) || (root.whService.currentPage === 1);
-      if (isNewSearch) {
-        remoteResultsModel.clear();
-        var toAdd = total;
-        for (var i = 0; i < toAdd; i++) {
-          remoteResultsModel.append(root.whService.results[i]);
-        }
-        Qt.callLater(function () {
-          thumbGridView.positionViewAtBeginning();
-          thumbGridView.currentIndex = 0;
-        });
-      } else {
-        var toAdd2 = total - remoteResultsModel.count;
-        if (toAdd2 > 0) {
-          var savedY = thumbGridView.contentY;
-          thumbGridView._modelChanging = true;
-          var startIdx = remoteResultsModel.count;
-          for (var j = startIdx; j < total; j++) {
-            remoteResultsModel.append(root.whService.results[j]);
-          }
-          thumbGridView.contentY = savedY;
-          Qt.callLater(function () {
-            thumbGridView._modelChanging = false;
-          });
-        }
-      }
-      root._whLoadingMore = false;
-    }
-  }
-
-  Connections {
-    target: root.adapter
-    function onCurrentSourceChanged() {
-      if (root.adapter && root.adapter.currentSource === "remote") {
-        remoteResultsModel.clear();
-        if (root.whService && root.whService.results && root.whService.results.length > 0) {
-          var len = root.whService.results.length;
-          for (var i = 0; i < len; i++) {
-            remoteResultsModel.append(root.whService.results[i]);
-          }
-        }
-        remoteResultsConn.enabled = true;
-      } else {
-        remoteResultsModel.clear();
-        remoteResultsConn.enabled = false;
-      }
-    }
-  }
-
-  Component.onCompleted: {
-    if (root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.results) {
-      var total = root.whService.results.length;
-      if (total > 0) {
-        for (var i = 0; i < total; i++) {
-          remoteResultsModel.append(root.whService.results[i]);
-        }
-      }
-    }
-  }
 
   readonly property int currentIndex: thumbGridView.currentIndex
   readonly property real scrollTarget: thumbGridView.currentIndex
@@ -121,12 +48,6 @@ FocusScope {
     thumbGridView.forceActiveFocus();
   }
 
-  function _currentItems() {
-    if (root.adapter && root.adapter.currentSource === "remote" && root.whService)
-      return root.whService.results;
-    return root.adapter ? root.adapter.items : [];
-  }
-
   function queueVisibleThumbnails() {
     if (!root.adapter || !root.cacheService)
       return;
@@ -141,9 +62,9 @@ FocusScope {
     var endRow = Math.min(Math.ceil((thumbGridView.contentY + thumbGridView.height) / thumbGridView.cellHeight) + preloadRows, Math.ceil(modelLen / cols));
     var startIdx = startRow * cols;
     var endIdx = endRow * cols;
-    var itemsLen = root.adapter.items.length;
+    var itemsLen = root.adapter.count;
     for (let i = startIdx; i < endIdx && i < itemsLen; i++) {
-      const item = root.adapter.items[i];
+      const item = root.adapter.getItem(i);
       if (item && item.type === "local")
         root.cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
     }
@@ -166,10 +87,10 @@ FocusScope {
     anchors.bottom: parent.bottom
     anchors.bottomMargin: Style.keyboardHintBottomMargin + 40
     anchors.horizontalCenter: parent.horizontalCenter
-    model: (root.adapter && root.adapter.currentSource === "remote") ? remoteResultsModel : (root.adapter ? root.adapter.items : null)
+    model: root.adapter ? root.adapter.items : null
     clip: false
 
-    cacheBuffer: cellHeight * 3
+    cacheBuffer: cellHeight * 5
 
     Behavior on width {
       NumberAnimation {
@@ -197,6 +118,7 @@ FocusScope {
     boundsBehavior: Flickable.StopAtBounds
     keyNavigationEnabled: true
     keyNavigationWraps: false
+    focus: true
     highlightMoveDuration: Style.animNormal
     highlight: Item {}
 
@@ -227,11 +149,11 @@ FocusScope {
       id: _whLoadMoreTimer
       interval: 300
       onTriggered: {
-        if (root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.hasMore && !root.whService.loading && !root._whLoadingMore) {
+        if (root.adapter && root.adapter.currentSource === "remote" && root.adapter.whService && root.adapter.whService.hasMore && !root.adapter.whService.loading && !root.adapter._whLoadingMore) {
           var maxY = thumbGridView.contentHeight - thumbGridView.height;
           if (maxY > 0 && thumbGridView.contentY >= maxY - Style.gridCellHeight) {
-            root._whLoadingMore = true;
-            root.whService.loadMore();
+            root.adapter._whLoadingMore = true;
+            root.adapter.whService.loadMore();
           }
         }
       }
@@ -376,7 +298,7 @@ FocusScope {
       }
 
       Connections {
-        target: root.whService
+        target: root.adapter ? root.adapter.whService : null
         function onResultsUpdated() {
           gridItem.modelData = gridItem._resolveItem();
         }
@@ -399,13 +321,6 @@ FocusScope {
         color: Color.mShadow
         opacity: gridItem.isCurrent ? 0.35 : (gridItem.isHovered ? 0.25 : 0.15)
         z: -1
-
-        Behavior on opacity {
-          NumberAnimation {
-            duration: Style.animNormal
-            easing.type: Easing.OutCubic
-          }
-        }
       }
 
       Item {
@@ -488,12 +403,6 @@ FocusScope {
               return Qt.rgba(0, 0, 0, 0.12);
             return Qt.rgba(0, 0, 0, 0.35);
           }
-          Behavior on color {
-            ColorAnimation {
-              duration: Style.animNormal
-              easing.type: Easing.OutCubic
-            }
-          }
         }
 
         Image {
@@ -504,7 +413,7 @@ FocusScope {
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
           cache: true
-          smooth: true
+          smooth: gridItem.isCurrent
           mipmap: false
           sourceSize: Qt.size(root._gridCellW, root._gridCellH)
           opacity: status === Image.Ready ? 1.0 : (status === Image.Error ? 0.3 : 0.0)
@@ -526,7 +435,7 @@ FocusScope {
           mipmap: true
           cache: true
           sourceSize: Qt.size(root._gridCellW, root._gridCellH)
-          playing: source !== ""
+          playing: source !== "" && gridItem.isCurrent
           opacity: status === AnimatedImage.Ready ? 1.0 : 0.0
           Behavior on opacity {
             NumberAnimation {
@@ -542,9 +451,10 @@ FocusScope {
         var id = gridItem.modelData ? gridItem.modelData.id.replace("wallhaven-", "") : "";
         if (!id)
           return false;
-        if (!root.whService || !root.whService.localWallhavenPaths)
+        var ws = root.adapter.whService;
+        if (!ws || !ws.localWallhavenPaths)
           return true;
-        return !root.whService.localWallhavenPaths[id];
+        return !ws.localWallhavenPaths[id];
       }
 
       Rectangle {
@@ -578,19 +488,7 @@ FocusScope {
             return Qt.lighter(Color.mPrimaryContainer, 1.1);
           return "transparent";
         }
-        Behavior on border.color {
-          ColorAnimation {
-            duration: Style.animNormal
-            easing.type: Easing.OutCubic
-          }
-        }
         border.width: gridItem.isCurrent ? Style.borderM : (gridItem.isHovered ? Style.borderS : 0)
-        Behavior on border.width {
-          NumberAnimation {
-            duration: Style.animNormal
-            easing.type: Easing.OutCubic
-          }
-        }
       }
 
       Rectangle {
@@ -601,20 +499,14 @@ FocusScope {
         opacity: gridItem.isHovered ? 1 : 0
         z: 15
 
-        Behavior on opacity {
-          NumberAnimation {
-            duration: Style.animFast
-          }
-        }
-
         DownloadOverlay {
           opacity: parent.opacity
           whId: gridItem.modelData ? gridItem.modelData.id.replace("wallhaven-", "") : ""
           downloadPath: gridItem.modelData ? gridItem.modelData.path : ""
-          whService: root.whService
-          downloadStatus: (root.whService && root.whService.downloadStatus) ? root.whService.downloadStatus : ({})
-          downloadProgress: (root.whService && root.whService.downloadProgress) ? root.whService.downloadProgress : ({})
-          downloadPaths: (root.whService && root.whService.downloadPaths) ? root.whService.downloadPaths : ({})
+          whService: root.adapter ? root.adapter.whService : null
+          downloadStatus: (root.adapter && root.adapter.whService && root.adapter.whService.downloadStatus) ? root.adapter.whService.downloadStatus : ({})
+          downloadProgress: (root.adapter && root.adapter.whService && root.adapter.whService.downloadProgress) ? root.adapter.whService.downloadProgress : ({})
+          downloadPaths: (root.adapter && root.adapter.whService && root.adapter.whService.downloadPaths) ? root.adapter.whService.downloadPaths : ({})
           onApplyLocal: function (localPath) {
             var localItem = Object.assign({}, gridItem.modelData, {
                                             path: localPath,
@@ -632,12 +524,6 @@ FocusScope {
         visible: root.adapter && root.adapter.currentSource === "local" && !!gridItem.modelData
         opacity: gridItem.isHovered ? 1 : 0
         z: 15
-
-        Behavior on opacity {
-          NumberAnimation {
-            duration: Style.animFast
-          }
-        }
 
         LocalOverlay {
           opacity: parent.opacity
@@ -662,61 +548,25 @@ FocusScope {
       }
     }
 
-    Keys.onPressed: function (event) {
-      if (event.key === Qt.Key_Escape) {
-        root.requestQuit();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_S && !event.modifiers) {
-        root.requestSettings();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_W && !event.modifiers) {
-        root.requestToggleWallhaven();
-        thumbGridView.forceActiveFocus();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-        event.key === Qt.Key_Tab ? root.requestNextFolder() : root.requestPrevFolder();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft || event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
-        event.accepted = true;
-        root.requestToggleViewMode();
-        return;
-      }
-      if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
-        root.requestFocusSearch();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        var items = root._currentItems();
-        if (items.length > 0 && thumbGridView.currentIndex < items.length) {
-          var item = items[thumbGridView.currentIndex];
+    KeyboardHandler {
+      id: kbdHandler
+      appViewModel: root.appViewModel
+      wallhavenFilter: root.wallhavenFilter
+      onApplyRequested: {
+        if (root.adapter.count > 0 && thumbGridView.currentIndex < root.adapter.count) {
+          var item = root.adapter.getItem(thumbGridView.currentIndex);
           if (item)
             root.adapter.smartApply(item);
         }
-        event.accepted = true;
-        return;
       }
-      if (event.key === Qt.Key_R && !event.modifiers) {
-        var rItems = root._currentItems();
-        if (rItems.length > 0)
-          thumbGridView.currentIndex = Math.floor(Math.random() * rItems.length);
-        root.requestRandom();
-        event.accepted = true;
-        return;
+      onRandomRequested: {
+        if (root.adapter.count > 0)
+          thumbGridView.currentIndex = Math.floor(Math.random() * root.adapter.count);
       }
-      if (event.key === Qt.Key_F5) {
-        root.requestRefresh();
-        event.accepted = true;
-        return;
-      }
+      onWallhavenToggled: thumbGridView.forceActiveFocus()
+    }
+    Keys.onPressed: function (event) {
+      kbdHandler.handleKeyPress(event);
     }
   }
 

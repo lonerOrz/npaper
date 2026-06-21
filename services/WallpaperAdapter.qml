@@ -5,7 +5,7 @@ import qs.services
 * WallpaperAdapter — unified interface for local and remote wallpaper sources.
 *
 * UI layer reads:
-*   adapter.items          → current source's filtered items
+*   adapter.items          → current source's filtered items (ListModel)
 *   adapter.currentSource  → "local" or "remote"
 *   adapter.folders        → local folders (empty for remote)
 *   adapter.currentFolder  → current local folder
@@ -23,16 +23,96 @@ Item {
   property string searchText: ""
   property var wallpaperDirs: []
   property string scriptPath: ""
-  property bool debugMode: false
+  property var configViewModel: null
+  property bool debugMode: configViewModel ? configViewModel.debugMode : false
   property string cacheDir: ""
   property var cacheService: null
 
-  readonly property var items: currentSource === "local" ? localSource.items : remoteSource.items
+  readonly property var items: currentSource === "local" ? localSource.items : remoteItems
   readonly property var folders: localSource.folders
   readonly property string currentFolder: localSource.currentFolder
   readonly property int count: items ? (items.count !== undefined ? items.count : (items.length !== undefined ? items.length : 0)) : 0
   readonly property var remoteSource: remoteSource
   readonly property var whService: wallhavenService
+
+  ListModel {
+    id: remoteItems
+  }
+
+  property bool _whLoadingMore: false
+
+  Connections {
+    target: wallhavenService
+    enabled: root.currentSource === "remote"
+
+    function onResultsUpdated() {
+      if (!wallhavenService || !wallhavenService.results)
+        return;
+      var total = wallhavenService.results.length;
+      var isNewSearch = (total < remoteItems.count) || (wallhavenService.currentPage === 1);
+      if (isNewSearch) {
+        remoteItems.clear();
+        for (var i = 0; i < total; i++) {
+          remoteItems.append(root._normalizeRemoteItem(wallhavenService.results[i]));
+        }
+      } else {
+        var toAdd = total - remoteItems.count;
+        if (toAdd > 0) {
+          var startIdx = remoteItems.count;
+          for (var j = startIdx; j < total; j++) {
+            remoteItems.append(root._normalizeRemoteItem(wallhavenService.results[j]));
+          }
+        }
+      }
+      root._whLoadingMore = false;
+    }
+  }
+
+  Connections {
+    target: root
+    function onCurrentSourceChanged() {
+      if (root.currentSource === "remote") {
+        remoteItems.clear();
+        if (wallhavenService && wallhavenService.results && wallhavenService.results.length > 0) {
+          for (var i = 0; i < wallhavenService.results.length; i++) {
+            remoteItems.append(root._normalizeRemoteItem(wallhavenService.results[i]));
+          }
+        }
+      } else {
+        remoteItems.clear();
+      }
+    }
+  }
+
+  function _initRemoteItems() {
+    if (root.currentSource === "remote" && wallhavenService && wallhavenService.results) {
+      var total = wallhavenService.results.length;
+      if (total > 0) {
+        for (var i = 0; i < total; i++) {
+          remoteItems.append(root._normalizeRemoteItem(wallhavenService.results[i]));
+        }
+      }
+    }
+  }
+
+  function _normalizeRemoteItem(r) {
+    var safeId = r.id ? String(r.id).replace(/[^a-zA-Z0-9-]/g, "") : "unknown";
+    return {
+      id: r.id,
+      type: "remote",
+      path: r.path || "",
+      thumb: r.thumbLarge || "",
+      thumbLarge: r.thumbLarge || "",
+      thumbSmall: r.thumbSmall || "",
+      filename: "wallhaven-" + safeId + (r.resolution ? " (" + r.resolution + ")" : ""),
+      resolution: r.resolution || "",
+      fileSize: r.fileSize || 0,
+      purity: r.purity || "",
+      category: r.category || "",
+      isVideo: false,
+      isGif: false
+    };
+  }
 
   signal dataLoaded
 
@@ -58,12 +138,12 @@ Item {
   WallhavenService {
     id: wallhavenService
     wallpaperDir: _whDownloadDir || (root.wallpaperDirs && root.wallpaperDirs.length > 0 ? root.wallpaperDirs[0] : "")
-    apiKey: Config.data.wallhaven.apiKey
-    categories: Config.data.wallhaven.categories
-    purity: Config.data.wallhaven.purity
+    apiKey: root.configViewModel ? root.configViewModel.wallhaven.apiKey : ""
+    categories: root.configViewModel ? root.configViewModel.wallhaven.categories : "111"
+    purity: root.configViewModel ? root.configViewModel.wallhaven.purity : "100"
   }
 
-  readonly property string _whDownloadDir: (Config.data.wallhaven && Config.data.wallhaven.downloadDir) ? Config.data.wallhaven.downloadDir : ""
+  readonly property string _whDownloadDir: root.configViewModel ? root.configViewModel.wallhaven.downloadDir : ""
 
   function switchSource(source) {
     root.currentSource = source;
@@ -102,6 +182,17 @@ Item {
     localSource.moveWallpaper(path, targetFolder, idx);
   }
 
+  function getItem(index) {
+    var src = items;
+    if (!src)
+      return null;
+    if (src.get !== undefined)
+      return src.get(index);
+    if (index >= 0 && index < src.length)
+      return src[index];
+    return null;
+  }
+
   function apply(item) {
     if (!item)
       return;
@@ -128,7 +219,7 @@ Item {
           ws.downloadAndApply(safeId, item.path);
       } else if (status === "downloading") {
         if (ws)
-          ws._pendingApplyId = safeId;
+          ws.setPendingApply(safeId);
       } else if (ws) {
         ws.downloadAndApply(safeId, item.path);
       }
@@ -143,5 +234,6 @@ Item {
 
   function load() {
     localSource.load();
+    _initRemoteItems();
   }
 }

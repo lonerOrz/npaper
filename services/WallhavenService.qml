@@ -235,6 +235,10 @@ QtObject {
     downloadWallpaper(wallhavenId, fullUrl);
   }
 
+  function setPendingApply(itemId) {
+    _pendingApplyId = itemId;
+  }
+
   function downloadWallpaper(wallhavenId, fullUrl) {
     if (_activeDownloads[wallhavenId])
       return;

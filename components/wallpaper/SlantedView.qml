@@ -12,6 +12,8 @@ FocusScope {
   property var adapter: null
   property var cacheService: null
   property var checkService: null
+  property var appViewModel: null
+  property var wallhavenFilter: null
   readonly property var whService: root.adapter ? root.adapter.whService : null
 
   property real parallaxFactor: 0.3
@@ -21,16 +23,13 @@ FocusScope {
   property int expandedWidth: 680
   property int skewOffset: 45
   property int sliceSpacing: 2
-  property bool showBorderGlow: true
   property bool showShadow: true
   property int scrollDuration: 300
-
-  property bool _whLoadingMore: false
 
   readonly property int currentIndex: listView.currentIndex
   readonly property real scrollTarget: listView.currentIndex
   readonly property int baseIndex: Math.max(0, listView.currentIndex - 4)
-  readonly property int maxIndex: Math.min(listView.currentIndex + 4, _itemCount() - 1)
+  readonly property int maxIndex: Math.min(listView.currentIndex + 4, (root.adapter ? root.adapter.count : 0) - 1)
 
   signal requestQuit
   signal requestSettings
@@ -43,89 +42,16 @@ FocusScope {
   signal requestRefresh
   signal requestToggleViewMode
 
-  ListModel {
-    id: remoteResultsModel
-  }
-
   Connections {
-    id: remoteResultsConn
     target: root.whService
-    enabled: root.adapter && root.adapter.currentSource === "remote"
-
     function onResultsUpdated() {
-      if (!root.whService || !root.whService.results)
+      if (!root.whService || root.whService.currentPage !== 1)
         return;
-      var total = root.whService.results.length;
-      var isNewSearch = (total < remoteResultsModel.count) || (root.whService.currentPage === 1);
-      if (isNewSearch) {
-        remoteResultsModel.clear();
-        var toAdd = total;
-        for (var i = 0; i < toAdd; i++) {
-          remoteResultsModel.append(root.whService.results[i]);
-        }
-        Qt.callLater(function () {
-          listView.positionViewAtBeginning();
-          listView.currentIndex = 0;
-        });
-      } else {
-        var toAdd2 = total - remoteResultsModel.count;
-        if (toAdd2 > 0) {
-          listView._modelChanging = true;
-          var startIdx = remoteResultsModel.count;
-          for (var j = startIdx; j < total; j++) {
-            remoteResultsModel.append(root.whService.results[j]);
-          }
-          Qt.callLater(function () {
-            listView._modelChanging = false;
-          });
-        }
-      }
-      root._whLoadingMore = false;
+      Qt.callLater(function () {
+        listView.positionViewAtBeginning();
+        listView.currentIndex = 0;
+      });
     }
-  }
-
-  Connections {
-    target: root.adapter
-    function onCurrentSourceChanged() {
-      if (root.adapter && root.adapter.currentSource === "remote") {
-        remoteResultsModel.clear();
-        if (root.whService && root.whService.results && root.whService.results.length > 0) {
-          var len = root.whService.results.length;
-          for (var i = 0; i < len; i++) {
-            remoteResultsModel.append(root.whService.results[i]);
-          }
-        }
-        remoteResultsConn.enabled = true;
-      } else {
-        remoteResultsModel.clear();
-        remoteResultsConn.enabled = false;
-      }
-    }
-  }
-
-  Component.onCompleted: {
-    if (root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.results) {
-      var total = root.whService.results.length;
-      if (total > 0) {
-        for (var i = 0; i < total; i++) {
-          remoteResultsModel.append(root.whService.results[i]);
-        }
-      }
-    }
-  }
-
-  function _itemCount() {
-    var m = listView.model;
-    if (!m)
-      return 0;
-    return m.count !== undefined ? m.count : m.length;
-  }
-
-  function _getItem(idx) {
-    var m = listView.model;
-    if (!m || idx < 0)
-      return null;
-    return m.get ? m.get(idx) : m[idx];
   }
 
   function reset() {
@@ -133,7 +59,7 @@ FocusScope {
   }
 
   function scrollTo(idx) {
-    listView.currentIndex = Math.max(0, Math.min(idx, _itemCount() - 1));
+    listView.currentIndex = Math.max(0, Math.min(idx, (root.adapter ? root.adapter.count : 0) - 1));
   }
 
   function positionToCurrent() {
@@ -152,7 +78,7 @@ FocusScope {
     if (!root.adapter || !root.cacheService || !root.cacheService.queueThumbnail)
       return;
     for (var i = root.baseIndex; i <= root.maxIndex; i++) {
-      var item = root._getItem(i);
+      var item = root.adapter.getItem(i);
       if (item && item.type === "local")
         root.cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
     }
@@ -170,7 +96,7 @@ FocusScope {
     anchors.topMargin: 20
 
     orientation: ListView.Horizontal
-    model: (root.adapter && root.adapter.currentSource === "remote") ? remoteResultsModel : (root.adapter ? root.adapter.items : null)
+    model: root.adapter ? root.adapter.items : null
 
     spacing: root.sliceSpacing - Math.abs(root.skewOffset)
 
@@ -187,8 +113,6 @@ FocusScope {
     highlightFollowsCurrentItem: true
     highlight: Item {}
     focus: true
-
-    property bool _modelChanging: false
 
     onCurrentIndexChanged: {
       queueVisibleThumbnails();
@@ -216,7 +140,7 @@ FocusScope {
     delegate: Item {
       id: delegateItem
       required property int index
-      readonly property var itemData: root._getItem(index)
+      readonly property var itemData: root.adapter.getItem(index)
 
       readonly property bool isRemote: itemData ? (itemData.type === "remote" || (itemData.path && (itemData.path.indexOf("http://") === 0 || itemData.path.indexOf("https://") === 0))) : false
       readonly property bool isLocal: itemData ? (!isRemote) : false
@@ -282,6 +206,7 @@ FocusScope {
         opacity: delegateItem.isCurrent ? 0.4 : 0.15
         visible: root.showShadow
         anchors.horizontalCenter: parent.horizontalCenter
+        antialiasing: delegateItem.isCurrent
 
         Behavior on x {
           NumberAnimation {
@@ -356,11 +281,11 @@ FocusScope {
         height: delegateItem.height
         visible: false
         layer.enabled: true
-        layer.smooth: true
+        layer.smooth: false
 
         Shape {
           anchors.fill: parent
-          antialiasing: true
+          antialiasing: delegateItem.isCurrent
           ShapePath {
             fillColor: "white"
             strokeColor: "transparent"
@@ -442,7 +367,7 @@ FocusScope {
           anchors.fill: parent
           visible: flipContainer.flipProgress < 0.5
           layer.enabled: true
-          layer.smooth: true
+          layer.smooth: false
           layer.effect: MultiEffect {
             maskEnabled: true
             maskSource: sharedMask
@@ -463,10 +388,10 @@ FocusScope {
               return CacheUtils.resolveWallpaperStaticSource(thp, delegateItem.itemData);
             }
             fillMode: Image.PreserveAspectCrop
-            smooth: true
+            smooth: delegateItem.isCurrent
             asynchronous: true
             sourceSize {
-              width: root.expandedWidth
+              width: delegateItem.isCurrent ? root.expandedWidth : root.sliceWidth
               height: listView.height
             }
           }
@@ -501,73 +426,9 @@ FocusScope {
             visible: source !== ""
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
-            smooth: true
-            playing: source !== ""
+            smooth: delegateItem.isCurrent
+            playing: source !== "" && delegateItem.isCurrent
             sourceSize: Qt.size(root.expandedWidth, listView.height)
-          }
-
-          Shape {
-            id: glowBorder
-            anchors.fill: parent
-            antialiasing: true
-            visible: opacity > 0.01
-            opacity: root.showBorderGlow && delegateItem.isCurrent ? 0.8 : 0.0
-            z: 5
-
-            Behavior on opacity {
-              NumberAnimation {
-                duration: root.scrollDuration
-                easing.type: Easing.OutQuad
-              }
-            }
-
-            ShapePath {
-              fillColor: "transparent"
-              strokeColor: Color.mPrimary
-              strokeWidth: 3
-              startX: delegateItem._topLeft + delegateItem.cardRadius
-              startY: 0
-              PathLine {
-                x: flipContainer.width - delegateItem.cardRadius
-                y: 0
-              }
-              PathQuad {
-                x: flipContainer.width - (root.skewOffset * 0.12)
-                y: delegateItem.cardRadius
-                controlX: flipContainer.width
-                controlY: 0
-              }
-              PathLine {
-                x: (flipContainer.width - root.skewOffset) + (root.skewOffset * 0.12)
-                y: glowBorder.height - delegateItem.cardRadius
-              }
-              PathQuad {
-                x: (flipContainer.width - root.skewOffset) - delegateItem.cardRadius
-                y: glowBorder.height
-                controlX: (flipContainer.width - root.skewOffset)
-                controlY: glowBorder.height
-              }
-              PathLine {
-                x: delegateItem.cardRadius
-                y: glowBorder.height
-              }
-              PathQuad {
-                x: (root.skewOffset * 0.12)
-                y: glowBorder.height - delegateItem.cardRadius
-                controlX: 0
-                controlY: glowBorder.height
-              }
-              PathLine {
-                x: delegateItem._topLeft - (root.skewOffset * 0.12)
-                y: delegateItem.cardRadius
-              }
-              PathQuad {
-                x: delegateItem._topLeft + delegateItem.cardRadius
-                y: 0
-                controlX: delegateItem._topLeft
-                controlY: 0
-              }
-            }
           }
 
           Item {
@@ -716,7 +577,7 @@ FocusScope {
           anchors.fill: parent
           visible: flipContainer.flipProgress >= 0.5
           layer.enabled: true
-          layer.smooth: true
+          layer.smooth: false
           layer.effect: MultiEffect {
             maskEnabled: true
             maskSource: sharedMask
@@ -775,7 +636,7 @@ FocusScope {
               columns: 2
               spacing: 10
               horizontalItemAlignment: Grid.AlignHCenter
-              visible: delegateItem.itemData && delegateItem.itemData.resolution
+              visible: !!(delegateItem.itemData && delegateItem.itemData.resolution)
 
               Text {
                 text: "Resolution:"
@@ -796,7 +657,7 @@ FocusScope {
           Shape {
             id: backBorderShape
             anchors.fill: parent
-            antialiasing: true
+            antialiasing: delegateItem.isCurrent
             z: 5
             ShapePath {
               fillColor: "transparent"
@@ -887,41 +748,26 @@ FocusScope {
       }
     }
 
-    Keys.onEscapePressed: root.requestQuit()
-    Keys.onPressed: function (event) {
-      if (event.key === Qt.Key_S && !event.modifiers) {
-        root.requestSettings();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_W && !event.modifiers) {
-        root.requestToggleWallhaven();
-        listView.forceActiveFocus();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-        event.key === Qt.Key_Tab ? root.requestNextFolder() : root.requestPrevFolder();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BraceLeft || event.key === Qt.Key_BracketRight || event.key === Qt.Key_BraceRight) {
-        root.requestToggleViewMode();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_Slash || (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier))) {
-        root.requestFocusSearch();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        var item = root._getItem(listView.currentIndex);
+    KeyboardHandler {
+      id: kbdHandler
+      appViewModel: root.appViewModel
+      wallhavenFilter: root.wallhavenFilter
+      onApplyRequested: {
+        var item = root.adapter.getItem(listView.currentIndex);
         if (item)
           root.adapter.smartApply(item);
-        event.accepted = true;
-        return;
       }
+      onRandomRequested: {
+        var count = root.adapter.count;
+        if (count > 0)
+          listView.currentIndex = Math.floor(Math.random() * count);
+      }
+      onWallhavenToggled: listView.forceActiveFocus()
+    }
+    Keys.onPressed: function (event) {
+      kbdHandler.handleKeyPress(event);
+      if (event.accepted)
+        return;
       if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
         var dir = event.key === Qt.Key_Left ? -1 : 1;
         var target = listView.currentIndex + dir;
@@ -935,19 +781,6 @@ FocusScope {
         if (dir === 1 && listView.currentIndex >= listView.count - 3 && root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.hasMore && !root.whService.loading) {
           root.whService.loadMore();
         }
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_R && !event.modifiers) {
-        var count = root._itemCount();
-        if (count > 0)
-          listView.currentIndex = Math.floor(Math.random() * count);
-        root.requestRandom();
-        event.accepted = true;
-        return;
-      }
-      if (event.key === Qt.Key_F5) {
-        root.requestRefresh();
         event.accepted = true;
         return;
       }

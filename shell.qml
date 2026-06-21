@@ -69,8 +69,8 @@ ShellRoot {
       CacheService {
         id: cacheService
         property bool _initialized: false
-        cacheDir: Config.data.cacheDir
-        debugMode: Config.data.debugMode
+        cacheDir: bridge.viewModel ? bridge.viewModel.paths.cacheDir : ""
+        debugMode: bridge.viewModel ? bridge.viewModel.debugMode : false
         onCacheScanned: {
           // Adapter loads its own data
         }
@@ -78,15 +78,15 @@ ShellRoot {
 
       WallpaperApplier {
         id: wallpaperApplier
-        dirs: Config.data.wallpaperDirs
+        dirs: bridge.viewModel ? bridge.viewModel.paths.wallpaperDirs : []
         scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
-        videoBackend: Config.data.videoBackend || "mpvpaper"
+        videoBackend: bridge.viewModel ? bridge.viewModel.videoBackend : "mpvpaper"
       }
 
       // Computed wallpaper dirs: user dirs + wallhaven download dir (if configured)
       readonly property var _effectiveWallpaperDirs: {
-        var dirs = Config.data.wallpaperDirs || [];
-        var whDir = Config.data.wallhaven ? Config.data.wallhaven.downloadDir : "";
+        var dirs = bridge.viewModel ? bridge.viewModel.paths.wallpaperDirs : [];
+        var whDir = bridge.viewModel ? bridge.viewModel.wallhaven.downloadDir : "";
         if (whDir && whDir.length > 0 && dirs.indexOf(whDir) === -1)
         dirs = dirs.concat([whDir]);
         return dirs;
@@ -95,11 +95,18 @@ ShellRoot {
       // Must be defined BEFORE Variants so it's available for injection
       WallpaperAdapter {
         id: wallpaperAdapter
+        configViewModel: bridge.viewModel
         wallpaperDirs: shellItem._effectiveWallpaperDirs
         scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
-        debugMode: Config.data.debugMode
-        cacheDir: Config.data.cacheDir
         cacheService: cacheService
+      }
+
+      ViewModel {
+        id: appViewModel
+        configViewModel: bridge.viewModel
+        adapter: wallpaperAdapter
+        cacheService: cacheService
+        wallpaperApplier: wallpaperApplier
       }
 
       // Register into ServiceLocator for leaf components
@@ -116,7 +123,8 @@ ShellRoot {
         model: Quickshell.screens
         delegate: AppWindow {
           screen: modelData
-          viewModel: bridge.viewModel
+          configViewModel: bridge.viewModel
+          appViewModel: appViewModel
           adapter: wallpaperAdapter
           cacheService: cacheService
           wallpaperApplier: wallpaperApplier
