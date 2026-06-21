@@ -206,25 +206,7 @@ FocusScope {
         opacity: delegateItem.isCurrent ? 0.4 : 0.15
         visible: root.showShadow
         anchors.horizontalCenter: parent.horizontalCenter
-
-        Behavior on x {
-          NumberAnimation {
-            duration: root.scrollDuration
-            easing.type: Easing.OutQuad
-          }
-        }
-        Behavior on y {
-          NumberAnimation {
-            duration: root.scrollDuration
-            easing.type: Easing.OutQuad
-          }
-        }
-        Behavior on opacity {
-          NumberAnimation {
-            duration: root.scrollDuration
-            easing.type: Easing.OutQuad
-          }
-        }
+        antialiasing: delegateItem.isCurrent
 
         ShapePath {
           fillColor: "#000000"
@@ -280,11 +262,11 @@ FocusScope {
         height: delegateItem.height
         visible: false
         layer.enabled: true
-        layer.smooth: true
+        layer.smooth: false
 
         Shape {
           anchors.fill: parent
-          antialiasing: true
+          antialiasing: delegateItem.isCurrent
           ShapePath {
             fillColor: "white"
             strokeColor: "transparent"
@@ -365,8 +347,8 @@ FocusScope {
           id: frontFace
           anchors.fill: parent
           visible: flipContainer.flipProgress < 0.5
-          layer.enabled: true
-          layer.smooth: true
+          layer.enabled: delegateItem.isCurrent
+          layer.smooth: false
           layer.effect: MultiEffect {
             maskEnabled: true
             maskSource: sharedMask
@@ -387,10 +369,10 @@ FocusScope {
               return CacheUtils.resolveWallpaperStaticSource(thp, delegateItem.itemData);
             }
             fillMode: Image.PreserveAspectCrop
-            smooth: true
+            smooth: delegateItem.isCurrent
             asynchronous: true
             sourceSize {
-              width: root.expandedWidth
+              width: delegateItem.isCurrent ? root.expandedWidth : root.sliceWidth
               height: listView.height
             }
           }
@@ -405,12 +387,6 @@ FocusScope {
           Rectangle {
             anchors.fill: parent
             color: Qt.rgba(0, 0, 0, delegateItem.isCurrent ? 0 : (delegateItem.isHovered ? 0.15 : 0.4))
-            Behavior on color {
-              ColorAnimation {
-                duration: root.scrollDuration
-                easing.type: Easing.OutCubic
-              }
-            }
           }
 
           AnimatedImage {
@@ -425,8 +401,8 @@ FocusScope {
             visible: source !== ""
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
-            smooth: true
-            playing: source !== ""
+            smooth: delegateItem.isCurrent
+            playing: source !== "" && delegateItem.isCurrent
             sourceSize: Qt.size(root.expandedWidth, listView.height)
           }
 
@@ -446,13 +422,6 @@ FocusScope {
             z: 10
             x: onRight ? parent.width - width - delegateItem._skAbs - 6 : delegateItem._skAbs + 6
             opacity: delegateItem.isCurrent ? 1.0 : (delegateItem.isHovered ? 0.7 : 0.0)
-
-            Behavior on opacity {
-              NumberAnimation {
-                duration: Style.animFast
-                easing.type: Easing.OutQuad
-              }
-            }
 
             Shape {
               anchors.fill: parent
@@ -512,13 +481,6 @@ FocusScope {
             z: 10
             opacity: delegateItem.itemData && delegateItem.itemData.isVideo ? (delegateItem.isCurrent ? 1.0 : (delegateItem.isHovered ? 0.7 : 0.0)) : 0.0
 
-            Behavior on opacity {
-              NumberAnimation {
-                duration: Style.animFast
-                easing.type: Easing.OutQuad
-              }
-            }
-
             Text {
               anchors.centerIn: parent
               text: "▶"
@@ -575,8 +537,8 @@ FocusScope {
           id: backFace
           anchors.fill: parent
           visible: flipContainer.flipProgress >= 0.5
-          layer.enabled: true
-          layer.smooth: true
+          layer.enabled: delegateItem.isCurrent
+          layer.smooth: false
           layer.effect: MultiEffect {
             maskEnabled: true
             maskSource: sharedMask
@@ -656,7 +618,7 @@ FocusScope {
           Shape {
             id: backBorderShape
             anchors.fill: parent
-            antialiasing: true
+            antialiasing: delegateItem.isCurrent
             z: 5
             ShapePath {
               fillColor: "transparent"

@@ -73,8 +73,14 @@ FocusScope {
     parallaxFactor: root.parallaxFactor
 
     onScrollTargetChanged: {
-      queueVisibleThumbnails();
+      _thumbQueueTimer.restart();
     }
+  }
+
+  Timer {
+    id: _thumbQueueTimer
+    interval: 80
+    onTriggered: queueVisibleThumbnails()
   }
 
   Item {

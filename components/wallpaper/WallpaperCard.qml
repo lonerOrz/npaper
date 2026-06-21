@@ -111,8 +111,8 @@ Item {
     id: cardContent
     anchors.fill: parent
     visible: visualOpacity > 0.01
-    layer.enabled: true
-    layer.smooth: true
+    layer.enabled: root.isCenter
+    layer.smooth: root.isCenter
     layer.effect: MultiEffect {
       maskEnabled: true
       maskSource: roundMask

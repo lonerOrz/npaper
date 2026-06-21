@@ -90,7 +90,7 @@ FocusScope {
     model: root.adapter ? root.adapter.items : null
     clip: false
 
-    cacheBuffer: cellHeight * 3
+    cacheBuffer: cellHeight * 5
 
     Behavior on width {
       NumberAnimation {
@@ -321,13 +321,6 @@ FocusScope {
         color: Color.mShadow
         opacity: gridItem.isCurrent ? 0.35 : (gridItem.isHovered ? 0.25 : 0.15)
         z: -1
-
-        Behavior on opacity {
-          NumberAnimation {
-            duration: Style.animNormal
-            easing.type: Easing.OutCubic
-          }
-        }
       }
 
       Item {
@@ -410,12 +403,6 @@ FocusScope {
               return Qt.rgba(0, 0, 0, 0.12);
             return Qt.rgba(0, 0, 0, 0.35);
           }
-          Behavior on color {
-            ColorAnimation {
-              duration: Style.animNormal
-              easing.type: Easing.OutCubic
-            }
-          }
         }
 
         Image {
@@ -426,7 +413,7 @@ FocusScope {
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
           cache: true
-          smooth: true
+          smooth: gridItem.isCurrent
           mipmap: false
           sourceSize: Qt.size(root._gridCellW, root._gridCellH)
           opacity: status === Image.Ready ? 1.0 : (status === Image.Error ? 0.3 : 0.0)
@@ -448,7 +435,7 @@ FocusScope {
           mipmap: true
           cache: true
           sourceSize: Qt.size(root._gridCellW, root._gridCellH)
-          playing: source !== ""
+          playing: source !== "" && gridItem.isCurrent
           opacity: status === AnimatedImage.Ready ? 1.0 : 0.0
           Behavior on opacity {
             NumberAnimation {
@@ -501,19 +488,7 @@ FocusScope {
             return Qt.lighter(Color.mPrimaryContainer, 1.1);
           return "transparent";
         }
-        Behavior on border.color {
-          ColorAnimation {
-            duration: Style.animNormal
-            easing.type: Easing.OutCubic
-          }
-        }
         border.width: gridItem.isCurrent ? Style.borderM : (gridItem.isHovered ? Style.borderS : 0)
-        Behavior on border.width {
-          NumberAnimation {
-            duration: Style.animNormal
-            easing.type: Easing.OutCubic
-          }
-        }
       }
 
       Rectangle {
@@ -523,12 +498,6 @@ FocusScope {
         visible: root.adapter && root.adapter.currentSource === "remote" && !!gridItem.modelData
         opacity: gridItem.isHovered ? 1 : 0
         z: 15
-
-        Behavior on opacity {
-          NumberAnimation {
-            duration: Style.animFast
-          }
-        }
 
         DownloadOverlay {
           opacity: parent.opacity
@@ -555,12 +524,6 @@ FocusScope {
         visible: root.adapter && root.adapter.currentSource === "local" && !!gridItem.modelData
         opacity: gridItem.isHovered ? 1 : 0
         z: 15
-
-        Behavior on opacity {
-          NumberAnimation {
-            duration: Style.animFast
-          }
-        }
 
         LocalOverlay {
           opacity: parent.opacity
