@@ -19,7 +19,6 @@ FocusScope {
   property int scrollDuration: 280
   property int scrollContinueInterval: 230
   property int parallaxFactor: 40
-  property bool showBorderGlow: true
   property bool showShadow: true
 
   readonly property int currentIndex: scrollController.currentIndex
@@ -164,7 +163,6 @@ FocusScope {
         isRemote: _item ? _item.type === "remote" : false
         remoteId: _item && _item.type === "remote" ? _item.id : ""
         isCenter: realIndex === root.currentIndex
-        showBorderGlow: root.showBorderGlow
         showShadow: root.showShadow
         downloadPath: _item && _item.type === "remote" ? _item.path : ""
 

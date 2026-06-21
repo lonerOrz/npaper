@@ -25,7 +25,6 @@ Item {
       property string downloadDir: Config.data.wallhaven.downloadDir || ""
     }
     readonly property var appearance: QtObject {
-      property bool showBorderGlow: Config.data.appearance ? Config.data.appearance.showBorderGlow : true
       property bool showShadow: Config.data.appearance ? Config.data.appearance.showShadow : true
       property bool showBgPreview: Config.data.appearance ? Config.data.appearance.showBgPreview : true
       property real bgOverlayOpacity: Config.data.appearance ? Config.data.appearance.bgOverlayOpacity : 0.4

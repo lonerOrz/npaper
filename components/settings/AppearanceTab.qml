@@ -7,7 +7,6 @@ import qs.services
 Column {
   id: root
 
-  property bool showBorderGlow: true
   property bool showShadow: true
   property bool showBgPreview: true
   property real bgOverlayOpacity: 0.4
@@ -90,14 +89,6 @@ Column {
     width: parent.width
     spacing: Style.spaceS
 
-    SettingsToggle {
-      width: parent.width
-      text: "Border Glow"
-      checked: root.showBorderGlow
-      onToggled: function (val) {
-        root.settingChanged("appearance.showBorderGlow", val);
-      }
-    }
     SettingsToggle {
       width: parent.width
       text: "Card Shadow"

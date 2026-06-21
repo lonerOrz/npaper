@@ -41,9 +41,8 @@ Singleton {
                                         "purity": "100",
                                         "sorting": "toplist"
                                       },
-                                      "appearance": {
-                                        "showBorderGlow": true,
-                                        "showShadow": true,
+                                       "appearance": {
+                                         "showShadow": true,
                                         "showBgPreview": true,
                                         "bgOverlayOpacity": 0.4
                                       }
@@ -153,7 +152,7 @@ Singleton {
       "previewStyle": resolvedData.previewStyle,
       "videoBackend": resolvedData.videoBackend,
       "wallhaven": _pick(resolvedData.wallhaven, ["apiKey", "downloadDir", "defaultAtleast", "categories", "purity", "sorting"]),
-      "appearance": _pick(resolvedData.appearance, ["showBorderGlow", "showShadow", "showBgPreview", "bgOverlayOpacity"])
+      "appearance": _pick(resolvedData.appearance, ["showShadow", "showBgPreview", "bgOverlayOpacity"])
     };
     var jsonStr = JSON.stringify(ordered, null, 2);
     _fileView.setText(jsonStr);

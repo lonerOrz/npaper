@@ -20,7 +20,6 @@ QtObject {
 
   property bool showBgPreview: configViewModel ? configViewModel.appearance.showBgPreview : true
   property bool showShadow: configViewModel ? configViewModel.appearance.showShadow : true
-  property bool showBorderGlow: configViewModel ? configViewModel.appearance.showBorderGlow : true
   property real bgOverlayOpacity: configViewModel ? configViewModel.appearance.bgOverlayOpacity : 0.4
   property string videoBackend: configViewModel ? configViewModel.videoBackend : "mpvpaper"
   property int bgSlideDuration: configViewModel ? configViewModel.animation.bgSlideDuration : Style.defaultBgSlideDuration

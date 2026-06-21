@@ -23,7 +23,6 @@ FocusScope {
   property int expandedWidth: 680
   property int skewOffset: 45
   property int sliceSpacing: 2
-  property bool showBorderGlow: true
   property bool showShadow: true
   property int scrollDuration: 300
 
@@ -431,70 +430,6 @@ FocusScope {
             sourceSize: Qt.size(root.expandedWidth, listView.height)
           }
 
-          Shape {
-            id: glowBorder
-            anchors.fill: parent
-            antialiasing: true
-            visible: opacity > 0.01
-            opacity: root.showBorderGlow && delegateItem.isCurrent ? 0.8 : 0.0
-            z: 5
-
-            Behavior on opacity {
-              NumberAnimation {
-                duration: root.scrollDuration
-                easing.type: Easing.OutQuad
-              }
-            }
-
-            ShapePath {
-              fillColor: "transparent"
-              strokeColor: Color.mPrimary
-              strokeWidth: 3
-              startX: delegateItem._topLeft + delegateItem.cardRadius
-              startY: 0
-              PathLine {
-                x: flipContainer.width - delegateItem.cardRadius
-                y: 0
-              }
-              PathQuad {
-                x: flipContainer.width - (root.skewOffset * 0.12)
-                y: delegateItem.cardRadius
-                controlX: flipContainer.width
-                controlY: 0
-              }
-              PathLine {
-                x: (flipContainer.width - root.skewOffset) + (root.skewOffset * 0.12)
-                y: glowBorder.height - delegateItem.cardRadius
-              }
-              PathQuad {
-                x: (flipContainer.width - root.skewOffset) - delegateItem.cardRadius
-                y: glowBorder.height
-                controlX: (flipContainer.width - root.skewOffset)
-                controlY: glowBorder.height
-              }
-              PathLine {
-                x: delegateItem.cardRadius
-                y: glowBorder.height
-              }
-              PathQuad {
-                x: (root.skewOffset * 0.12)
-                y: glowBorder.height - delegateItem.cardRadius
-                controlX: 0
-                controlY: glowBorder.height
-              }
-              PathLine {
-                x: delegateItem._topLeft - (root.skewOffset * 0.12)
-                y: delegateItem.cardRadius
-              }
-              PathQuad {
-                x: delegateItem._topLeft + delegateItem.cardRadius
-                y: 0
-                controlX: delegateItem._topLeft
-                controlY: 0
-              }
-            }
-          }
-
           Item {
             id: typeBadge
             anchors.bottom: parent.bottom
@@ -700,7 +635,7 @@ FocusScope {
               columns: 2
               spacing: 10
               horizontalItemAlignment: Grid.AlignHCenter
-              visible: delegateItem.itemData && delegateItem.itemData.resolution
+              visible: !!(delegateItem.itemData && delegateItem.itemData.resolution)
 
               Text {
                 text: "Resolution:"

@@ -138,7 +138,6 @@ FocusScope {
       scrollDuration: root.scrollDuration
       scrollContinueInterval: root.scrollContinueInterval
       parallaxFactor: root.parallaxFactor
-      showBorderGlow: root.configViewModel ? root.configViewModel.appearance.showBorderGlow : true
       showShadow: root.configViewModel ? root.configViewModel.appearance.showShadow : true
 
       onRequestQuit: root.appViewModel ? root.appViewModel.handleRequestQuit() : null
@@ -221,7 +220,6 @@ FocusScope {
       scrollDuration: root.scrollDuration
       scrollContinueInterval: root.scrollContinueInterval
       parallaxFactor: root.parallaxFactor
-      showBorderGlow: root.configViewModel ? root.configViewModel.appearance.showBorderGlow : true
       showShadow: root.configViewModel ? root.configViewModel.appearance.showShadow : true
 
       onRequestQuit: root.appViewModel ? root.appViewModel.handleRequestQuit() : null

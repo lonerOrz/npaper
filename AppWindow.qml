@@ -208,7 +208,6 @@ PanelWindow {
     anchors.horizontalCenter: statusBar.horizontalCenter
     z: 999
     settingsOpen: appViewModel ? appViewModel.settingsOpen : false
-    showBorderGlow: appViewModel ? appViewModel.showBorderGlow : true
     showShadow: appViewModel ? appViewModel.showShadow : true
     showBgPreview: appViewModel ? appViewModel.showBgPreview : true
     bgOverlayOpacity: appViewModel ? appViewModel.bgOverlayOpacity : 0.4

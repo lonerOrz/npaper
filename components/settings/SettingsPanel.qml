@@ -12,7 +12,6 @@ Item {
 
   property var wallpaperDirs: []
   property string cacheDir: ""
-  property bool showBorderGlow: true
   property bool showShadow: true
   property bool showBgPreview: true
   property real bgOverlayOpacity: 0.4
@@ -338,7 +337,6 @@ Item {
       anchors.right: parent.right
       anchors.margins: Style.settingsPadding
       visible: root.activeTab === "appearance"
-      showBorderGlow: root.showBorderGlow
       showShadow: root.showShadow
       showBgPreview: root.showBgPreview
       bgOverlayOpacity: root.bgOverlayOpacity
