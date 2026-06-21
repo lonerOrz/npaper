@@ -105,7 +105,7 @@ PanelWindow {
 
   BackgroundManager {
     anchors.fill: parent
-    currentWallpaperItem: (appViewModel && appViewModel.bgCurrent >= 0 && adapter && appViewModel.bgCurrent < adapter.items.length) ? adapter.items[appViewModel.bgCurrent] : null
+    currentWallpaperItem: (appViewModel && appViewModel.bgCurrent >= 0 && adapter && appViewModel.bgCurrent < adapter.count) ? adapter.getItem(appViewModel.bgCurrent) : null
     parallaxX: displayManager ? displayManager.contentOffset * (appViewModel ? appViewModel.bgParallaxFactor : Style.defaultBgParallaxFactor) : 0
     dominantColor: appViewModel ? appViewModel.dominantColor : Color.mPrimary
     overlayOpacity: appViewModel ? appViewModel.bgOverlayOpacity : 0.4

@@ -125,7 +125,6 @@ Singleton {
   }
 
   function update(path, value) {
-    Logger.i("Config", "update:", path, "=", value);
     var parts = path.split(".");
     var obj = root.data;
     for (var i = 0; i < parts.length - 1; i++) {

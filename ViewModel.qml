@@ -37,7 +37,7 @@ QtObject {
     interval: 150
     repeat: false
     onTriggered: {
-      if (root.displayManager && root.displayManager.currentIndex >= 0 && root.displayManager.currentIndex < (root.adapter ? root.adapter.items.length : 0)) {
+      if (root.displayManager && root.displayManager.currentIndex >= 0 && root.displayManager.currentIndex < (root.adapter ? root.adapter.count : 0)) {
         root.bgCurrent = root.displayManager.currentIndex;
       }
     }
@@ -89,8 +89,8 @@ QtObject {
   }
 
   function onBgCurrentChanged() {
-    if (root.bgCurrent >= 0 && root.adapter && root.bgCurrent < root.adapter.items.length) {
-      const item = root.adapter.items[root.bgCurrent];
+    if (root.bgCurrent >= 0 && root.adapter && root.bgCurrent < root.adapter.count) {
+      const item = root.adapter.getItem(root.bgCurrent);
       if (item && item.type === "local" && root.colorExtractor)
         root.colorExtractor.run(item.path);
       else
@@ -109,8 +109,8 @@ QtObject {
       root.bgCurrent = -1;
       root.bgCurrent = 0;
 
-      if (root.adapter.items.length > 0) {
-        const item = root.adapter.items[0];
+      if (root.adapter.count > 0) {
+        const item = root.adapter.getItem(0);
         if (item.type === "local" && root.colorExtractor)
           root.colorExtractor.run(item.path);
       }
@@ -135,8 +135,8 @@ QtObject {
     root.bgCurrent = -1;
     root.bgCurrent = 0;
 
-    if (root.adapter && root.adapter.items.length > 0) {
-      const item = root.adapter.items[0];
+    if (root.adapter && root.adapter.count > 0) {
+      const item = root.adapter.getItem(0);
       if (item.type === "local" && root.colorExtractor)
         root.colorExtractor.run(item.path);
     }
@@ -193,11 +193,15 @@ QtObject {
 
   function toggleSettings() {
     root.settingsOpen = !root.settingsOpen;
+    if (!root.settingsOpen && root.displayManager)
+      root.displayManager.focusView();
   }
 
   function handleRequestQuit() {
     if (root.settingsOpen) {
       root.settingsOpen = false;
+      if (root.displayManager)
+        root.displayManager.focusView();
     } else {
       Qt.quit();
     }

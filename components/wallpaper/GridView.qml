@@ -62,9 +62,9 @@ FocusScope {
     var endRow = Math.min(Math.ceil((thumbGridView.contentY + thumbGridView.height) / thumbGridView.cellHeight) + preloadRows, Math.ceil(modelLen / cols));
     var startIdx = startRow * cols;
     var endIdx = endRow * cols;
-    var itemsLen = root.adapter.items.length;
+    var itemsLen = root.adapter.count;
     for (let i = startIdx; i < endIdx && i < itemsLen; i++) {
-      const item = root.adapter.items[i];
+      const item = root.adapter.getItem(i);
       if (item && item.type === "local")
         root.cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
     }
