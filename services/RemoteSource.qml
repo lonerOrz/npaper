@@ -15,6 +15,7 @@ Item {
   property string wallpaperDir: ""
 
   property var items: []
+  property string _pendingApplyId: ""
 
   signal applyLocal(string path)
 
@@ -22,6 +23,12 @@ Item {
     target: root.whService
     function onResultsUpdated() {
       root.items = root._makeItems();
+    }
+    function onDownloadFinished(whId, localPath) {
+      if (root._pendingApplyId && root._pendingApplyId === whId) {
+        root._pendingApplyId = "";
+        root._applyLocal(localPath);
+      }
     }
   }
 
@@ -71,34 +78,8 @@ Item {
     if (!root.whService || !item || item.type !== "remote")
       return;
     var safeId = item.id.replace(/[^a-zA-Z0-9-]/g, "");
-    var ext = "jpg";
-    if (item.path && item.path.indexOf(".") !== -1) {
-      var parts = item.path.split(".");
-      var candidate = parts[parts.length - 1].split("?")[0].toLowerCase();
-      if (["jpg", "jpeg", "png", "webp", "gif"].indexOf(candidate) !== -1)
-        ext = candidate;
-    }
-    var localPath = root.wallpaperDir + "/" + safeId + "." + ext;
+    root._pendingApplyId = safeId;
     root.whService.downloadWallpaper(safeId, item.path);
-    var startTime = new Date().getTime();
-    var timeoutMs = 30000;
-    var checkDone = function () {
-      var elapsed = new Date().getTime() - startTime;
-      if (elapsed > timeoutMs) {
-        Logger.w("RemoteSource", "Download timeout for", item.id, "after", Math.round(elapsed / 1000) + "s");
-        return;
-      }
-      var status = root.whService.downloadStatus[safeId];
-      if (status === "done") {
-        Logger.i("RemoteSource", "Download complete:", localPath);
-        root._applyLocal(localPath);
-      } else if (status !== "downloading") {
-        Logger.w("RemoteSource", "Download failed for", item.id);
-      } else {
-        Qt.callLater(checkDone, 500);
-      }
-    };
-    Qt.callLater(checkDone);
   }
 
   function _applyLocal(path) {
