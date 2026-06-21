@@ -208,6 +208,25 @@ FocusScope {
         anchors.horizontalCenter: parent.horizontalCenter
         antialiasing: delegateItem.isCurrent
 
+        Behavior on x {
+          NumberAnimation {
+            duration: root.scrollDuration
+            easing.type: Easing.OutQuad
+          }
+        }
+        Behavior on y {
+          NumberAnimation {
+            duration: root.scrollDuration
+            easing.type: Easing.OutQuad
+          }
+        }
+        Behavior on opacity {
+          NumberAnimation {
+            duration: root.scrollDuration
+            easing.type: Easing.OutQuad
+          }
+        }
+
         ShapePath {
           fillColor: "#000000"
           strokeColor: "transparent"
@@ -347,7 +366,7 @@ FocusScope {
           id: frontFace
           anchors.fill: parent
           visible: flipContainer.flipProgress < 0.5
-          layer.enabled: delegateItem.isCurrent
+          layer.enabled: true
           layer.smooth: false
           layer.effect: MultiEffect {
             maskEnabled: true
@@ -387,6 +406,12 @@ FocusScope {
           Rectangle {
             anchors.fill: parent
             color: Qt.rgba(0, 0, 0, delegateItem.isCurrent ? 0 : (delegateItem.isHovered ? 0.15 : 0.4))
+            Behavior on color {
+              ColorAnimation {
+                duration: root.scrollDuration
+                easing.type: Easing.OutCubic
+              }
+            }
           }
 
           AnimatedImage {
@@ -422,6 +447,13 @@ FocusScope {
             z: 10
             x: onRight ? parent.width - width - delegateItem._skAbs - 6 : delegateItem._skAbs + 6
             opacity: delegateItem.isCurrent ? 1.0 : (delegateItem.isHovered ? 0.7 : 0.0)
+
+            Behavior on opacity {
+              NumberAnimation {
+                duration: Style.animFast
+                easing.type: Easing.OutQuad
+              }
+            }
 
             Shape {
               anchors.fill: parent
@@ -481,6 +513,13 @@ FocusScope {
             z: 10
             opacity: delegateItem.itemData && delegateItem.itemData.isVideo ? (delegateItem.isCurrent ? 1.0 : (delegateItem.isHovered ? 0.7 : 0.0)) : 0.0
 
+            Behavior on opacity {
+              NumberAnimation {
+                duration: Style.animFast
+                easing.type: Easing.OutQuad
+              }
+            }
+
             Text {
               anchors.centerIn: parent
               text: "▶"
@@ -537,7 +576,7 @@ FocusScope {
           id: backFace
           anchors.fill: parent
           visible: flipContainer.flipProgress >= 0.5
-          layer.enabled: delegateItem.isCurrent
+          layer.enabled: true
           layer.smooth: false
           layer.effect: MultiEffect {
             maskEnabled: true
