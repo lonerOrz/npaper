@@ -219,7 +219,7 @@ Item {
           ws.downloadAndApply(safeId, item.path);
       } else if (status === "downloading") {
         if (ws)
-          ws._pendingApplyId = safeId;
+          ws.setPendingApply(safeId);
       } else if (ws) {
         ws.downloadAndApply(safeId, item.path);
       }
