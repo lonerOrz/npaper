@@ -9,7 +9,6 @@ Item {
   property var thumbHashToPath: ({})
   property var whService: null
   property int itemIndex: -1
-
   property var wallpaperItem: null
 
   property string wallpaperPath: ""
@@ -43,6 +42,7 @@ Item {
   height: itemHeight
   scale: visualScale
   opacity: visualOpacity
+  visible: visualOpacity > 0.02
   z: visualZ + (_isHovered ? 15 : 0)
   transformOrigin: Item.Center
 
@@ -76,51 +76,23 @@ Item {
   }
 
   Item {
-    id: shadowItem
-    anchors.fill: parent
-    anchors.topMargin: -8
-    anchors.leftMargin: -8
-    anchors.rightMargin: -8
-    anchors.bottomMargin: -8
-    z: -1
-    visible: root.showShadow && visualShadowOpacity > 0.01
-
-    layer.enabled: visible
-    layer.effect: MultiEffect {
-      blurEnabled: true
-      blur: 1.0
-      blurMax: 32
-    }
-
-    Rectangle {
-      anchors.fill: parent
-      radius: root.itemRadius + 4
-      color: Color.mShadow
-      opacity: root.showShadow ? visualShadowOpacity * 2.5 : 0
-
-      Behavior on opacity {
-        NumberAnimation {
-          duration: Style.animNormal
-          easing.type: Easing.OutCubic
-        }
-      }
-    }
-  }
-
-  Item {
     id: cardContent
     anchors.fill: parent
-    visible: visualOpacity > 0.01
-    layer.enabled: root.isCenter
-    layer.smooth: root.isCenter
+
+    layer.enabled: true
+    layer.smooth: true
     layer.effect: MultiEffect {
       maskEnabled: true
       maskSource: roundMask
-      maskThresholdMin: 0.3
-      maskSpreadAtMin: 0.3
-    }
+      maskThresholdMin: 0.5
+      maskSpreadAtMin: 1.0
 
-    scale: 1.0
+      shadowEnabled: root.showShadow && root.visualShadowOpacity > 0.05
+      shadowColor: Color.mShadow
+      shadowOpacity: root.visualShadowOpacity * 2.2
+      shadowBlur: 0.7
+      shadowVerticalOffset: 4
+    }
 
     Rectangle {
       anchors.fill: parent
@@ -180,11 +152,12 @@ Item {
       id: animatedGif
       anchors.fill: parent
       source: CacheUtils.resolveWallpaperAnimatedSource(root.thumbHashToPath, root.wallpaperItem, root.isCenter)
-      visible: source !== ""
+      visible: source !== "" && root.isCenter
       fillMode: Image.PreserveAspectCrop
       asynchronous: true
       smooth: true
       playing: visible
+      paused: !root.isCenter
       sourceSize: Qt.size(Style.cacheAnimWidth, Style.cacheAnimHeight)
     }
 
@@ -193,6 +166,7 @@ Item {
       anchors.left: parent.left
       anchors.right: parent.right
       height: Style.cardLabelHeight + Style.spaceM * 2
+
       Rectangle {
         anchors.fill: parent
         gradient: Gradient {
@@ -210,6 +184,7 @@ Item {
           }
         }
       }
+
       Text {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: Style.spaceM
@@ -243,13 +218,12 @@ Item {
     }
   }
 
-  Rectangle {
+  Loader {
+    id: overlayLoader
     anchors.fill: parent
-    radius: root.itemRadius
-    color: "transparent"
-    visible: root.isRemote
-    opacity: root._isHovered ? 1 : 0
     z: 10
+    active: root._isHovered
+    opacity: active ? 1.0 : 0.0
 
     Behavior on opacity {
       NumberAnimation {
@@ -257,8 +231,12 @@ Item {
       }
     }
 
+    sourceComponent: root.isRemote ? remoteOverlayComp : localOverlayComp
+  }
+
+  Component {
+    id: remoteOverlayComp
     DownloadOverlay {
-      opacity: parent.opacity
       whId: root.remoteId.replace("wallhaven-", "")
       downloadPath: root.downloadPath
       whService: root.whService
@@ -271,22 +249,9 @@ Item {
     }
   }
 
-  Rectangle {
-    anchors.fill: parent
-    radius: root.itemRadius
-    color: "transparent"
-    visible: !root.isRemote
-    opacity: root._isHovered ? 1 : 0
-    z: 10
-
-    Behavior on opacity {
-      NumberAnimation {
-        duration: Style.animFast
-      }
-    }
-
+  Component {
+    id: localOverlayComp
     LocalOverlay {
-      opacity: parent.opacity
       wallpaperPath: root.wallpaperPath
       itemIndex: root.itemIndex
     }

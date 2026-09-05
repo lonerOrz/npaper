@@ -25,9 +25,27 @@ Item {
   signal switchToNextFolder
   signal switchToPrevFolder
   signal toggleSettings
-  signal settingChanged(string key, variant value)
+  signal settingChanged(string key, var value)
 
-  // ── Animated height ──────────────────────────────────────
+  readonly property var _tabItems: [
+    {
+      key: "paths",
+      label: "Paths"
+    },
+    {
+      key: "wallhaven",
+      label: "Wallhaven"
+    },
+    {
+      key: "video",
+      label: "Video"
+    },
+    {
+      key: "appearance",
+      label: "Appearance"
+    }
+  ]
+
   z: 999
   width: Style.settingsWidth
   clip: true
@@ -35,6 +53,7 @@ Item {
   property real _animTarget: 0.0
   property real _animProgress: 0.0
   height: Style.settingsMaxHeight * _animProgress
+  opacity: _animProgress
 
   onSettingsOpenChanged: {
     _animTarget = settingsOpen ? 1.0 : 0.0;
@@ -69,7 +88,6 @@ Item {
 
   focus: settingsOpen
 
-  // ── Background with subtle gradient ──────────────────────
   Rectangle {
     anchors.fill: parent
     radius: Style.settingsRadius
@@ -83,9 +101,7 @@ Item {
         color: Qt.rgba(Color.mSurfaceContainerLow.r, Color.mSurfaceContainerLow.g, Color.mSurfaceContainerLow.b, Style.settingsBlurAlpha)
       }
     }
-    opacity: root._animProgress
 
-    // Subtle border for depth
     Rectangle {
       anchors.fill: parent
       radius: Style.settingsRadius
@@ -95,7 +111,6 @@ Item {
     }
   }
 
-  // ── Tab bar with sliding capsule ─────────────────────────
   Item {
     id: tabBar
     anchors.top: parent.top
@@ -132,7 +147,6 @@ Item {
       x: tabBar._pillX
       width: tabBar._pillW
 
-      // Soft shadow for depth
       Rectangle {
         anchors.fill: parent
         anchors.verticalCenterOffset: 2
@@ -164,24 +178,7 @@ Item {
       spacing: Style.settingsTabSpacing
 
       Repeater {
-        model: [
-          {
-            key: "paths",
-            label: "Paths"
-          },
-          {
-            key: "wallhaven",
-            label: "Wallhaven"
-          },
-          {
-            key: "video",
-            label: "Video"
-          },
-          {
-            key: "appearance",
-            label: "Appearance"
-          }
-        ]
+        model: root._tabItems
         delegate: MouseArea {
           required property var modelData
           property bool isActive: root.activeTab === modelData.key
@@ -208,12 +205,11 @@ Item {
 
           Component.onCompleted: {
             if (isActive)
-              tabBar._updatePill();
+              Qt.callLater(tabBar._updatePill);
           }
         }
       }
-
-      Component.onCompleted: tabBar._updatePill()
+      Component.onCompleted: Qt.callLater(tabBar._updatePill)
     }
 
     function _updatePill() {
@@ -222,12 +218,27 @@ Item {
         if (item && item.isActive) {
           _pillX = item.x;
           _pillW = item.width;
+          break;
         }
       }
     }
   }
 
-  // ── Content area with scroll support ─────────────────────
+  readonly property var _currentTabItem: {
+    switch (root.activeTab) {
+    case "paths":
+      return pathsTab;
+    case "wallhaven":
+      return wallhavenTab;
+    case "video":
+      return videoTab;
+    case "appearance":
+      return appearanceTab;
+    default:
+      return pathsTab;
+    }
+  }
+
   Flickable {
     id: contentFlickable
     anchors.top: tabBar.bottom
@@ -241,14 +252,15 @@ Item {
     property bool scrollActive: false
 
     contentWidth: width
-    contentHeight: Math.max(pathsTab.implicitHeight, wallhavenTab.implicitHeight, videoTab.implicitHeight, appearanceTab.implicitHeight) + Style.settingsPadding * 2
+    contentHeight: (_currentTabItem ? _currentTabItem.implicitHeight : 200) + Style.settingsPadding * 2
     boundsBehavior: Flickable.StopAtBounds
     flickableDirection: Flickable.VerticalFlick
 
-    // Enable mouse wheel scrolling
     WheelHandler {
       onWheel: function (event) {
-        contentFlickable.contentY += event.angleDelta.y > 0 ? -40 : 40;
+        const maxScroll = Math.max(0, contentFlickable.contentHeight - contentFlickable.height);
+        const step = event.angleDelta.y > 0 ? -45 : 45;
+        contentFlickable.contentY = Math.max(0, Math.min(contentFlickable.contentY + step, maxScroll));
         contentFlickable.scrollActive = true;
         scrollFadeTimer.restart();
       }
@@ -257,10 +269,10 @@ Item {
     Timer {
       id: scrollFadeTimer
       interval: 800
+      repeat: false
       onTriggered: contentFlickable.scrollActive = false
     }
 
-    // Custom scrollbar (hidden by default, shows on interaction)
     Rectangle {
       anchors.right: parent.right
       anchors.top: parent.top
@@ -269,7 +281,7 @@ Item {
       width: 4
       radius: 2
       color: Color.mOutlineVariant
-      opacity: contentFlickable.scrollActive ? 0.6 : 0
+      opacity: (contentFlickable.scrollActive && contentFlickable.visibleArea.heightRatio < 1.0) ? 0.6 : 0.0
 
       property real scrollProgress: contentFlickable.visibleArea.heightRatio < 1.0 ? contentFlickable.visibleArea.yPosition / (1.0 - contentFlickable.visibleArea.heightRatio) : 0
       property real scrollHeight: contentFlickable.visibleArea.heightRatio < 1.0 ? contentFlickable.visibleArea.heightRatio * (parent.height - 4) + 20 : 20
@@ -284,7 +296,6 @@ Item {
       }
     }
 
-    // Reset scroll position when switching tabs
     Connections {
       target: root
       function onActiveTabChanged() {
@@ -292,7 +303,6 @@ Item {
       }
     }
 
-    // ── Tab components ─────────────────────────────────────
     PathsTab {
       id: pathsTab
       anchors.top: parent.top

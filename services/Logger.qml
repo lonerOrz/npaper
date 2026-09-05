@@ -6,32 +6,40 @@ import Quickshell
 Singleton {
   id: root
 
-  // Check env var on startup
-  property bool isDebug: Quickshell.env("NPAPER_DEBUG") === "1"
+  readonly property bool _envDebug: Quickshell.env("NPAPER_DEBUG") === "1"
+  property bool isDebug: _envDebug
 
-  // Called by shell.qml once config loads
   function applyDebug(debugMode) {
-    if (debugMode === true)
-      root.isDebug = true;
+    root.isDebug = root._envDebug || (debugMode === true);
   }
 
-  // Logging Levels
+  function _time() {
+    const d = new Date();
+    const timeStr = d.toTimeString().split(' ')[0];
+    const ms = String(d.getMilliseconds()).padStart(3, '0');
+    return timeStr + "." + ms;
+  }
+
   function d(...args) {
     if (root.isDebug)
-      console.log("[npaper][D]", ...args);
+      console.log("[" + _time() + "][npaper][D]", ...args);
   }
+
   function i(...args) {
     if (root.isDebug)
-      console.log("[npaper][I]", ...args);
+      console.log("[" + _time() + "][npaper][I]", ...args);
   }
-  function w(...args) {
-    console.warn("[npaper][W]", ...args);
-  }
+
   function r(...args) {
     if (root.isDebug)
-      console.log("[npaper][R]", ...args);
+      console.log("[" + _time() + "][npaper][R]", ...args);
   }
+
+  function w(...args) {
+    console.warn("[" + _time() + "][npaper][W]", ...args);
+  }
+
   function e(...args) {
-    console.error("[npaper][E]", ...args);
+    console.error("[" + _time() + "][npaper][E]", ...args);
   }
 }

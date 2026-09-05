@@ -2,82 +2,76 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-/*
-* WallhavenService - Wallhaven.cc API integration
-*
-* Features:
-*   - Search wallpapers via Wallhaven API
-*   - Download wallpapers to local directory
-*   - Track download progress and status
-*   - Scan local wallhaven wallpapers
-*/
 QtObject {
   id: root
 
   required property string wallpaperDir
 
-  // Search parameters
   property string query: ""
-  property string categories: "111"     // general=1, anime=1, people=1
-  property string purity: "100"          // 100=safe, 100w=sketchy, 100s=nsfw
-  property string sorting: "toplist"    // toplist, date_added, views, random
+  property string categories: "111"
+  property string purity: "100"
+  property string sorting: "toplist"
   property string order: "desc"
-  property string topRange: "1M"         // 1M, 3M, 6M, 1Y
-  property string atleast: ""            // minimum resolution (e.g., 1920x1080)
-  property string ratios: ""            // aspect ratios (e.g., 16:9, 21:9)
+  property string topRange: "1M"
+  property string atleast: ""
+  property string ratios: ""
   property string apiKey: ""
 
-  // Pagination
   property int currentPage: 1
   property int lastPage: 1
+  property int _searchPageBeforeRequest: 1
   property bool hasMore: currentPage < lastPage
 
-  // Data
   property var results: []
   property bool loading: false
   property string errorText: ""
 
-  // Download tracking
-  property var downloadStatus: ({})      // wallhavenId -> "downloading" | "done" | "error"
-  property var downloadProgress: ({})    // wallhavenId -> 0-100
-  property var downloadPaths: ({})       // wallhavenId -> local file path (after download)
-  property var localWallhavenIds: ({})   // wallhavenId -> true (if downloaded locally)
-  property var localWallhavenPaths: ({}) // wallhavenId -> full local path (for existing files)
+  property var downloadStatus: ({})
+  property var downloadProgress: ({})
+  property var downloadPaths: ({})
+  property var localWallhavenIds: ({})
+  property var localWallhavenPaths: ({})
 
   signal resultsUpdated
   signal downloadFinished(string wallhavenId, string localPath)
+  signal downloadApplied(string localPath)
 
-  // ===== Local file scanning =====
+  readonly property Component _downloadProcComp: Qt.createComponent("WallhavenDownloadProc.qml")
+
   function scanLocalFiles() {
+    if (!root.wallpaperDir || root.wallpaperDir.length === 0)
+      return;
     _localScanOutput = "";
+    _localScanProc.command = ["find", root.wallpaperDir, "-maxdepth", "1", "-name", "wallhaven-*"];
     _localScanProc.running = true;
   }
 
   property string _localScanOutput: ""
   property var _localScanProc: Process {
-    command: ["find", root.wallpaperDir, "-maxdepth", "1", "-name", "wallhaven-*"]
     stdout: SplitParser {
       onRead: data => {
-                root._localScanOutput += data + "\n";
-              }
+        root._localScanOutput += data + "\n";
+      }
     }
     onExited: function (exitCode, exitStatus) {
-      var ids = {};
-      var paths = {};
-      var lines = root._localScanOutput.split("\n");
-      for (var i = 0; i < lines.length; i++) {
-        var p = lines[i].trim();
+      if (exitCode !== 0)
+        return;
+      const ids = {};
+      const paths = {};
+      const lines = root._localScanOutput.split("\n");
+      const total = lines.length;
+
+      for (let i = 0; i < total; i++) {
+        const p = lines[i].trim();
         if (!p)
           continue;
-        // Extract filename from path
-        var parts = p.split("/").filter(function (s) {
-          return s !== "";
-        });
-        var fname = parts.length > 0 ? parts[parts.length - 1] : "";
+
+        const lastSlash = p.lastIndexOf('/');
+        const fname = (lastSlash >= 0) ? p.substring(lastSlash + 1) : p;
         if (!fname)
           continue;
-        // Case-insensitive match for extensions (.jpg, .JPG, .png, .PNG, etc.)
-        var m = fname.match(/^wallhaven-([a-zA-Z0-9]+)\.([a-zA-Z0-9]+)$/i);
+
+        const m = fname.match(/^wallhaven-([a-zA-Z0-9]+)\.([a-zA-Z0-9]+)$/i);
         if (m) {
           ids[m[1]] = true;
           paths[m[1]] = p;
@@ -88,15 +82,17 @@ QtObject {
     }
   }
 
-  // ===== Search API =====
   function search(page) {
     if (loading)
       return;
+    _searchPageBeforeRequest = currentPage;
     currentPage = page || 1;
     if (currentPage === 1)
       results = [];
     loading = true;
     errorText = "";
+
+    _searchProcess.command = ["curl", "-fsSL", root._buildUrl()];
     _searchProcess.running = true;
   }
 
@@ -111,20 +107,18 @@ QtObject {
     currentPage = 1;
     lastPage = 1;
     errorText = "";
-    // Clear download state when search results are cleared
     downloadStatus = {};
     downloadProgress = {};
     downloadPaths = {};
     _pendingApplyId = "";
   }
 
-  // ===== Build API URL =====
   function _buildUrl() {
     var url = "https://wallhaven.cc/api/v1/search?";
     var params = [];
 
-    if (query)
-      params.push("q=" + encodeURIComponent(query));
+    if (query && query.trim().length > 0)
+      params.push("q=" + encodeURIComponent(query.trim()));
     params.push("categories=" + categories);
     params.push("purity=" + purity);
     params.push("sorting=" + sorting);
@@ -138,8 +132,8 @@ QtObject {
       params.push("ratios=" + ratios);
 
     params.push("page=" + currentPage);
-    if (apiKey)
-      params.push("apikey=" + apiKey);
+    if (apiKey && apiKey.trim().length > 0)
+      params.push("apikey=" + apiKey.trim());
 
     return url + params.join("&");
   }
@@ -147,12 +141,11 @@ QtObject {
   property string _searchOutput: ""
 
   property var _searchProcess: Process {
-    command: ["curl", "-fsSL", root._buildUrl()]
     stdout: SplitParser {
       splitMarker: ""
       onRead: data => {
-                root._searchOutput += data;
-              }
+        root._searchOutput += data;
+      }
     }
     onRunningChanged: {
       if (running)
@@ -162,28 +155,33 @@ QtObject {
       root.loading = false;
       if (exitCode !== 0) {
         root.errorText = "Network error (curl exit " + exitCode + ")";
+        if (root._searchPageBeforeRequest !== undefined)
+          root.currentPage = root._searchPageBeforeRequest;
         root.resultsUpdated();
         return;
       }
       try {
-        var json = JSON.parse(root._searchOutput);
+        const json = JSON.parse(root._searchOutput);
         if (json.error) {
           root.errorText = json.error;
         } else {
-          var newItems = (json.data || []).map(function (item) {
-            return {
-              id: item.id,
-              url: item.url,
-              path: item.path,
-              resolution: item.resolution,
-              fileSize: item.file_size,
-              purity: item.purity,
-              category: item.category,
-              thumbLarge: item.thumbs ? item.thumbs.large : "",
-              thumbSmall: item.thumbs ? item.thumbs.small : "",
-              colors: item.colors || []
-            };
-          });
+          const rawItems = json.data || [];
+          const newItems = [];
+          for (let i = 0; i < rawItems.length; i++) {
+            const item = rawItems[i];
+            newItems.push({
+                            id: item.id,
+                            url: item.url,
+                            path: item.path,
+                            resolution: item.resolution,
+                            fileSize: item.file_size,
+                            purity: item.purity,
+                            category: item.category,
+                            thumbLarge: item.thumbs ? item.thumbs.large : "",
+                            thumbSmall: item.thumbs ? item.thumbs.small : "",
+                            colors: item.colors || []
+                          });
+          }
           root.results = root.results.concat(newItems);
           root.lastPage = (json.meta && json.meta.last_page) ? json.meta.last_page : 1;
           root.currentPage = (json.meta && json.meta.current_page) ? json.meta.current_page : 1;
@@ -197,7 +195,6 @@ QtObject {
     }
   }
 
-  // ===== Download =====
   readonly property var _allowedExts: ({
                                          "jpg": true,
                                          "jpeg": true,
@@ -208,20 +205,19 @@ QtObject {
                                        })
   readonly property var _allowedHosts: ["w.wallhaven.cc"]
 
-  // Parse URL without relying on URL constructor (V4 compatibility)
   function _parseUrl(url) {
     if (!url || typeof url !== "string")
       return null;
-    var protocol = "";
-    var rest = url;
-    var protoIdx = url.indexOf("://");
+    let protocol = "";
+    let rest = url;
+    const protoIdx = url.indexOf("://");
     if (protoIdx > 0) {
-      protocol = url.substring(0, protoIdx + 1); // e.g. "https:"
+      protocol = url.substring(0, protoIdx + 1);
       rest = url.substring(protoIdx + 3);
     }
-    var slashIdx = rest.indexOf("/");
-    var host = slashIdx >= 0 ? rest.substring(0, slashIdx) : rest;
-    var hostname = host.split(":")[0]; // strip port if present
+    const slashIdx = rest.indexOf("/");
+    const host = slashIdx >= 0 ? rest.substring(0, slashIdx) : rest;
+    const hostname = host.split(":")[0];
     return {
       protocol: protocol,
       hostname: hostname,
@@ -229,7 +225,6 @@ QtObject {
     };
   }
 
-  // Download and mark for auto-apply when done
   function downloadAndApply(wallhavenId, fullUrl) {
     _pendingApplyId = wallhavenId;
     downloadWallpaper(wallhavenId, fullUrl);
@@ -243,28 +238,24 @@ QtObject {
     if (_activeDownloads[wallhavenId])
       return;
 
-    var urlParts = root._parseUrl(fullUrl);
-    if (!urlParts)
-      return;
-    if (urlParts.protocol !== "https:")
+    const urlParts = root._parseUrl(fullUrl);
+    if (!urlParts || urlParts.protocol !== "https:")
       return;
 
-    var hostOk = _allowedHosts.some(function (h) {
-      return urlParts.hostname === h;
-    });
+    const hostOk = _allowedHosts.some(h => urlParts.hostname === h);
     if (!hostOk)
       return;
 
-    var ext = fullUrl.split(".").pop().split("?")[0].toLowerCase();
+    let ext = fullUrl.split(".").pop().split("?")[0].toLowerCase();
     if (!_allowedExts[ext])
       ext = "jpg";
 
-    var safeId = wallhavenId.replace(/[^a-zA-Z0-9]/g, "");
+    const safeId = wallhavenId.replace(/[^a-zA-Z0-9]/g, "");
     if (!safeId)
       return;
 
-    var dest = wallpaperDir + "/wallhaven-" + safeId + "." + ext;
-    var status = Object.assign({}, downloadStatus);
+    const dest = root.wallpaperDir + "/wallhaven-" + safeId + "." + ext;
+    const status = Object.assign({}, downloadStatus);
     status[wallhavenId] = "downloading";
     downloadStatus = status;
 
@@ -283,64 +274,69 @@ QtObject {
   property var _downloadQueue: []
   property int _runningDownloads: 0
   readonly property int _maxConcurrent: 3
-
-  // Track pending apply (download then auto-apply)
   property string _pendingApplyId: ""
-  signal downloadApplied(string localPath)
 
   function _drainDownloadQueue() {
     while (_runningDownloads < _maxConcurrent && _downloadQueue.length > 0) {
-      var job = _downloadQueue.shift();
+      const job = _downloadQueue.shift();
       _runningDownloads++;
       _spawnDownload(job.id, job.url, job.dest);
     }
   }
 
   function _spawnDownload(whId, url, dest) {
-    var safeUrl = url.replace(/'/g, "");
-    var safeDest = dest.replace(/'/g, "");
+    const safeUrl = url.replace(/'/g, "");
+    const safeDest = dest.replace(/'/g, "");
     if (!safeUrl || !safeDest) {
       _runningDownloads--;
       return;
     }
 
-    var comp = Qt.createComponent(Qt.resolvedUrl("WallhavenDownloadProc.qml"));
-    if (comp.status !== Component.Ready) {
-      console.error("Failed to create download component:", comp.errorString());
+    if (root._downloadProcComp.status !== Component.Ready) {
+      console.error("WallhavenService: Download component not ready:", root._downloadProcComp.errorString());
       _runningDownloads--;
       return;
     }
 
-    var proc = comp.createObject(root, {
-                                   whId: whId,
-                                   dest: safeDest
-                                 });
+    const proc = root._downloadProcComp.createObject(root, {
+                                                       whId: whId,
+                                                       dest: safeDest
+                                                     });
     if (!proc) {
       _runningDownloads--;
       return;
     }
 
-    proc.command = ["curl", "-#", "-fsSL", "-o", safeDest, safeUrl];
+    proc.command = ["sh", "-c", "mkdir -p \"$(dirname \"$1\")\" && curl -# -fsSL -o \"$1\" \"$2\"", "npaper-dl", safeDest, safeUrl];
+
+    let lastReportedPct = 0.0;
     proc.onProgressUpdate.connect(function (id, pct) {
-      var p = Object.assign({}, downloadProgress);
-      p[id] = pct;
-      downloadProgress = p;
+      if (Math.abs(pct - lastReportedPct) >= 0.02 || pct >= 0.99) {
+        lastReportedPct = pct;
+        const p = Object.assign({}, downloadProgress);
+        p[id] = pct;
+        downloadProgress = p;
+      }
     });
+
     proc.onDone.connect(function (id, success) {
       _runningDownloads--;
-      // Clean up active downloads entry
       delete _activeDownloads[id];
-      var s = Object.assign({}, downloadStatus);
+      const s = Object.assign({}, downloadStatus);
+
       if (success) {
         s[whId] = "done";
         downloadStatus = s;
-        var prog = Object.assign({}, downloadProgress);
+
+        const prog = Object.assign({}, downloadProgress);
         prog[whId] = 1.0;
         downloadProgress = prog;
-        var localPath = dest;
-        var paths = Object.assign({}, downloadPaths);
+
+        const localPath = dest;
+        const paths = Object.assign({}, downloadPaths);
         paths[whId] = localPath;
         downloadPaths = paths;
+
         downloadFinished(whId, localPath);
         if (_pendingApplyId === whId) {
           _pendingApplyId = "";
@@ -349,23 +345,25 @@ QtObject {
       } else {
         s[whId] = "error";
         downloadStatus = s;
-        var prog = Object.assign({}, downloadProgress);
-        prog[whId] = 0;
+
+        const prog = Object.assign({}, downloadProgress);
+        prog[whId] = 0.0;
         downloadProgress = prog;
-        // Clean up downloadPaths on error
+
         if (downloadPaths[whId] !== undefined) {
-          var paths2 = Object.assign({}, downloadPaths);
+          const paths2 = Object.assign({}, downloadPaths);
           delete paths2[whId];
           downloadPaths = paths2;
         }
       }
+
       proc.destroy();
       _drainDownloadQueue();
     });
+
     proc.running = true;
   }
 
-  // Initialize
   Component.onCompleted: {
     scanLocalFiles();
   }

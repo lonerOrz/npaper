@@ -15,8 +15,18 @@ Item {
   property bool confirmDelete: false
   property bool showFolderList: false
 
+  Timer {
+    id: resetDeleteTimer
+    interval: 3000
+    repeat: false
+    onTriggered: {
+      root.confirmDelete = false;
+    }
+  }
+
   onVisibleChanged: {
     if (!visible) {
+      resetDeleteTimer.stop();
       confirmDelete = false;
       showFolderList = false;
     }
@@ -24,15 +34,15 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    radius: root.parent ? (root.parent.radius || 0) : 0
+    radius: root.parent ? (root.parent.radius || Style.radiusL) : Style.radiusL
     gradient: Gradient {
       GradientStop {
         position: 0.0
-        color: Qt.rgba(0, 0, 0, 0.20)
+        color: Qt.rgba(0, 0, 0, 0.25)
       }
       GradientStop {
         position: 1.0
-        color: Qt.rgba(0, 0, 0, 0.70)
+        color: Qt.rgba(0, 0, 0, 0.75)
       }
     }
   }
@@ -47,7 +57,7 @@ Item {
       width: 96
       height: 32
       radius: height / 2
-      color: moveMouse.containsMouse ? Color.mPrimary : Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, 0.6)
+      color: moveMouse.containsMouse ? Color.mPrimary : Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, 0.65)
       border.width: moveMouse.containsMouse ? 0 : 1
       border.color: moveMouse.containsMouse ? "transparent" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, 0.3)
       scale: moveMouse.containsMouse ? 1.05 : 1.0
@@ -55,6 +65,7 @@ Item {
       Behavior on scale {
         NumberAnimation {
           duration: 100
+          easing.type: Easing.OutCubic
         }
       }
       Behavior on color {
@@ -83,23 +94,27 @@ Item {
 
     Rectangle {
       id: btnDelete
-      width: 96
+      width: root.confirmDelete ? 108 : 96
       height: 32
       radius: height / 2
       color: {
-        if (root.confirmDelete)
+        if (root.confirmDelete || deleteMouse.containsMouse)
           return "#ef4444";
-        if (deleteMouse.containsMouse)
-          return "#ef4444";
-        return Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, 0.6);
+        return Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, 0.65);
       }
       border.width: (root.confirmDelete || deleteMouse.containsMouse) ? 0 : 1
       border.color: (root.confirmDelete || deleteMouse.containsMouse) ? "transparent" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, 0.3)
       scale: deleteMouse.containsMouse ? 1.05 : 1.0
 
+      Behavior on width {
+        NumberAnimation {
+          duration: 120
+        }
+      }
       Behavior on scale {
         NumberAnimation {
           duration: 100
+          easing.type: Easing.OutCubic
         }
       }
       Behavior on color {
@@ -124,11 +139,14 @@ Item {
         cursorShape: Qt.PointingHandCursor
         onClicked: {
           if (root.confirmDelete) {
+            resetDeleteTimer.stop();
+            root.confirmDelete = false;
             if (root.adapter && root.wallpaperPath) {
               root.adapter.deleteWallpaper(root.wallpaperPath, root.itemIndex);
             }
           } else {
             root.confirmDelete = true;
+            resetDeleteTimer.restart();
           }
         }
       }
@@ -175,53 +193,58 @@ Item {
       }
     }
 
-    Item {
-      width: 1
-      height: Style.spaceS
-    }
+    Flickable {
+      width: parent.width
+      height: parent.height - 30
+      contentWidth: width
+      contentHeight: flowArea.implicitHeight
+      boundsBehavior: Flickable.StopAtBounds
+      clip: true
 
-    Flow {
-      anchors.horizontalCenter: parent.horizontalCenter
-      width: parent.width - Style.spaceM * 2
-      spacing: Style.spaceS
-      layoutDirection: Qt.LeftToRight
+      Flow {
+        id: flowArea
+        width: parent.width
+        spacing: Style.spaceS
+        layoutDirection: Qt.LeftToRight
 
-      Repeater {
-        model: root.folders
+        Repeater {
+          model: root.folders
 
-        delegate: MouseArea {
-          required property string modelData
-          visible: modelData !== root.currentFolder
-          width: visible ? (folderText.implicitWidth + Style.spaceXL * 2) : 0
-          height: Style.barSearchHeight
-          cursorShape: Qt.PointingHandCursor
-          hoverEnabled: true
+          delegate: MouseArea {
+            required property string modelData
+            visible: modelData !== root.currentFolder
+            width: visible ? (folderText.implicitWidth + Style.spaceXL * 2) : 0
+            height: Style.barSearchHeight
+            cursorShape: Qt.PointingHandCursor
+            hoverEnabled: true
 
-          Rectangle {
-            anchors.fill: parent
-            radius: height / 2
-            color: parent.containsMouse ? Qt.rgba(Color.mPrimary.r, Color.mPrimary.g, Color.mPrimary.b, 0.25) : Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
-            border.width: 1
-            border.color: parent.containsMouse ? Color.mPrimary : Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.childBgAlpha)
-            Behavior on color {
-              ColorAnimation {
-                duration: 100
+            Rectangle {
+              anchors.fill: parent
+              radius: height / 2
+              color: parent.containsMouse ? Qt.rgba(Color.mPrimary.r, Color.mPrimary.g, Color.mPrimary.b, 0.25) : Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
+              border.width: 1
+              border.color: parent.containsMouse ? Color.mPrimary : Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.childBgAlpha)
+              Behavior on color {
+                ColorAnimation {
+                  duration: 100
+                }
               }
             }
-          }
 
-          Text {
-            id: folderText
-            anchors.centerIn: parent
-            text: modelData
-            color: parent.containsMouse ? Color.mPrimary : Color.mOnSurfaceVariant
-            font.pixelSize: Style.fontXS
-            font.weight: Font.Bold
-          }
+            Text {
+              id: folderText
+              anchors.centerIn: parent
+              text: modelData
+              color: parent.containsMouse ? Color.mPrimary : Color.mOnSurfaceVariant
+              font.pixelSize: Style.fontXS
+              font.weight: Font.Bold
+            }
 
-          onClicked: {
-            if (root.adapter && root.wallpaperPath) {
-              root.adapter.moveWallpaper(root.wallpaperPath, modelData, root.itemIndex);
+            onClicked: {
+              root.showFolderList = false;
+              if (root.adapter && root.wallpaperPath) {
+                root.adapter.moveWallpaper(root.wallpaperPath, modelData, root.itemIndex);
+              }
             }
           }
         }

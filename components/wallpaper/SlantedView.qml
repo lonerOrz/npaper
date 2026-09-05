@@ -66,10 +66,6 @@ FocusScope {
     listView.positionViewAtIndex(listView.currentIndex, ListView.Center);
   }
 
-  function positionToCurrentOnCompleted() {
-    Qt.callLater(positionToCurrent);
-  }
-
   function focusView() {
     listView.forceActiveFocus();
   }
@@ -77,8 +73,9 @@ FocusScope {
   function queueVisibleThumbnails() {
     if (!root.adapter || !root.cacheService || !root.cacheService.queueThumbnail)
       return;
-    for (var i = root.baseIndex; i <= root.maxIndex; i++) {
-      var item = root.adapter.getItem(i);
+    const total = root.adapter.count;
+    for (let i = root.baseIndex; i <= root.maxIndex && i < total; i++) {
+      const item = root.adapter.getItem(i);
       if (item && item.type === "local")
         root.cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
     }
@@ -97,14 +94,13 @@ FocusScope {
 
     orientation: ListView.Horizontal
     model: root.adapter ? root.adapter.items : null
-
     spacing: root.sliceSpacing - Math.abs(root.skewOffset)
 
     clip: true
     interactive: false
     boundsBehavior: Flickable.StopAtBounds
     keyNavigationEnabled: false
-    cacheBuffer: Math.round(root.expandedWidth) * 3
+    cacheBuffer: Math.round(root.expandedWidth) * 2
 
     highlightRangeMode: ListView.StrictlyEnforceRange
     preferredHighlightBegin: (listView.width - root.sliceWidth) / 2
@@ -140,7 +136,7 @@ FocusScope {
     delegate: Item {
       id: delegateItem
       required property int index
-      readonly property var itemData: root.adapter.getItem(index)
+      readonly property var itemData: root.adapter ? root.adapter.getItem(index) : null
 
       readonly property bool isRemote: itemData ? (itemData.type === "remote" || (itemData.path && (itemData.path.indexOf("http://") === 0 || itemData.path.indexOf("https://") === 0))) : false
       readonly property bool isLocal: itemData ? (!isRemote) : false
@@ -151,9 +147,8 @@ FocusScope {
           return -((root.expandedWidth - root.sliceWidth) / 2);
         } else if (index > listView.currentIndex) {
           return ((root.expandedWidth - root.sliceWidth) / 2);
-        } else {
-          return 0;
         }
+        return 0;
       }
 
       transform: Translate {
@@ -172,27 +167,19 @@ FocusScope {
 
       readonly property bool isCurrent: ListView.isCurrentItem
       readonly property bool isHovered: itemHover.hovered
-      property int itemZ: isCurrent ? 3 : (isHovered ? 2 : 1)
-      onItemZChanged: delegateItem.z = itemZ
+      z: isCurrent ? 5 : (isHovered ? 4 : 1)
 
       readonly property real _sk: root.skewOffset
       readonly property real _skAbs: Math.abs(_sk)
       readonly property real _topLeft: _sk >= 0 ? _skAbs : 0
-      readonly property real _topRight: _sk >= 0 ? flipContainer.width : flipContainer.width - _skAbs
-      readonly property real _botRight: _sk >= 0 ? flipContainer.width - _skAbs : flipContainer.width
-      readonly property real _botLeft: _sk >= 0 ? 0 : _skAbs
-
       readonly property real _topLeftM: _sk >= 0 ? 0 : _skAbs
-      readonly property real _topRightM: _sk >= 0 ? flipContainer.width - _skAbs : flipContainer.width
-      readonly property real _botRightM: _sk >= 0 ? flipContainer.width : flipContainer.width - _skAbs
-      readonly property real _botLeftM: _sk >= 0 ? _skAbs : 0
 
       width: root.sliceWidth
       height: listView.height
       property bool flipped: false
 
       onIsCurrentChanged: {
-        if (isCurrent)
+        if (!isCurrent)
           flipped = false;
       }
 
@@ -203,23 +190,11 @@ FocusScope {
         y: delegateItem.isCurrent ? 10 : 5
         width: flipContainer.width
         height: delegateItem.height
-        opacity: delegateItem.isCurrent ? 0.4 : 0.15
-        visible: root.showShadow
+        opacity: delegateItem.isCurrent ? 0.38 : (delegateItem.isHovered ? 0.2 : 0.0)
+        visible: root.showShadow && opacity > 0.01
         anchors.horizontalCenter: parent.horizontalCenter
         antialiasing: delegateItem.isCurrent
 
-        Behavior on x {
-          NumberAnimation {
-            duration: root.scrollDuration
-            easing.type: Easing.OutQuad
-          }
-        }
-        Behavior on y {
-          NumberAnimation {
-            duration: root.scrollDuration
-            easing.type: Easing.OutQuad
-          }
-        }
         Behavior on opacity {
           NumberAnimation {
             duration: root.scrollDuration
@@ -281,7 +256,6 @@ FocusScope {
         height: delegateItem.height
         visible: false
         layer.enabled: true
-        layer.smooth: false
 
         Shape {
           anchors.fill: parent
@@ -340,7 +314,6 @@ FocusScope {
         anchors.horizontalCenter: parent.horizontalCenter
         height: parent.height
         z: 2
-
         width: isCurrent ? root.expandedWidth : root.sliceWidth
 
         transform: Rotation {
@@ -357,7 +330,7 @@ FocusScope {
         property real flipProgress: delegateItem.flipped ? 1.0 : 0.0
         Behavior on flipProgress {
           NumberAnimation {
-            duration: 350
+            duration: 320
             easing.type: Easing.InOutCubic
           }
         }
@@ -367,7 +340,6 @@ FocusScope {
           anchors.fill: parent
           visible: flipContainer.flipProgress < 0.5
           layer.enabled: true
-          layer.smooth: false
           layer.effect: MultiEffect {
             maskEnabled: true
             maskSource: sharedMask
@@ -381,9 +353,8 @@ FocusScope {
             source: {
               if (!delegateItem.itemData)
                 return "";
-              if (delegateItem.isRemote) {
+              if (delegateItem.isRemote)
                 return delegateItem.itemData.thumbLarge || delegateItem.itemData.thumb || delegateItem.itemData.path || "";
-              }
               var thp = root.cacheService ? root.cacheService.thumbHashToPath : ({});
               return CacheUtils.resolveWallpaperStaticSource(thp, delegateItem.itemData);
             }
@@ -405,7 +376,7 @@ FocusScope {
 
           Rectangle {
             anchors.fill: parent
-            color: Qt.rgba(0, 0, 0, delegateItem.isCurrent ? 0 : (delegateItem.isHovered ? 0.15 : 0.4))
+            color: Qt.rgba(0, 0, 0, delegateItem.isCurrent ? 0 : (delegateItem.isHovered ? 0.12 : 0.38))
             Behavior on color {
               ColorAnimation {
                 duration: root.scrollDuration
@@ -423,11 +394,12 @@ FocusScope {
               var thp = root.cacheService ? root.cacheService.thumbHashToPath : ({});
               return CacheUtils.resolveWallpaperAnimatedSource(thp, delegateItem.itemData, delegateItem.isCurrent);
             }
-            visible: source !== ""
+            visible: source !== "" && delegateItem.isCurrent
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             smooth: delegateItem.isCurrent
-            playing: source !== "" && delegateItem.isCurrent
+            playing: visible && !delegateItem.flipped
+            paused: !delegateItem.isCurrent || delegateItem.flipped
             sourceSize: Qt.size(root.expandedWidth, listView.height)
           }
 
@@ -511,7 +483,7 @@ FocusScope {
             radius: 9
             color: Qt.rgba(0, 0, 0, 0.7)
             z: 10
-            opacity: delegateItem.itemData && delegateItem.itemData.isVideo ? (delegateItem.isCurrent ? 1.0 : (delegateItem.isHovered ? 0.7 : 0.0)) : 0.0
+            opacity: (delegateItem.itemData && delegateItem.itemData.isVideo) ? (delegateItem.isCurrent ? 1.0 : (delegateItem.isHovered ? 0.7 : 0.0)) : 0.0
 
             Behavior on opacity {
               NumberAnimation {
@@ -529,12 +501,13 @@ FocusScope {
             }
           }
 
-          Item {
-            id: overlayContainer
+          Loader {
+            id: overlayLoader
             anchors.fill: parent
-            visible: opacity > 0.01
-            opacity: (delegateItem.isCurrent && !delegateItem.flipped && (delegateItem.isHovered || overlayContainerHover.hovered)) ? 1 : 0
             z: 15
+            active: delegateItem.isCurrent && !delegateItem.flipped && (delegateItem.isHovered || overlayContainerHover.hovered)
+            opacity: active ? 1.0 : 0.0
+
             Behavior on opacity {
               NumberAnimation {
                 duration: 150
@@ -542,13 +515,16 @@ FocusScope {
               }
             }
 
-            HoverHandler {
-              id: overlayContainerHover
-            }
+            sourceComponent: delegateItem.isRemote ? remoteSlantedOverlayComp : localSlantedOverlayComp
+          }
 
+          HoverHandler {
+            id: overlayContainerHover
+          }
+
+          Component {
+            id: remoteSlantedOverlayComp
             DownloadOverlay {
-              visible: delegateItem.isRemote
-              opacity: parent.opacity
               whId: delegateItem.itemData ? String(delegateItem.itemData.id).replace("wallhaven-", "") : ""
               downloadPath: delegateItem.itemData ? delegateItem.itemData.path : ""
               whService: root.whService
@@ -563,9 +539,11 @@ FocusScope {
                 root.requestApplyItem(localItem);
               }
             }
+          }
 
+          Component {
+            id: localSlantedOverlayComp
             LocalOverlay {
-              visible: delegateItem.isLocal
               wallpaperPath: delegateItem.itemData ? delegateItem.itemData.path : ""
               itemIndex: delegateItem.index
             }
@@ -576,8 +554,7 @@ FocusScope {
           id: backFace
           anchors.fill: parent
           visible: flipContainer.flipProgress >= 0.5
-          layer.enabled: true
-          layer.smooth: false
+          layer.enabled: flipContainer.flipProgress >= 0.01
           layer.effect: MultiEffect {
             maskEnabled: true
             maskSource: sharedMask
@@ -613,7 +590,7 @@ FocusScope {
 
             Text {
               anchors.horizontalCenter: parent.horizontalCenter
-              text: delegateItem.itemData ? delegateItem.itemData.filename || "Unknown File" : "No Data"
+              text: delegateItem.itemData ? (delegateItem.itemData.filename || "Unknown File") : "No Data"
               color: Color.mOnSurface
               font.pixelSize: 15
               font.weight: Font.Medium
@@ -657,7 +634,8 @@ FocusScope {
           Shape {
             id: backBorderShape
             anchors.fill: parent
-            antialiasing: delegateItem.isCurrent
+            antialiasing: true
+            visible: backFace.visible
             z: 5
             ShapePath {
               fillColor: "transparent"
@@ -733,9 +711,10 @@ FocusScope {
             listView.currentIndex = delegateItem.index;
           }
         }
+
         onWheel: function (wheel) {
           wheel.accepted = true;
-          var step = 1;
+          const step = 1;
           if (wheel.angleDelta.y > 0 || wheel.angleDelta.x > 0) {
             listView.currentIndex = Math.max(0, listView.currentIndex - step);
           } else if (wheel.angleDelta.y < 0 || wheel.angleDelta.x < 0) {
@@ -753,24 +732,25 @@ FocusScope {
       appViewModel: root.appViewModel
       wallhavenFilter: root.wallhavenFilter
       onApplyRequested: {
-        var item = root.adapter.getItem(listView.currentIndex);
+        const item = root.adapter.getItem(listView.currentIndex);
         if (item)
           root.adapter.smartApply(item);
       }
       onRandomRequested: {
-        var count = root.adapter.count;
+        const count = root.adapter.count;
         if (count > 0)
           listView.currentIndex = Math.floor(Math.random() * count);
       }
       onWallhavenToggled: listView.forceActiveFocus()
     }
+
     Keys.onPressed: function (event) {
       kbdHandler.handleKeyPress(event);
       if (event.accepted)
         return;
       if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
-        var dir = event.key === Qt.Key_Left ? -1 : 1;
-        var target = listView.currentIndex + dir;
+        const dir = event.key === Qt.Key_Left ? -1 : 1;
+        let target = listView.currentIndex + dir;
         if (target >= 0 && target < listView.count) {
           if (event.modifiers & Qt.ShiftModifier) {
             target += dir * 3;
@@ -799,7 +779,7 @@ FocusScope {
       anchors.centerIn: parent
       anchors.leftMargin: Style.spaceXL
       anchors.rightMargin: Style.spaceXL
-      text: "/ Search  •  ←/→ Navigate  •  Tab Folder  •  [] Toggle View  •  Enter Apply  •  R Random  •  S Settings  •  W Wallhaven  •  Esc Quit"
+      text: "/ 搜索  •  ←/→ 浏览 (右键翻面)  •  Tab 换文件夹  •  [] 切换视图  •  Enter 应用  •  R 随机  •  S 设置  •  Esc 退出"
       color: Color.mOnSurface
       font.pixelSize: Style.keyboardHintFontSize
       font.weight: Font.Medium

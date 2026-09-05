@@ -12,7 +12,7 @@ Column {
   property string wallhavenCategories: "111"
   property string wallhavenPurity: "100"
 
-  signal settingChanged(string key, variant value)
+  signal settingChanged(string key, var value)
 
   anchors.top: parent.top
   anchors.left: parent.left
@@ -20,14 +20,17 @@ Column {
   anchors.margins: Style.settingsPadding
   spacing: Style.settingsContentSpacing + 2
 
-  // API section header
+  function _withAlpha(c, a) {
+    return Qt.rgba(c.r, c.g, c.b, a);
+  }
+
   Row {
     width: parent.width
     spacing: Style.spaceM
 
     Text {
-      id: _apiHeader
-      text: "API"
+      id: apiHeader
+      text: "API CONFIG"
       color: Color.mOutline
       font.pixelSize: Style.fontXS + 1
       font.weight: Font.Bold
@@ -35,9 +38,9 @@ Column {
     }
 
     Rectangle {
-      width: parent.width - _apiHeader.implicitWidth - Style.spaceM
+      width: Math.max(10, parent.width - apiHeader.implicitWidth - Style.spaceM)
       height: 1
-      anchors.verticalCenter: _apiHeader.verticalCenter
+      anchors.verticalCenter: apiHeader.verticalCenter
       color: Color.mOutlineVariant
       opacity: 0.3
     }
@@ -45,7 +48,7 @@ Column {
 
   SettingsTextInput {
     width: parent.width
-    label: "API Key"
+    label: "API Key (Optional for NSFW & Rate Limits)"
     value: root.wallhavenApiKey
     placeholder: "your-wallhaven-api-key"
     onCommit: function (v) {
@@ -53,7 +56,6 @@ Column {
     }
   }
 
-  // Divider
   Rectangle {
     width: parent.width
     height: 1
@@ -61,13 +63,12 @@ Column {
     opacity: 0.2
   }
 
-  // Download Folder
   Row {
     width: parent.width
     spacing: Style.spaceM
 
     Column {
-      width: parent.width - 40
+      width: parent.width - 64
       spacing: Style.spaceXS
 
       Text {
@@ -78,26 +79,65 @@ Column {
       }
 
       Text {
-        text: root.wallhavenDownloadDir || "Default (Wallpaper Dir)"
+        text: root.wallhavenDownloadDir || "Default (First Wallpaper Dir)"
         color: root.wallhavenDownloadDir ? Color.mOnSurface : Color.mOnSurfaceVariant
         font.pixelSize: Style.fontXS
         font.family: "monospace"
         elide: Text.ElideMiddle
+        width: parent.width
       }
     }
 
     MouseArea {
-      width: 24
-      height: 24
+      width: 26
+      height: 26
       cursorShape: Qt.PointingHandCursor
       hoverEnabled: true
+      visible: !!root.wallhavenDownloadDir
+      anchors.verticalCenter: parent.verticalCenter
 
       Rectangle {
         anchors.fill: parent
         radius: Style.radiusS
-        color: parent.containsMouse ? Qt.alpha(Color.mPrimary, 0.12) : Color.mSurfaceContainerHigh
-        border.color: Color.mOutline
+        color: parent.containsMouse ? Qt.rgba(1.0, 0.33, 0.33, 0.15) : "transparent"
+        Behavior on color {
+          ColorAnimation {
+            duration: Style.animVeryFast
+          }
+        }
+      }
+
+      Text {
+        anchors.centerIn: parent
+        text: "\uf00d"
+        font.family: "Symbols Nerd Font"
+        font.pixelSize: Style.fontS
+        color: parent.containsMouse ? "#ff5555" : Color.mOnSurfaceVariant
+      }
+
+      onClicked: {
+        root.settingChanged("wallhaven.downloadDir", "");
+      }
+    }
+
+    MouseArea {
+      width: 26
+      height: 26
+      cursorShape: Qt.PointingHandCursor
+      hoverEnabled: true
+      anchors.verticalCenter: parent.verticalCenter
+
+      Rectangle {
+        anchors.fill: parent
+        radius: Style.radiusS
+        color: parent.containsMouse ? root._withAlpha(Color.mPrimary, 0.15) : Color.mSurfaceContainerHigh
+        border.color: parent.containsMouse ? Color.mPrimary : Color.mOutline
         border.width: Style.borderS
+        Behavior on color {
+          ColorAnimation {
+            duration: Style.animVeryFast
+          }
+        }
       }
 
       Text {
@@ -116,71 +156,11 @@ Column {
     id: whDownloadPicker
     title: "Select Download Folder"
     onAccepted: function (path) {
-      root.settingChanged("wallhaven.downloadDir", path);
+      if (path && path.trim().length > 0)
+        root.settingChanged("wallhaven.downloadDir", path.trim());
     }
   }
 
-  // Filters section header
-  Row {
-    width: parent.width
-    spacing: Style.spaceM
-
-    Text {
-      id: _filtersHeader
-      text: "FILTERS"
-      color: Color.mOutline
-      font.pixelSize: Style.fontXS + 1
-      font.weight: Font.Bold
-      font.letterSpacing: 2
-    }
-
-    Rectangle {
-      width: parent.width - _filtersHeader.implicitWidth - Style.spaceM
-      height: 1
-      anchors.verticalCenter: _filtersHeader.verticalCenter
-      color: Color.mOutlineVariant
-      opacity: 0.3
-    }
-  }
-
-  // Category toggles
-  Column {
-    width: parent.width
-    spacing: Style.spaceS
-
-    SettingsToggle {
-      width: parent.width
-      text: "General"
-      checked: root.wallhavenCategories[0] === "1"
-      onToggled: function (val) {
-        var c = root.wallhavenCategories.split("");
-        c[0] = val ? "1" : "0";
-        root.settingChanged("wallhaven.categories", c.join(""));
-      }
-    }
-    SettingsToggle {
-      width: parent.width
-      text: "Anime"
-      checked: root.wallhavenCategories[1] === "1"
-      onToggled: function (val) {
-        var c = root.wallhavenCategories.split("");
-        c[1] = val ? "1" : "0";
-        root.settingChanged("wallhaven.categories", c.join(""));
-      }
-    }
-    SettingsToggle {
-      width: parent.width
-      text: "People"
-      checked: root.wallhavenCategories[2] === "1"
-      onToggled: function (val) {
-        var c = root.wallhavenCategories.split("");
-        c[2] = val ? "1" : "0";
-        root.settingChanged("wallhaven.categories", c.join(""));
-      }
-    }
-  }
-
-  // Divider
   Rectangle {
     width: parent.width
     height: 1
@@ -188,39 +168,121 @@ Column {
     opacity: 0.2
   }
 
-  // Purity toggles
+  Row {
+    width: parent.width
+    spacing: Style.spaceM
+
+    Text {
+      id: catHeader
+      text: "DEFAULT CATEGORIES"
+      color: Color.mOutline
+      font.pixelSize: Style.fontXS + 1
+      font.weight: Font.Bold
+      font.letterSpacing: 2
+    }
+
+    Rectangle {
+      width: Math.max(10, parent.width - catHeader.implicitWidth - Style.spaceM)
+      height: 1
+      anchors.verticalCenter: catHeader.verticalCenter
+      color: Color.mOutlineVariant
+      opacity: 0.3
+    }
+  }
+
+  function _updateBit(currentStr, bitIdx, val) {
+    const arr = (currentStr || "100").split("");
+    arr[bitIdx] = val ? "1" : "0";
+    if (arr.join("") === "000")
+      return currentStr;
+    return arr.join("");
+  }
+
   Column {
     width: parent.width
     spacing: Style.spaceS
 
     SettingsToggle {
       width: parent.width
-      text: "Safe"
-      checked: root.wallhavenPurity[0] === "1"
+      text: "General"
+      checked: (root.wallhavenCategories || "111")[0] === "1"
       onToggled: function (val) {
-        var p = root.wallhavenPurity.split("");
-        p[0] = val ? "1" : "0";
-        root.settingChanged("wallhaven.purity", p.join(""));
+        root.settingChanged("wallhaven.categories", root._updateBit(root.wallhavenCategories, 0, val));
+      }
+    }
+    SettingsToggle {
+      width: parent.width
+      text: "Anime"
+      checked: (root.wallhavenCategories || "111")[1] === "1"
+      onToggled: function (val) {
+        root.settingChanged("wallhaven.categories", root._updateBit(root.wallhavenCategories, 1, val));
+      }
+    }
+    SettingsToggle {
+      width: parent.width
+      text: "People"
+      checked: (root.wallhavenCategories || "111")[2] === "1"
+      onToggled: function (val) {
+        root.settingChanged("wallhaven.categories", root._updateBit(root.wallhavenCategories, 2, val));
+      }
+    }
+  }
+
+  Rectangle {
+    width: parent.width
+    height: 1
+    color: Color.mOutlineVariant
+    opacity: 0.2
+  }
+
+  Row {
+    width: parent.width
+    spacing: Style.spaceM
+
+    Text {
+      id: purityHeader
+      text: "DEFAULT PURITY"
+      color: Color.mOutline
+      font.pixelSize: Style.fontXS + 1
+      font.weight: Font.Bold
+      font.letterSpacing: 2
+    }
+
+    Rectangle {
+      width: Math.max(10, parent.width - purityHeader.implicitWidth - Style.spaceM)
+      height: 1
+      anchors.verticalCenter: purityHeader.verticalCenter
+      color: Color.mOutlineVariant
+      opacity: 0.3
+    }
+  }
+
+  Column {
+    width: parent.width
+    spacing: Style.spaceS
+
+    SettingsToggle {
+      width: parent.width
+      text: "Safe (SFW)"
+      checked: (root.wallhavenPurity || "100")[0] === "1"
+      onToggled: function (val) {
+        root.settingChanged("wallhaven.purity", root._updateBit(root.wallhavenPurity, 0, val));
       }
     }
     SettingsToggle {
       width: parent.width
       text: "Sketchy"
-      checked: root.wallhavenPurity[1] === "1"
+      checked: (root.wallhavenPurity || "100")[1] === "1"
       onToggled: function (val) {
-        var p = root.wallhavenPurity.split("");
-        p[1] = val ? "1" : "0";
-        root.settingChanged("wallhaven.purity", p.join(""));
+        root.settingChanged("wallhaven.purity", root._updateBit(root.wallhavenPurity, 1, val));
       }
     }
     SettingsToggle {
       width: parent.width
-      text: "NSFW"
-      checked: root.wallhavenPurity[2] === "1"
+      text: "NSFW (Requires API Key)"
+      checked: (root.wallhavenPurity || "100")[2] === "1"
       onToggled: function (val) {
-        var p = root.wallhavenPurity.split("");
-        p[2] = val ? "1" : "0";
-        root.settingChanged("wallhaven.purity", p.join(""));
+        root.settingChanged("wallhaven.purity", root._updateBit(root.wallhavenPurity, 2, val));
       }
     }
   }

@@ -47,7 +47,11 @@ PanelWindow {
     if (BlurService.available) {
       Qt.callLater(_initAllBlur);
     }
+
+    displayManager.focusView();
   }
+
+  property var _blurRoot: null
 
   function _initAllBlur() {
     if (!BlurService.available)
@@ -69,7 +73,14 @@ PanelWindow {
     }
   }
 
-  property var _blurRoot: null
+  Component.onDestruction: {
+    if (_blurRoot) {
+      try {
+        root.BackgroundEffect.blurRegion = null;
+      } catch (e) {}
+      _blurRoot.destroy();
+    }
+  }
 
   DisplayManager {
     id: displayManager
@@ -125,15 +136,26 @@ PanelWindow {
     onFolderClicked: function (folder) {
       if (appViewModel)
         appViewModel.switchFolder(folder);
+      displayManager.focusView();
     }
+
     wallpaperCount: appViewModel ? appViewModel.count : 0
     cachedCount: cacheService ? cacheService.cachedFileCount : 0
     queueCount: cacheService ? cacheService.queueLength + cacheService.thumbnailJobRunning : 0
     dominantColor: appViewModel ? appViewModel.dominantColor : Color.mPrimary
     settingsOpen: appViewModel ? appViewModel.settingsOpen : false
     isWallhaven: wallhavenFilter.filterVisible || (adapter && adapter.currentSource === "remote")
-    onSettingsToggled: appViewModel ? appViewModel.toggleSettings() : null
-    onWallhavenToggled: wallhavenFilter.filterVisible = !wallhavenFilter.filterVisible
+
+    onSettingsToggled: {
+      if (appViewModel)
+        appViewModel.toggleSettings();
+    }
+    onWallhavenToggled: {
+      if (appViewModel)
+        appViewModel.handleRequestToggleWallhaven(wallhavenFilter);
+      if (!wallhavenFilter.filterVisible)
+        displayManager.focusView();
+    }
 
     searchText: appViewModel ? appViewModel.searchText : ""
     onSearchInputChanged: function (text) {
@@ -154,15 +176,6 @@ PanelWindow {
     }
   }
 
-  Component.onDestruction: {
-    if (_blurRoot) {
-      try {
-        root.BackgroundEffect.blurRegion = null;
-      } catch (e) {}
-      _blurRoot.destroy();
-    }
-  }
-
   property var _whResultsConn: null
   property var _whDlAppliedConn: null
 
@@ -174,30 +187,8 @@ PanelWindow {
     z: 998
     adapter: root.adapter
     whService: adapter ? adapter.whService : null
-    onWhServiceChanged: {
-      if (root._whResultsConn && root._whResultsConn.target)
-        root._whResultsConn.target.resultsUpdated.disconnect(root._whResultsConn.callback);
-      if (root._whDlAppliedConn && root._whDlAppliedConn.target)
-        root._whDlAppliedConn.target.downloadApplied.disconnect(root._whDlAppliedConn.callback);
-      if (whService) {
-        root._whResultsConn = {
-          target: whService,
-          callback: function () {
-            if (whService.currentPage === 1)
-              displayManager.scrollTo(0);
-          }
-        };
-        whService.resultsUpdated.connect(root._whResultsConn.callback);
-        root._whDlAppliedConn = {
-          target: whService,
-          callback: function (localPath) {
-            if (wallpaperApplier)
-              wallpaperApplier.apply(localPath);
-            Qt.callLater(Qt.quit);
-          }
-        };
-        whService.downloadApplied.connect(root._whDlAppliedConn.callback);
-      }
+    onCloseRequested: {
+      displayManager.focusView();
     }
   }
 

@@ -2,40 +2,24 @@ import QtQuick
 import QtQuick.Controls
 import qs.services
 
-/*
-* SettingsSlider — labeled slider with value display.
-* Redesigned with refined aesthetics and smooth interactions.
-*
-* Usage:
-*   SettingsSlider {
-*     width: parent.width
-*     label: "Opacity"
-*     value: root.opacity
-*     min: 0.0
-*     max: 1.0
-*     step: 0.05
-*     onCommit: function (v) { root._emit("opacity", v) }
-*   }
-*/
 Column {
   id: root
   width: parent ? parent.width : 300
-  spacing: Style.spaceL
+  spacing: Style.spaceM
 
   property string label: ""
-  property real value: 0
+  property real value: 0.0
   property real min: 0.0
   property real max: 1.0
   property real step: 0.05
   signal commit(real val)
 
-  // Header row with label and value
   Row {
     width: parent.width
     spacing: Style.spaceM
 
     Text {
-      width: parent.width - 56
+      width: Math.max(10, parent.width - 64)
       text: root.label
       color: Color.mOnSurface
       font.pixelSize: Style.fontS
@@ -43,10 +27,9 @@ Column {
       verticalAlignment: Text.AlignVCenter
     }
 
-    // Value badge - refined pill design
     Rectangle {
-      width: valueText.implicitWidth + Style.spaceXXL
-      height: Style.fontS + 4
+      width: valueText.implicitWidth + Style.spaceL * 2
+      height: Style.fontS + 6
       radius: height / 2
       color: Color.mPrimary
       opacity: 0.15
@@ -58,7 +41,7 @@ Column {
         font.pixelSize: Style.fontXS
         font.family: "monospace"
         font.weight: Font.Bold
-        text: root.value.toFixed(root.step < 1 ? 2 : 0)
+        text: slider.value.toFixed(root.step < 1 ? 2 : 0)
       }
     }
   }
@@ -69,36 +52,35 @@ Column {
     from: root.min
     to: root.max
     stepSize: root.step
-    value: root.value
 
-    // Commit on release
-    onValueChanged: {
-      if (slider.pressed) {
-        root.commit(value);
-      }
+    Binding {
+      target: slider
+      property: "value"
+      value: root.value
+      when: !slider.pressed
+    }
+
+    onMoved: {
+      root.commit(slider.value);
     }
 
     background: Item {
-      implicitHeight: 8
+      implicitHeight: 6
       y: (parent.height - height) / 2
 
-      // Track groove
       Rectangle {
         anchors.fill: parent
-        anchors.verticalCenterOffset: 0
         color: Qt.rgba(Color.mSurfaceContainerHighest.r, Color.mSurfaceContainerHighest.g, Color.mSurfaceContainerHighest.b, Style.childBgAlpha)
-        radius: 4
+        radius: 3
         opacity: 0.8
       }
 
-      // Track progress fill
       Rectangle {
-        width: parent.visualPosition * parent.width
+        width: Math.max(0, Math.min(1.0, slider.visualPosition)) * parent.width
         height: parent.height
         color: Color.mPrimary
-        radius: 4
+        radius: 3
 
-        // Smooth gradient
         gradient: Gradient {
           GradientStop {
             position: 0.0
@@ -113,19 +95,18 @@ Column {
     }
 
     handle: Item {
-      x: parent.leftPadding + parent.visualPosition * (parent.availableWidth - width)
+      x: parent.leftPadding + slider.visualPosition * (parent.availableWidth - width)
       y: parent.topPadding + parent.availableHeight / 2 - height / 2
-      implicitWidth: 20
-      implicitHeight: 20
+      implicitWidth: 18
+      implicitHeight: 18
 
-      // Outer glow ring (expands on hover)
       Rectangle {
         anchors.centerIn: parent
-        width: slider.pressed ? 24 : 18
-        height: slider.pressed ? 24 : 18
+        width: slider.pressed ? 22 : 16
+        height: slider.pressed ? 22 : 16
         radius: height / 2
         color: Color.mPrimary
-        opacity: slider.pressed ? 0.2 : 0.12
+        opacity: slider.pressed ? 0.22 : (slider.hovered ? 0.12 : 0.0)
 
         Behavior on width {
           NumberAnimation {
@@ -139,22 +120,25 @@ Column {
             easing.type: Easing.OutCubic
           }
         }
+        Behavior on opacity {
+          NumberAnimation {
+            duration: Style.animFast
+          }
+        }
       }
 
-      // Main handle circle
       Rectangle {
         anchors.centerIn: parent
         width: 12
         height: 12
         radius: 6
-        color: slider.pressed ? Qt.lighter(Color.mPrimary, 1.1) : Color.mPrimary
+        color: slider.pressed ? Qt.lighter(Color.mPrimary, 1.15) : Color.mPrimary
         border.width: 2
         border.color: Color.mSurface
 
-        // Subtle shadow
         Rectangle {
           anchors.fill: parent
-          anchors.verticalCenterOffset: 2
+          anchors.verticalCenterOffset: 1
           radius: parent.radius
           color: Color.mShadow
           opacity: 0.2

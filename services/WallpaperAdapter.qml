@@ -1,25 +1,10 @@
 import QtQuick
 import qs.services
 
-/*
-* WallpaperAdapter — unified interface for local and remote wallpaper sources.
-*
-* UI layer reads:
-*   adapter.items          → current source's filtered items (ListModel)
-*   adapter.currentSource  → "local" or "remote"
-*   adapter.folders        → local folders (empty for remote)
-*   adapter.currentFolder  → current local folder
-*
-* UI layer writes:
-*   adapter.switchSource("local"|"remote")
-*   adapter.searchText = "query"
-*   adapter.apply(item)  → applies wallpaper (local or downloads remote first)
-*/
-
 Item {
   id: root
 
-  property string currentSource: "local" // "local" | "remote"
+  property string currentSource: "local"
   property string searchText: ""
   property var wallpaperDirs: []
   property string scriptPath: ""
@@ -41,6 +26,19 @@ Item {
 
   property bool _whLoadingMore: false
 
+  function _populateRemoteBatch(startIndex, endIndex) {
+    if (!wallhavenService || !wallhavenService.results)
+      return;
+    const list = wallhavenService.results;
+    const batch = [];
+    for (let i = startIndex; i < endIndex; i++) {
+      batch.push(root._normalizeRemoteItem(list[i]));
+    }
+    if (batch.length > 0) {
+      remoteItems.append(batch);
+    }
+  }
+
   Connections {
     target: wallhavenService
     enabled: root.currentSource === "remote"
@@ -48,20 +46,16 @@ Item {
     function onResultsUpdated() {
       if (!wallhavenService || !wallhavenService.results)
         return;
-      var total = wallhavenService.results.length;
-      var isNewSearch = (total < remoteItems.count) || (wallhavenService.currentPage === 1);
+      const total = wallhavenService.results.length;
+      const isNewSearch = (total < remoteItems.count) || (wallhavenService.currentPage === 1);
+
       if (isNewSearch) {
         remoteItems.clear();
-        for (var i = 0; i < total; i++) {
-          remoteItems.append(root._normalizeRemoteItem(wallhavenService.results[i]));
-        }
+        root._populateRemoteBatch(0, total);
       } else {
-        var toAdd = total - remoteItems.count;
-        if (toAdd > 0) {
-          var startIdx = remoteItems.count;
-          for (var j = startIdx; j < total; j++) {
-            remoteItems.append(root._normalizeRemoteItem(wallhavenService.results[j]));
-          }
+        const currentCount = remoteItems.count;
+        if (total > currentCount) {
+          root._populateRemoteBatch(currentCount, total);
         }
       }
       root._whLoadingMore = false;
@@ -71,34 +65,17 @@ Item {
   Connections {
     target: root
     function onCurrentSourceChanged() {
-      if (root.currentSource === "remote") {
-        remoteItems.clear();
-        if (wallhavenService && wallhavenService.results && wallhavenService.results.length > 0) {
-          for (var i = 0; i < wallhavenService.results.length; i++) {
-            remoteItems.append(root._normalizeRemoteItem(wallhavenService.results[i]));
-          }
-        }
-      } else {
-        remoteItems.clear();
-      }
-    }
-  }
-
-  function _initRemoteItems() {
-    if (root.currentSource === "remote" && wallhavenService && wallhavenService.results) {
-      var total = wallhavenService.results.length;
-      if (total > 0) {
-        for (var i = 0; i < total; i++) {
-          remoteItems.append(root._normalizeRemoteItem(wallhavenService.results[i]));
-        }
+      remoteItems.clear();
+      if (root.currentSource === "remote" && wallhavenService && wallhavenService.results) {
+        root._populateRemoteBatch(0, wallhavenService.results.length);
       }
     }
   }
 
   function _normalizeRemoteItem(r) {
-    var safeId = r.id ? String(r.id).replace(/[^a-zA-Z0-9-]/g, "") : "unknown";
+    const safeId = r.id ? String(r.id).replace(/[^a-zA-Z0-9-]/g, "") : "unknown";
     return {
-      id: r.id,
+      id: "wallhaven-" + safeId,
       type: "remote",
       path: r.path || "",
       thumb: r.thumbLarge || "",
@@ -121,7 +98,7 @@ Item {
     dirs: root.wallpaperDirs
     scriptPath: root.scriptPath
     debugMode: root.debugMode
-    thumbHashToPath: root.cacheService ? root.cacheService.thumbHashToPath : {}
+    thumbHashToPath: root.cacheService ? root.cacheService.thumbHashToPath : ({})
     cacheService: root.cacheService
     onDataLoaded: root.dataLoaded()
   }
@@ -183,14 +160,14 @@ Item {
   }
 
   function getItem(index) {
-    var src = items;
+    if (index < 0 || index >= root.count)
+      return null;
+    const src = items;
     if (!src)
       return null;
     if (src.get !== undefined)
       return src.get(index);
-    if (index >= 0 && index < src.length)
-      return src[index];
-    return null;
+    return src[index] || null;
   }
 
   function apply(item) {
@@ -205,14 +182,20 @@ Item {
   function smartApply(item) {
     if (!item)
       return;
+
     if (item.type === "local") {
       root._onApplyLocal(item.path);
     } else {
-      var ws = root.whService;
-      var safeId = item.id ? String(item.id).replace("wallhaven-", "") : "";
-      var status = ws ? (ws.downloadStatus[safeId] || "") : "";
+      const ws = root.whService;
+      const safeId = item.id ? String(item.id).replace(/^wallhaven-/, "") : "";
+      if (ws && ws.localWallhavenPaths && ws.localWallhavenPaths[safeId]) {
+        root._onApplyLocal(ws.localWallhavenPaths[safeId]);
+        return;
+      }
+      const status = ws ? (ws.downloadStatus[safeId] || "") : "";
+
       if (status === "done") {
-        var localPath = ws ? (ws.downloadPaths[safeId] || "") : "";
+        const localPath = ws ? (ws.downloadPaths[safeId] || "") : "";
         if (localPath)
           root._onApplyLocal(localPath);
         else if (ws)
@@ -234,6 +217,8 @@ Item {
 
   function load() {
     localSource.load();
-    _initRemoteItems();
+    if (root.currentSource === "remote" && wallhavenService && wallhavenService.results) {
+      root._populateRemoteBatch(0, wallhavenService.results.length);
+    }
   }
 }

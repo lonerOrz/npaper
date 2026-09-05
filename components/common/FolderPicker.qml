@@ -11,41 +11,37 @@ Popup {
   property string title: "Select Folder"
   property string initialPath: Quickshell.env("HOME") || "/home"
   property string selectedPath: ""
+  property string currentPath: initialPath
 
   signal accepted(string path)
   signal cancelled
 
-  width: Math.round(480 * Style.uiScaleRatio)
-  height: Math.round(360 * Style.uiScaleRatio)
+  width: Math.round(520 * Style.uiScaleRatio)
+  height: Math.round(380 * Style.uiScaleRatio)
   modal: true
+  focus: true
   closePolicy: Popup.CloseOnEscape
   anchors.centerIn: parent
 
   background: Rectangle {
     color: Color.mSurface
     radius: Style.radiusL
-    border.color: Color.mOutline
+    border.color: Color.mOutlineVariant
     border.width: Style.borderS
-  }
 
-  function openPicker(startPath) {
-    if (startPath) {
-      pickerRoot.selectedPath = startPath;
-      folderModel.folder = Qt.resolvedUrl("file://" + startPath);
-      currentPath = startPath;
-    } else {
-      pickerRoot.selectedPath = pickerRoot.initialPath;
-      folderModel.folder = Qt.resolvedUrl("file://" + pickerRoot.initialPath);
-      currentPath = pickerRoot.initialPath;
+    Rectangle {
+      anchors.fill: parent
+      anchors.margins: -4
+      radius: parent.radius + 2
+      color: Color.mShadow
+      opacity: 0.3
+      z: -1
     }
-    open();
   }
-
-  property string currentPath: initialPath
 
   FolderListModel {
     id: folderModel
-    folder: Qt.resolvedUrl("file://" + pickerRoot.currentPath)
+    folder: ""
     showDirs: true
     showFiles: false
     showHidden: false
@@ -53,26 +49,62 @@ Popup {
     sortField: FolderListModel.Name
 
     onFolderChanged: {
-      pickerRoot.currentPath = decodeURIComponent(folder.toString().replace("file://", ""));
+      if (folder.toString().length > 0) {
+        pickerRoot.currentPath = _urlToPath(folder.toString());
+      }
     }
   }
 
-  // Process for mkdir
+  function _urlToPath(urlStr) {
+    if (!urlStr)
+      return "";
+    var clean = urlStr.toString().replace("file://", "");
+    return decodeURIComponent(clean);
+  }
+
+  function _pathToUrl(p) {
+    return Qt.resolvedUrl("file://" + encodeURI(p));
+  }
+
+  function openPicker(startPath) {
+    const target = (startPath && startPath.trim().length > 0) ? startPath.trim() : pickerRoot.initialPath;
+    pickerRoot.selectedPath = target;
+    pickerRoot.currentPath = target;
+    folderModel.folder = _pathToUrl(target);
+    open();
+  }
+
+  onClosed: {
+    folderModel.folder = "";
+  }
+
   Process {
     id: mkdirProc
     running: false
-    onExited: {
-      folderModel.folder = Qt.resolvedUrl("file://" + pickerRoot.currentPath);
+    onExited: function (code) {
+      if (code === 0) {
+        _forceRefresh();
+      }
     }
   }
 
-  // Process for rmdir
   Process {
     id: rmdirProc
     running: false
-    onExited: {
-      folderModel.folder = Qt.resolvedUrl("file://" + pickerRoot.currentPath);
+    onExited: function (code) {
+      if (code === 0) {
+        pickerRoot.selectedPath = "";
+        _forceRefresh();
+      }
     }
+  }
+
+  function _forceRefresh() {
+    const curr = folderModel.folder;
+    folderModel.folder = "";
+    Qt.callLater(function () {
+      folderModel.folder = curr;
+    });
   }
 
   Column {
@@ -80,7 +112,6 @@ Popup {
     anchors.margins: Style.spaceM
     spacing: Style.spaceS
 
-    // ── Header ──
     Row {
       width: parent.width
       spacing: Style.spaceM
@@ -95,16 +126,15 @@ Popup {
       }
 
       Text {
-        id: pathText
         text: pickerRoot.currentPath
         font.pixelSize: Style.fontXS
+        font.family: "monospace"
         color: Color.mOnSurfaceVariant
         elide: Text.ElideMiddle
         width: parent.width * 0.7
       }
     }
 
-    // ── Toolbar ──
     Row {
       width: parent.width
       spacing: Style.spaceXS
@@ -152,18 +182,20 @@ Popup {
           }
 
           onClicked: {
-            if (index === 0)
-              folderModel.folder = Qt.resolvedUrl("file://" + decodeURIComponent(folderModel.parentFolder.toString().replace("file://", "")));
-            else if (index === 1) {
-              folderModel.folder = Qt.resolvedUrl("file://" + Quickshell.env("HOME"));
-              pickerRoot.currentPath = Quickshell.env("HOME");
-            } else if (index === 2)
+            if (index === 0) {
+              const parentUrl = folderModel.parentFolder.toString();
+              if (parentUrl.length > 0)
+                folderModel.folder = parentUrl;
+            } else if (index === 1) {
+              const home = Quickshell.env("HOME") || "/";
+              folderModel.folder = _pathToUrl(home);
+            } else if (index === 2) {
               showNewFolder();
+            }
           }
         }
       }
 
-      // Delete button
       MouseArea {
         width: 28
         height: 28
@@ -199,18 +231,17 @@ Popup {
         onClicked: {
           if (pickerRoot.selectedPath !== "") {
             rmdirProc.command = ["rmdir", pickerRoot.selectedPath];
-            rmdirProc.running = true;
-            pickerRoot.selectedPath = "";
+            rmdirProc.exec({});
           }
         }
       }
 
-      // Path input
       TextField {
         width: parent.width - 130
         height: 28
         text: pickerRoot.currentPath
         font.pixelSize: Style.fontXS
+        font.family: "monospace"
         color: Color.mOnSurface
         placeholderText: "/path/to/folder"
         placeholderTextColor: Color.mOnSurfaceVariant
@@ -221,20 +252,19 @@ Popup {
           border.width: Style.borderS
         }
         onAccepted: {
-          folderModel.folder = Qt.resolvedUrl("file://" + text);
-          pickerRoot.currentPath = text;
+          if (text.trim().length > 0)
+            folderModel.folder = _pathToUrl(text.trim());
         }
       }
     }
 
-    // New folder input
     TextField {
       id: newFolderInput
       width: parent.width
       height: 28
       visible: false
       font.pixelSize: Style.fontXS
-      placeholderText: "Enter folder name..."
+      placeholderText: "Enter new folder name..."
       placeholderTextColor: Color.mOnSurfaceVariant
       background: Rectangle {
         radius: Style.radiusS
@@ -243,9 +273,10 @@ Popup {
         border.width: Style.borderS
       }
       onAccepted: {
-        if (text.trim().length > 0) {
-          mkdirProc.command = ["mkdir", "-p", pickerRoot.currentPath + "/" + text.trim()];
-          mkdirProc.running = true;
+        const name = text.trim();
+        if (name.length > 0) {
+          mkdirProc.command = ["mkdir", "-p", pickerRoot.currentPath + "/" + name];
+          mkdirProc.exec({});
         }
         visible = false;
         text = "";
@@ -256,7 +287,6 @@ Popup {
       }
     }
 
-    // ── Folder list ──
     Rectangle {
       width: parent.width
       height: parent.height - 130
@@ -334,20 +364,18 @@ Popup {
       }
     }
 
-    // ── Footer buttons ──
     Row {
       width: parent.width
       spacing: Style.spaceS
 
       Item {
-        width: parent.width - 120
+        width: parent.width - 130
         height: 1
       }
 
-      // Cancel
       MouseArea {
         id: cancelBtn
-        width: 55
+        width: 60
         height: 28
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
@@ -362,11 +390,6 @@ Popup {
           color: cancelBtn.containsMouse ? Qt.rgba(Color.mSurfaceContainerHighest.r, Color.mSurfaceContainerHighest.g, Color.mSurfaceContainerHighest.b, Style.childBgAlpha) : "transparent"
           border.color: Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, Style.childBgAlpha)
           border.width: Style.borderS
-          Behavior on color {
-            ColorAnimation {
-              duration: Style.animVeryFast
-            }
-          }
         }
 
         Text {
@@ -377,10 +400,9 @@ Popup {
         }
       }
 
-      // Select
       MouseArea {
         id: selectBtn
-        width: 55
+        width: 60
         height: 28
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
@@ -394,11 +416,6 @@ Popup {
           anchors.fill: parent
           radius: Style.radiusS
           color: selectBtn.enabled ? (selectBtn.containsMouse ? Color.mPrimaryContainer : Color.mPrimary) : Qt.rgba(Color.mSurfaceContainerLow.r, Color.mSurfaceContainerLow.g, Color.mSurfaceContainerLow.b, Style.childBgAlpha)
-          Behavior on color {
-            ColorAnimation {
-              duration: Style.animVeryFast
-            }
-          }
         }
 
         Text {
