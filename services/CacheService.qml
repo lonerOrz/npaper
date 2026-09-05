@@ -33,6 +33,8 @@ Item {
   readonly property int thumbHeight: Style.gridCellHeight
   property var thumbnailWorkers: []
 
+  property var _createdDirs: ({})
+
   signal cacheScanned
   signal cacheRefreshed
   signal thumbnailGenerated(string path, string thumbPath, string bgPath, string animPath)
@@ -44,19 +46,19 @@ Item {
 
   Process {
     id: scanCacheProcess
-    command: ["sh", "-c", `find "${root.cacheDir}" -mindepth 2 -maxdepth 2 \\( \\( -name '*.png' ! -name '*_bg.png' ! -name '*_thumb.png' \\) -o -name '*_bg.png' -o -name '*_thumb.png' -o -name '*_bg.jpg' -o -name '*_thumb.jpg' -o -name '*_anim.gif' \\) -printf '%P\\n' 2>/dev/null`]
+    command: ["sh", "-c", `find "${root.cacheDir}" -mindepth 2 -maxdepth 2 \\( -name '*_bg.jpg' -o -name '*_thumb.jpg' -o -name '*_anim.gif' -o -name '*_bg.png' -o -name '*_thumb.png' \\) -printf '%P\\n' 2>/dev/null`]
     stdout: StdioCollector {
       onStreamFinished: {
         const files = text.trim().split('\n').filter(f => f.length > 0 && f.indexOf('/') > 0);
         var newMap = {};
-        files.forEach(f => {
-                        newMap[f] = root.cacheDir + '/' + f;
-                      });
+        for (let i = 0; i < files.length; i++) {
+          newMap[files[i]] = root.cacheDir + '/' + files[i];
+        }
         root.thumbHashToPath = newMap;
         root.cachedFileCount = files.length;
         root.thumbCacheVersion++;
         if (root.debugMode)
-          Logger.d("Cache scanned:", files.length, "files");
+          Logger.d("CacheService: Cache scanned:", files.length, "files");
         root.cacheScanned();
       }
     }
@@ -67,14 +69,26 @@ Item {
     command: ["rm", "-f"]
     onExited: function (exitCode) {
       if (root.debugMode)
-        Logger.d("Cleanup:", exitCode === 0 ? "OK" : "Failed");
+        Logger.d("CacheService: Cleanup finished, exit code:", exitCode);
       root.cacheRefreshed();
+    }
+  }
+
+  Timer {
+    id: deferredMaintenanceTimer
+    interval: 5000
+    repeat: false
+    onTriggered: {
+      if (root.cacheDir && root.cacheDir.length > 0) {
+        cleanOrphanedAnimProcess.exec({});
+      }
     }
   }
 
   Process {
     id: cleanOrphanedAnimProcess
     command: ["sh", "-c", `find "${root.cacheDir}" -name '*_anim.gif' -size 0 -delete 2>/dev/null`]
+    onExited: migrateOldFormatProcess.exec({})
   }
 
   Process {
@@ -107,6 +121,9 @@ Item {
           return [];
 
         if (step === 0) {
+          if (root._createdDirs[outDir]) {
+            return [];
+          }
           return ["mkdir", "-p", outDir];
         }
 
@@ -151,18 +168,21 @@ Item {
       onExited: function (exitCode, exitStatus) {
         if (exitCode !== 0) {
           if (_step === 3) {
-            if (root.debugMode)
-              Logger.d("Worker", _workerId, "invalid anim, skipping:", _animPath);
             _animPath = "";
             _step = _totalSteps();
             _finish();
             return;
           }
           if (root.debugMode)
-            Logger.d("Worker", _workerId, "failed at step", _step, ":", _path, "code:", exitCode);
+            Logger.d("CacheService: Worker", _workerId, "failed at step", _step, ":", _path, "code:", exitCode);
           _reset();
           root.processQueue();
           return;
+        }
+
+        if (_step === 0 && _bgPath) {
+          const outDir = _bgPath.substring(0, _bgPath.lastIndexOf('/'));
+          root._createdDirs[outDir] = true;
         }
 
         _step++;
@@ -221,10 +241,8 @@ Item {
   }
 
   function initialize() {
-    if (root.thumbnailWorkers.length > 0) {
-      Logger.d("CacheService already initialized");
+    if (root.thumbnailWorkers.length > 0)
       return;
-    }
     createCacheDirProcess.exec({});
     initWorkers();
   }
@@ -237,68 +255,54 @@ Item {
                                                      }));
     }
     root.thumbnailWorkers = workers;
-    if (root.debugMode)
-      Logger.d("Initialized", workers.length, "workers");
   }
 
   function scanCache() {
-    cleanOrphanedAnimProcess.exec({});
-  }
-
-  Connections {
-    target: cleanOrphanedAnimProcess
-    function onExited() {
-      migrateOldFormatProcess.exec({});
-    }
-  }
-
-  Connections {
-    target: migrateOldFormatProcess
-    function onExited() {
-      scanCacheProcess.exec({});
-    }
+    scanCacheProcess.exec({});
+    deferredMaintenanceTimer.restart();
   }
 
   function refreshAndQueue(wallpaperList, folder) {
     if (root.debugMode)
-      Logger.d("Refreshing folder:", folder, "count:", wallpaperList.length);
+      Logger.d("CacheService: Refreshing folder:", folder, "count:", wallpaperList.length);
 
     const validKeys = {};
-    wallpaperList.forEach(path => {
-                            const hash = HashUtils.getThumbnailHash(path);
-                            validKeys[folder + '/' + hash + '_bg.jpg'] = true;
-                            validKeys[folder + '/' + hash + '_thumb.jpg'] = true;
-                            validKeys[folder + '/' + hash + '_bg.png'] = true;
-                            validKeys[folder + '/' + hash + '_thumb.png'] = true;
-                            validKeys[folder + '/' + hash + '_anim.gif'] = true;
-                          });
+    for (let i = 0; i < wallpaperList.length; i++) {
+      const path = wallpaperList[i];
+      const hash = HashUtils.getThumbnailHash(path);
+      validKeys[folder + '/' + hash + '_bg.jpg'] = true;
+      validKeys[folder + '/' + hash + '_thumb.jpg'] = true;
+      validKeys[folder + '/' + hash + '_bg.png'] = true;
+      validKeys[folder + '/' + hash + '_thumb.png'] = true;
+      validKeys[folder + '/' + hash + '_anim.gif'] = true;
+    }
 
     var newMap = Object.assign({}, root.thumbHashToPath);
     const invalidFiles = [];
-    Object.keys(newMap).forEach(key => {
-                                  if (key.startsWith(folder + '/') && !validKeys[key]) {
-                                    invalidFiles.push(newMap[key]);
-                                    delete newMap[key];
-                                  }
-                                });
+    const keys = Object.keys(newMap);
+    for (let j = 0; j < keys.length; j++) {
+      const key = keys[j];
+      if (key.startsWith(folder + '/') && !validKeys[key]) {
+        invalidFiles.push(newMap[key]);
+        delete newMap[key];
+      }
+    }
     root.thumbHashToPath = newMap;
 
     if (invalidFiles.length > 0) {
       root.cachedFileCount = Math.max(0, root.cachedFileCount - invalidFiles.length);
       root.thumbCacheVersion++;
-      cleanupCacheProcess.command = ["rm", "-f", ...invalidFiles];
+      const batch = invalidFiles.slice(0, 100);
+      cleanupCacheProcess.command = ["rm", "-f", ...batch];
       cleanupCacheProcess.exec({});
-      if (root.debugMode)
-        Logger.d("Removed", invalidFiles.length, "invalid files from", folder);
     } else {
       root.cacheRefreshed();
     }
 
-    wallpaperList.forEach(path => {
-                            queueThumbnail(path, FileTypes.isVideoFile(path), FileTypes.isGifFile(path));
-                          });
-    if (root.debugMode)
-      Logger.d("Queue length:", root.queueLength);
+    for (let k = 0; k < wallpaperList.length; k++) {
+      const p = wallpaperList[k];
+      queueThumbnail(p, FileTypes.isVideoFile(p), FileTypes.isGifFile(p));
+    }
   }
 
   function queueThumbnail(wallpaperPath, isVideo, isGif) {

@@ -50,14 +50,11 @@ FocusScope {
   }
 
   function queueVisibleThumbnails() {
-    if (!root.adapter || !root.cacheService)
+    if (!root.adapter || !root.cacheService || root.adapter.currentSource !== "local")
       return;
-    var items = root.adapter.items;
-    if (!items)
-      return;
-    var count = items.count !== undefined ? items.count : items.length;
+    const count = root.adapter.count;
     for (let i = root.baseIndex; i <= root.maxIndex && i < count; i++) {
-      const item = items.get !== undefined ? items.get(i) : items[i];
+      const item = root.adapter.getItem(i);
       if (item && item.type === "local")
         root.cacheService.queueThumbnail(item.path, item.isVideo, item.isGif);
     }
@@ -80,6 +77,7 @@ FocusScope {
   Timer {
     id: _thumbQueueTimer
     interval: 80
+    repeat: false
     onTriggered: queueVisibleThumbnails()
   }
 
@@ -89,21 +87,23 @@ FocusScope {
     focus: true
     clip: true
 
-    property int itemWidth: Style.carouselItemWidth
-    property int itemHeight: Style.carouselItemHeight
-    property real spacing: root.carouselSpacing
-    property real centerX: width / 2
-    property real centerY: height / 2
+    readonly property int itemWidth: Style.carouselItemWidth
+    readonly property int itemHeight: Style.carouselItemHeight
+    readonly property real spacing: root.carouselSpacing
+    readonly property real centerX: width / 2
+    readonly property real centerY: height / 2
 
     MouseArea {
       anchors.fill: parent
       propagateComposedEvents: true
       onWheel: function (wheel) {
-        var ticks = Math.round(Math.abs(wheel.angleDelta.y) / 120);
+        let ticks = Math.round(Math.abs(wheel.angleDelta.y) / 120);
         if (ticks < 1)
           ticks = 1;
-        var dir = wheel.angleDelta.y > 0 ? -1 : 1;
-        var target = Math.max(0, Math.min(scrollController.currentIndex + dir * ticks, root.adapter ? root.adapter.count - 1 : 0));
+        const dir = wheel.angleDelta.y > 0 ? -1 : 1;
+        const maxLimit = root.adapter ? root.adapter.count - 1 : 0;
+        const base = Math.round(scrollController.scrollTarget);
+        const target = Math.max(0, Math.min(base + dir * ticks, maxLimit));
         scrollController.scrollTo(target);
       }
       onPressed: mouse => mouse.accepted = false
@@ -117,7 +117,7 @@ FocusScope {
       wallhavenFilter: root.wallhavenFilter
       onApplyRequested: {
         if (root.adapter && root.adapter.count > 0) {
-          var item = root.adapter.getItem(root.currentIndex);
+          const item = root.adapter.getItem(root.currentIndex);
           if (item)
             root.adapter.smartApply(item);
         }
@@ -125,13 +125,19 @@ FocusScope {
       onRandomRequested: scrollController.random()
       onWallhavenToggled: pathViewContainer.forceActiveFocus()
     }
+
     Keys.onPressed: function (event) {
       kbdHandler.handleKeyPress(event);
       if (event.accepted)
         return;
       if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
         const dir = event.key === Qt.Key_Left ? -1 : 1;
-        event.modifiers & Qt.ShiftModifier ? (dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight()) : (dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight());
+        if (event.modifiers & Qt.ShiftModifier) {
+          dir === -1 ? scrollController.fastScrollLeft() : scrollController.fastScrollRight();
+        } else {
+          dir === -1 ? scrollController.scrollLeft() : scrollController.scrollRight();
+        }
+
         if (dir === 1 && root.adapter && root.adapter.currentSource === "remote" && root.whService && root.whService.hasMore && !root.whService.loading && root.maxIndex >= root.adapter.count - 2) {
           root.whService.loadMore();
         }
@@ -149,52 +155,40 @@ FocusScope {
 
     Repeater {
       model: scrollController.loadedCount
+
       delegate: WallpaperCard {
         required property int index
-        property int realIndex: scrollController.baseIndex + index
+        readonly property int realIndex: scrollController.baseIndex + index
+        readonly property var _item: root.adapter ? root.adapter.getItem(realIndex) : null
 
-        readonly property var _item: {
-          if (!root.adapter || !root.adapter.items)
-            return null;
-          var items = root.adapter.items;
-          var count = items.count !== undefined ? items.count : items.length;
-          if (realIndex >= 0 && realIndex < count) {
-            return items.get !== undefined ? items.get(realIndex) : items[realIndex];
-          }
-          return null;
-        }
         wallpaperPath: _item ? _item.path : ""
         wallpaperItem: _item
         filename: _item ? _item.filename : ""
         isRemote: _item ? _item.type === "remote" : false
-        remoteId: _item && _item.type === "remote" ? _item.id : ""
+        remoteId: (_item && _item.type === "remote") ? _item.id : ""
         isCenter: realIndex === root.currentIndex
         showShadow: root.showShadow
-        downloadPath: _item && _item.type === "remote" ? _item.path : ""
+        downloadPath: (_item && _item.type === "remote") ? _item.path : ""
 
         thumbHashToPath: root.cacheService ? root.cacheService.thumbHashToPath : ({})
         whService: root.whService
         itemIndex: realIndex
 
-        readonly property real _absOffset: Math.abs(realIndex - scrollController.scrollTarget)
-        readonly property real _cos: Math.cos(Math.min(_absOffset, 3) * 0.523599)
+        readonly property real _offset: realIndex - scrollController.scrollTarget
+        readonly property real _absOffset: Math.abs(_offset)
         readonly property real _perspScale: 1.0 / (1.0 + _absOffset * root.carouselPerspective)
-        readonly property real _visualScale: _perspScale * (0.85 + _cos * 0.15) + (Math.max(0, 1 - _absOffset) * 0.06)
-        readonly property real _visualOpacity: _absOffset > 6 ? 0 : Math.pow(Math.max(0, 1 - _absOffset * 0.12), 2.5)
-        readonly property real _visualRotationY: (realIndex - scrollController.scrollTarget) * -root.carouselRotation
-        readonly property int _visualZ: 100 - _absOffset * 50
-        readonly property real _visualSpacingFactor: 0.85 - _absOffset * 0.06
-        readonly property real _visualYOffset: _absOffset * 8
-        readonly property real _visualShadowOpacity: _absOffset < 0.6 ? 0.25 : 0
+        readonly property real _normFactor: Math.max(0, 1.0 - _absOffset * 0.16)
 
-        visualScale: _visualScale
-        visualOpacity: _visualOpacity
-        visualRotationY: _visualRotationY
-        visualZ: _visualZ
-        visualYOffset: _visualYOffset
-        visualShadowOpacity: _visualShadowOpacity
-        x: pathViewContainer.centerX - width / 2 + (realIndex - scrollController.scrollTarget) * (width + pathViewContainer.spacing) * _visualSpacingFactor
-        y: pathViewContainer.centerY - height / 2 + _visualYOffset
+        visualScale: _perspScale * (0.86 + Math.max(0, 1.0 - _absOffset) * 0.14)
+        visualOpacity: _absOffset > 5.5 ? 0.0 : (_normFactor * _normFactor)
+        visualRotationY: _offset * -root.carouselRotation
+        visualZ: Math.round(100 - _absOffset * 40)
+        visualYOffset: _absOffset * 8
+        visualShadowOpacity: _absOffset < 0.6 ? 0.25 : 0.0
+
+        x: pathViewContainer.centerX - width / 2 + _offset * (width + pathViewContainer.spacing) * (0.84 - _absOffset * 0.05)
+        y: pathViewContainer.centerY - height / 2 + visualYOffset
+
         onClicked: function (path) {
           scrollController.scrollTo(realIndex);
           if (_item)
@@ -209,18 +203,16 @@ FocusScope {
       anchors.horizontalCenter: parent.horizontalCenter
       radius: Style.radiusRound
       color: Color.mSurfaceContainer
+      opacity: 0.92
 
       Text {
         anchors.centerIn: parent
         anchors.leftMargin: Style.spaceXL
         anchors.rightMargin: Style.spaceXL
-        text: "/ Search  •  ←/→ Navigate  •  Tab Folder  •  [] Toggle View  •  Enter Apply  •  R Random  •  S Settings  •  W Wallhaven  •  Esc Quit"
+        text: "/ 搜索  •  ←/→ 浏览  •  Tab 换文件夹  •  [] 切换视图  •  Enter 应用  •  R 随机  •  S 设置  •  W 远程  •  Esc 退出"
         color: Color.mOnSurface
         font.pixelSize: Style.keyboardHintFontSize
         font.weight: Font.Medium
-        style: Text.Outline
-        styleColor: Color.mScrim
-        opacity: 0.9
       }
     }
   }

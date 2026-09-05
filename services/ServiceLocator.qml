@@ -14,9 +14,15 @@ QtObject {
 
   signal servicesReady
 
+  onReadyChanged: {
+    if (ready)
+      root.servicesReady();
+  }
+
   function register(obj) {
-    if (root.ready)
+    if (!obj)
       return;
+
     if (obj.adapter)
       root.adapter = obj.adapter;
     if (obj.cacheService)
@@ -25,7 +31,12 @@ QtObject {
       root.applier = obj.applier;
     if (obj.checks)
       root.checks = obj.checks;
-    if (root.ready)
-      root.servicesReady();
+  }
+
+  function reset() {
+    root.adapter = null;
+    root.cacheService = null;
+    root.applier = null;
+    root.checks = null;
   }
 }

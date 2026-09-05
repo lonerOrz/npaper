@@ -3,28 +3,24 @@ import QtQuick
 Item {
   id: root
 
-  // Inputs
   property int count: 0
   property int visibleRange: 4
   property int preloadRange: 2
-  property int animationDuration: 280
+  property int animationDuration: 260
   property real parallaxFactor: 40
 
-  // Outputs (Read-only)
-  readonly property int currentIndex: Math.round(scrollTarget)
-  readonly property int baseIndex: Math.max(0, currentIndex - visibleRange - preloadRange)
-  readonly property int maxIndex: Math.min(count - 1, currentIndex + visibleRange + preloadRange)
-  readonly property int loadedCount: count > 0 ? Math.max(0, maxIndex - baseIndex + 1) : 0
-  readonly property real parallaxX: (currentIndex - Math.round(scrollTarget)) * parallaxFactor
-
-  // Internal State
   property real scrollTarget: 0
   property int keyScrollDirection: 0
   property int keyScrollStep: 1
   property bool isKeyScrolling: false
-  property int scrollContinueInterval: 230
+  property int scrollContinueInterval: 140
 
-  // Smooth Behavior
+  readonly property int currentIndex: Math.max(0, Math.min(Math.round(scrollTarget), root.count > 0 ? (root.count - 1) : 0))
+  readonly property int baseIndex: Math.max(0, currentIndex - visibleRange - preloadRange)
+  readonly property int maxIndex: root.count > 0 ? Math.min(root.count - 1, currentIndex + visibleRange + preloadRange) : 0
+  readonly property int loadedCount: root.count > 0 ? Math.max(0, maxIndex - baseIndex + 1) : 0
+  readonly property real parallaxX: (scrollTarget - currentIndex) * parallaxFactor
+
   Behavior on scrollTarget {
     NumberAnimation {
       duration: root.animationDuration
@@ -32,76 +28,72 @@ Item {
     }
   }
 
-  // Sync currentIndex on change
-  onScrollTargetChanged: {
-    // This is where we might calculate velocity in the future if needed
-  }
-
   Timer {
     id: scrollContinueTimer
     interval: root.scrollContinueInterval
-    repeat: false
+    repeat: true
     onTriggered: {
       if (root.isKeyScrolling && root.keyScrollDirection !== 0 && root.count > 0) {
-        const step = root.keyScrollStep;
-        const maxIdx = root.count - 1;
-        const currentIdx = Math.round(root.scrollTarget);
-        let nextIdx = currentIdx;
-
-        if (root.keyScrollDirection === -1)
-          nextIdx = Math.max(0, currentIdx - step);
-        else
-          nextIdx = Math.min(maxIdx, currentIdx + step);
-
-        if (nextIdx !== currentIdx) {
-          root.scrollTarget = nextIdx;
-        } else {
-          root.isKeyScrolling = false;
-        }
+        root._advanceStep(root.keyScrollDirection, root.keyScrollStep);
       } else {
-        root.isKeyScrolling = false;
+        stop();
       }
     }
   }
 
-  // Public Methods
+  function _advanceStep(direction, step) {
+    if (root.count <= 0)
+      return;
+
+    const maxIdx = root.count - 1;
+    const currentBase = Math.round(root.scrollTarget);
+    const nextIdx = Math.max(0, Math.min(maxIdx, currentBase + direction * step));
+
+    if (nextIdx !== root.scrollTarget) {
+      root.scrollTarget = nextIdx;
+    } else {
+      root.isKeyScrolling = false;
+      scrollContinueTimer.stop();
+    }
+  }
+
   function scrollLeft() {
-    _handleInput(-1);
+    _handleInput(-1, 1);
   }
+
   function scrollRight() {
-    _handleInput(1);
+    _handleInput(1, 1);
   }
+
   function fastScrollLeft() {
-    _handleInput(-1, 5);
+    _handleInput(-1, 4);
   }
+
   function fastScrollRight() {
-    _handleInput(1, 5);
+    _handleInput(1, 4);
   }
+
   function scrollTo(idx) {
+    if (root.count <= 0) {
+      root.scrollTarget = 0;
+      return;
+    }
     root.scrollTarget = Math.max(0, Math.min(idx, root.count - 1));
   }
+
   function random() {
-    if (root.count > 0)
+    if (root.count > 0) {
       root.scrollTarget = Math.floor(Math.random() * root.count);
+    }
   }
 
-  function _handleInput(direction, step = 1) {
-    if (root.keyScrollDirection !== direction) {
-      root.keyScrollDirection = direction;
-      root.keyScrollStep = step;
-      root.isKeyScrolling = true;
-      scrollContinueTimer.stop();
+  function _handleInput(direction, step) {
+    root.keyScrollDirection = direction;
+    root.keyScrollStep = step || 1;
+    root.isKeyScrolling = true;
 
-      // Immediate step
-      const maxIdx = root.count - 1;
-      const currentIdx = Math.round(root.scrollTarget);
-      if (direction === -1)
-        root.scrollTarget = Math.max(0, currentIdx - step);
-      else
-        root.scrollTarget = Math.min(maxIdx, currentIdx + step);
-    } else if (step !== root.keyScrollStep) {
-      root.keyScrollStep = step;
-    }
+    _advanceStep(direction, root.keyScrollStep);
+    scrollContinueTimer.restart();
   }
 
   function handleKeyRelease(direction) {

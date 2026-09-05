@@ -10,126 +10,95 @@ import qs.services
 ShellRoot {
   id: shellRoot
 
-  property bool configLoaded: false
-
-  // Gate: wait for Config before creating UI
   Connections {
     target: Config
     function onDataLoaded() {
-      configLoaded = true;
       Logger.applyDebug(Config.data.debugMode);
     }
   }
 
-  Loader {
-    active: configLoaded
+  Scope {
+    id: shellScope
 
-    sourceComponent: Item {
-      id: shellItem
-      SettingsBridge {
-        id: bridge
+    SettingsBridge {
+      id: bridge
+    }
+
+    CheckService {
+      id: checkService
+      onAllChecked: {
+        cacheService.hasFfmpeg = hasFfmpeg;
       }
+    }
 
-      function _initCache() {
-        if (cacheService._initialized)
-          return;
-        if (!checkService.hasFfmpeg)
-          return;
-        if (!bridge.viewModel)
-          return;
-        cacheService._initialized = true;
-        cacheService.initialize();
-        cacheService.scanCache();
-      }
+    CacheService {
+      id: cacheService
+      property bool _initialized: false
+      cacheDir: bridge.viewModel ? bridge.viewModel.paths.cacheDir : ""
+      debugMode: bridge.viewModel ? bridge.viewModel.debugMode : false
+    }
 
-      CheckService {
-        id: checkService
-        property bool _ready: false
-        Component.onCompleted: {
-          run();
-        }
-        onAllChecked: {
-          _ready = true;
-          cacheService.hasFfmpeg = hasFfmpeg;
-          if (bridge.viewModel) {
-            _initCache();
-          }
-        }
-      }
+    WallpaperApplier {
+      id: wallpaperApplier
+      dirs: bridge.viewModel ? bridge.viewModel.paths.wallpaperDirs : []
+      scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().replace("file://", "")
+      videoBackend: bridge.viewModel ? bridge.viewModel.videoBackend : "mpvpaper"
+    }
 
-      Connections {
-        target: bridge
-        function onViewModelChanged() {
-          if (bridge.viewModel && checkService._ready) {
-            _initCache();
-          }
-        }
-      }
-
-      CacheService {
-        id: cacheService
-        property bool _initialized: false
-        cacheDir: bridge.viewModel ? bridge.viewModel.paths.cacheDir : ""
-        debugMode: bridge.viewModel ? bridge.viewModel.debugMode : false
-        onCacheScanned: {
-          // Adapter loads its own data
-        }
-      }
-
-      WallpaperApplier {
-        id: wallpaperApplier
-        dirs: bridge.viewModel ? bridge.viewModel.paths.wallpaperDirs : []
-        scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
-        videoBackend: bridge.viewModel ? bridge.viewModel.videoBackend : "mpvpaper"
-      }
-
-      // Computed wallpaper dirs: user dirs + wallhaven download dir (if configured)
-      readonly property var _effectiveWallpaperDirs: {
-        var dirs = bridge.viewModel ? bridge.viewModel.paths.wallpaperDirs : [];
-        var whDir = bridge.viewModel ? bridge.viewModel.wallhaven.downloadDir : "";
-        if (whDir && whDir.length > 0 && dirs.indexOf(whDir) === -1)
+    readonly property var _effectiveWallpaperDirs: {
+      var dirs = bridge.viewModel ? bridge.viewModel.paths.wallpaperDirs : [];
+      var whDir = bridge.viewModel ? bridge.viewModel.wallhaven.downloadDir : "";
+      if (whDir && whDir.length > 0 && dirs.indexOf(whDir) === -1)
         dirs = dirs.concat([whDir]);
-        return dirs;
-      }
+      return dirs;
+    }
 
-      // Must be defined BEFORE Variants so it's available for injection
-      WallpaperAdapter {
-        id: wallpaperAdapter
-        configViewModel: bridge.viewModel
-        wallpaperDirs: shellItem._effectiveWallpaperDirs
-        scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().slice(7)
-        cacheService: cacheService
-      }
+    WallpaperAdapter {
+      id: wallpaperAdapter
+      configViewModel: bridge.viewModel
+      wallpaperDirs: shellScope._effectiveWallpaperDirs
+      scriptPath: Qt.resolvedUrl("./scripts/wallpaper.sh").toString().replace("file://", "")
+      cacheService: cacheService
+    }
 
-      ViewModel {
-        id: appViewModel
+    ViewModel {
+      id: appViewModel
+      configViewModel: bridge.viewModel
+      adapter: wallpaperAdapter
+      cacheService: cacheService
+      wallpaperApplier: wallpaperApplier
+    }
+
+    function _initCache() {
+      if (cacheService._initialized)
+        return;
+      cacheService._initialized = true;
+      cacheService.hasFfmpeg = checkService.hasFfmpeg;
+      cacheService.initialize();
+      cacheService.scanCache();
+    }
+
+    Component.onCompleted: {
+      ServiceLocator.register({
+                                adapter: wallpaperAdapter,
+                                cacheService: cacheService,
+                                applier: wallpaperApplier,
+                                checks: checkService
+                              });
+
+      _initCache();
+    }
+
+    Variants {
+      model: Quickshell.screens
+      delegate: AppWindow {
+        screen: modelData
         configViewModel: bridge.viewModel
+        appViewModel: appViewModel
         adapter: wallpaperAdapter
         cacheService: cacheService
         wallpaperApplier: wallpaperApplier
-      }
-
-      // Register into ServiceLocator for leaf components
-      Component.onCompleted: {
-        ServiceLocator.register({
-                                  adapter: wallpaperAdapter,
-                                  cacheService: cacheService,
-                                  applier: wallpaperApplier,
-                                  checks: checkService
-                                });
-      }
-
-      Variants {
-        model: Quickshell.screens
-        delegate: AppWindow {
-          screen: modelData
-          configViewModel: bridge.viewModel
-          appViewModel: appViewModel
-          adapter: wallpaperAdapter
-          cacheService: cacheService
-          wallpaperApplier: wallpaperApplier
-          checkService: checkService
-        }
+        checkService: checkService
       }
     }
   }

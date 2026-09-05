@@ -1,13 +1,6 @@
 import QtQuick
 import qs.services
 
-/*
-* RemoteSource — Wallhaven.cc wallpaper source.
-*
-* Outputs unified items:
-*   { id, type:"remote", path, thumb, filename, resolution, fileSize, isVideo, isGif }
-*/
-
 Item {
   id: root
 
@@ -20,10 +13,13 @@ Item {
   signal applyLocal(string path)
 
   Connections {
-    target: root.whService
+    target: root.whService || null
+    enabled: root.whService !== null
+
     function onResultsUpdated() {
       root.items = root._makeItems();
     }
+
     function onDownloadFinished(whId, localPath) {
       if (root._pendingApplyId && root._pendingApplyId === whId) {
         root._pendingApplyId = "";
@@ -39,19 +35,33 @@ Item {
   function _makeItems() {
     if (!root.whService || !root.whService.results)
       return [];
-    return root.whService.results.map(r => _makeItem(r));
+
+    const rawList = root.whService.results;
+    const total = rawList.length;
+    const output = [];
+
+    for (let i = 0; i < total; i++) {
+      output.push(_makeItem(rawList[i]));
+    }
+    return output;
   }
 
   function _makeItem(r) {
-    var safeId = r.id ? String(r.id).replace(/[^a-zA-Z0-9-]/g, "") : "unknown";
+    const rawId = r.id ? String(r.id) : "unknown";
+    const safeId = rawId.replace(/^wallhaven-/, "").replace(/[^a-zA-Z0-9]/g, "");
+
     return {
       id: "wallhaven-" + safeId,
       type: "remote",
       path: r.path || "",
-      thumb: r.thumbLarge || "",
+      thumb: r.thumbLarge || r.thumbSmall || "",
+      thumbLarge: r.thumbLarge || "",
+      thumbSmall: r.thumbSmall || "",
       filename: "wallhaven-" + safeId + (r.resolution ? " (" + r.resolution + ")" : ""),
       resolution: r.resolution || "",
-      fileSize: r.filesize || 0,
+      fileSize: r.fileSize || r.filesize || 0,
+      purity: r.purity || "",
+      category: r.category || "",
       isVideo: false,
       isGif: false
     };
@@ -61,10 +71,10 @@ Item {
     if (!root.whService)
       return;
     if (!query || query.trim().length === 0) {
-      Logger.w("RemoteSource", "Empty search query ignored");
+      Logger.w("RemoteSource: Empty search query ignored");
       return;
     }
-    root.whService.query = query;
+    root.whService.query = query.trim();
     root.whService.search(1);
   }
 
@@ -72,14 +82,20 @@ Item {
     if (!root.whService)
       return;
     root.whService.results = [];
+    root.items = [];
   }
 
   function apply(item) {
     if (!root.whService || !item || item.type !== "remote")
       return;
-    var safeId = item.id.replace(/[^a-zA-Z0-9-]/g, "");
-    root._pendingApplyId = safeId;
-    root.whService.downloadWallpaper(safeId, item.path);
+
+    const rawId = String(item.id || "");
+    const cleanId = rawId.replace(/^wallhaven-/, "").replace(/[^a-zA-Z0-9]/g, "");
+    if (!cleanId)
+      return;
+
+    root._pendingApplyId = cleanId;
+    root.whService.downloadWallpaper(cleanId, item.path);
   }
 
   function _applyLocal(path) {

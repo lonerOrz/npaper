@@ -27,12 +27,17 @@ Item {
   signal searchCleared
   signal searchSubmitted
 
+  readonly property bool searchActiveFocus: searchInput.activeFocus
+
   function focusSearch() {
     searchInput.forceActiveFocus();
   }
 
+  readonly property var _previewLabels: ["Carousel", "Grid", "Slanted"]
+
   height: Style.barHeight
-  width: contentRow.implicitWidth + Style.space2L
+  implicitWidth: contentRow.implicitWidth + Style.space2L
+  width: implicitWidth
 
   Rectangle {
     anchors.fill: parent
@@ -48,25 +53,31 @@ Item {
     anchors.margins: Style.barSidePadding
     spacing: Style.barInnerSpacing
 
-    Image {
+    Item {
       Layout.preferredWidth: Style.barLogoSize
       Layout.preferredHeight: Style.barLogoSize
       Layout.alignment: Qt.AlignVCenter
-      source: Qt.resolvedUrl("../../assets/nixos-logo.svg")
-      sourceSize.width: Style.barLogoSize
-      sourceSize.height: Style.barLogoSize
-      fillMode: Image.PreserveAspectFit
-      mipmap: true
-      layer.enabled: true
-      layer.effect: MultiEffect {
-        colorization: 1.0
-        colorizationColor: Qt.lighter(root.dominantColor, 1.5)
-      }
+
       RotationAnimation on rotation {
         from: 0
         to: 360
         duration: Style.logoRotationMs
         loops: Animation.Infinite
+      }
+
+      Image {
+        anchors.fill: parent
+        source: Qt.resolvedUrl("../../assets/nixos-logo.svg")
+        sourceSize.width: Style.barLogoSize
+        sourceSize.height: Style.barLogoSize
+        fillMode: Image.PreserveAspectFit
+        mipmap: false
+
+        layer.enabled: true
+        layer.effect: MultiEffect {
+          colorization: 1.0
+          colorizationColor: Qt.lighter(root.dominantColor, 1.5)
+        }
       }
     }
 
@@ -121,16 +132,16 @@ Item {
         property real baseWidth: Style.barSearchWidthBase
 
         Keys.onPressed: event => {
-                          if (event.key === Qt.Key_Escape) {
-                            root.searchCleared();
-                            event.accepted = true;
-                          }
-                          if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            root.searchSubmitted();
-                            searchInput.focus = false;
-                            event.accepted = true;
-                          }
-                        }
+          if (event.key === Qt.Key_Escape) {
+            root.searchCleared();
+            event.accepted = true;
+          }
+          if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            root.searchSubmitted();
+            searchInput.focus = false;
+            event.accepted = true;
+          }
+        }
       }
 
       Text {
@@ -149,9 +160,7 @@ Item {
     }
 
     SelectorPill {
-      model: Config.previewModes.map(function (m) {
-        return m.charAt(0).toUpperCase() + m.slice(1);
-      })
+      model: root._previewLabels
       activeIndex: Math.max(0, Config.previewModes.indexOf(Config.previewStyle))
       onSelected: function (index, label) {
         Config.update("previewStyle", Config.previewModes[index]);
@@ -167,9 +176,9 @@ Item {
 
     SelectorPill {
       model: root.folders
-      activeIndex: root.folders.indexOf(root.activeFolder)
+      activeIndex: Math.max(0, root.folders ? root.folders.indexOf(root.activeFolder) : 0)
       activeColor: Color.mPrimary
-      visible: !root.isWallhaven
+      visible: !root.isWallhaven && root.folders && root.folders.length > 0
       onSelected: function (index, label) {
         root.folderClicked(label);
       }

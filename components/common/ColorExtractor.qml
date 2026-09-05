@@ -4,17 +4,6 @@ import "../../utils/CacheUtils.js" as CacheUtils
 import "../../utils/FileTypes.js" as FileTypes
 import qs.services
 
-/*
-* ColorExtractor - extracts dominant color from images via ImageMagick.
-*
-* Input:
-*   - sourcePath: string - path to image
-*   - hasImageMagick: bool - whether ImageMagick is available
-*   - thumbHashToPath: map - cached thumbnail paths
-*
-* Output:
-*   - color: string - hex color (#RRGGBB) or default
-*/
 Item {
   id: root
 
@@ -23,61 +12,101 @@ Item {
   property string defaultColor: Color.mPrimary
 
   readonly property string color: _color
-
   property string _color: defaultColor
 
-  // Run color extraction on a wallpaper path
+  property var _colorCache: ({})
+  property string _pendingPath: ""
+
+  Timer {
+    id: debounceTimer
+    interval: 80
+    repeat: false
+    onTriggered: _executeExtraction()
+  }
+
   function run(wp) {
     if (!hasImageMagick || !wp || wp.length === 0) {
       _color = defaultColor;
       return;
     }
 
-    // Check cache first
-    const bg = CacheUtils.resolveBgPreview(root.thumbHashToPath, wp);
-    if (bg) {
-      _extractFrom(bg);
+    if (_colorCache[wp]) {
+      debounceTimer.stop();
+      if (_extractProc.running)
+        _extractProc.running = false;
+      _color = _colorCache[wp];
       return;
     }
 
-    // Skip video/gif color extraction (use default)
-    if (FileTypes.isVideoFile(wp) || wp.toLowerCase().endsWith('.gif')) {
+    if (FileTypes.isVideoFile(wp) || FileTypes.isGifFile(wp)) {
       _color = defaultColor;
       return;
     }
 
-    // Extract from original
-    _extractFrom(wp);
+    _pendingPath = wp;
+    debounceTimer.restart();
   }
 
-  function _extractFrom(src) {
+  function _executeExtraction() {
+    const wp = _pendingPath;
+    if (!wp)
+      return;
+
+    const thumb = CacheUtils.resolveThumb(root.thumbHashToPath, wp);
+    const bg = CacheUtils.resolveBgPreview(root.thumbHashToPath, wp);
+    const target = thumb || bg;
+
+    if (!target) {
+      _color = defaultColor;
+      return;
+    }
+
+    _extractFrom(target, wp);
+  }
+
+  function _extractFrom(src, originalWp) {
     if (_extractProc.running)
       _extractProc.running = false;
 
-    _timeout.start();
-    _extractProc.command = ["magick", src, "-resize", "1x1!", "-modulate", "100,180", "txt:"];
+    _extractProc.currentWallpaper = originalWp;
+    _timeout.restart();
+
+    _extractProc.command = ["magick", src, "-sample", "1x1", "-modulate", "100,180", "txt:"];
     _extractProc.exec({});
   }
 
   Timer {
     id: _timeout
-    interval: 5000
-    onTriggered: _color = defaultColor
+    interval: 2000
+    onTriggered: {
+      if (_extractProc.running)
+        _extractProc.running = false;
+      _color = defaultColor;
+    }
   }
 
   Process {
     id: _extractProc
+    property string currentWallpaper: ""
+
     stdout: StdioCollector {
       onStreamFinished: {
         _timeout.stop();
         const m = text.trim().match(/#([0-9A-F]{6})/i);
-        _color = m ? "#" + m[1].toUpperCase() : defaultColor;
+        const resolved = m ? ("#" + m[1].toUpperCase()) : root.defaultColor;
+
+        if (_extractProc.currentWallpaper) {
+          root._colorCache[_extractProc.currentWallpaper] = resolved;
+        }
+        root._color = resolved;
       }
     }
+
     onExited: function (code) {
       _timeout.stop();
-      if (code !== 0)
-        _color = defaultColor;
+      if (code !== 0) {
+        root._color = root.defaultColor;
+      }
     }
   }
 }

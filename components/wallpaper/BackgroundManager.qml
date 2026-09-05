@@ -17,21 +17,30 @@ Item {
   property string _sourceA: ""
   property string _sourceB: ""
   property real crossfadeProgress: 1.0
-
   property var _prevItem: null
+
+  Timer {
+    id: bgSwitchDebounce
+    interval: 70
+    repeat: false
+    onTriggered: _applyBackgroundUpdate(root.currentWallpaperItem)
+  }
+
+  onCurrentWallpaperItemChanged: {
+    bgSwitchDebounce.restart();
+  }
 
   PropertyAnimation {
     id: bgSlideAnim
     target: root
     properties: "crossfadeProgress"
-    from: 0
+    from: 0.0
     to: 1.0
     duration: root.slideDuration
     easing.type: Style.easingOutQuad
-  }
-
-  onCurrentWallpaperItemChanged: {
-    updateBackground(currentWallpaperItem);
+    onFinished: {
+      root._sourceB = "";
+    }
   }
 
   Component.onCompleted: {
@@ -45,7 +54,7 @@ Item {
     }
   }
 
-  function updateBackground(newItem) {
+  function _applyBackgroundUpdate(newItem) {
     if (!newItem) {
       _sourceA = "";
       _sourceB = "";
@@ -53,25 +62,24 @@ Item {
       return;
     }
 
+    const nextSource = CacheUtils.resolveBgSource(root.thumbHashToPath, newItem);
+    if (nextSource === _sourceA && _sourceA !== "")
+      return;
+
     const oldItem = _prevItem;
     _prevItem = newItem;
 
+    _sourceB = _sourceA;
+    _sourceA = nextSource;
+
     crossfadeProgress = 0.0;
     bgSlideAnim.restart();
-
-    _updateSources(newItem, oldItem);
-  }
-
-  function _updateSources(activeItem, outgoingItem) {
-    _sourceA = CacheUtils.resolveBgSource(root.thumbHashToPath, activeItem);
-    _sourceB = CacheUtils.resolveBgSource(root.thumbHashToPath, outgoingItem);
   }
 
   Image {
     id: bgImageA
     anchors.fill: parent
-    x: root.parallaxX
-    scale: 1.0 + (1.0 - root.crossfadeProgress) * 0.03
+    scale: 1.0 + (1.0 - root.crossfadeProgress) * 0.02
     z: -2
     visible: root.showPreview && _sourceA !== ""
     opacity: visible ? root.crossfadeProgress : 0
@@ -79,26 +87,33 @@ Item {
     fillMode: Image.PreserveAspectCrop
     asynchronous: true
     smooth: true
-    mipmap: true
+    mipmap: false
     sourceSize: Qt.size(parent.width, parent.height)
     cache: true
+
+    transform: Translate {
+      x: root.parallaxX
+    }
   }
 
   Image {
     id: bgImageB
     anchors.fill: parent
-    x: root.parallaxX
-    scale: 1.0 + root.crossfadeProgress * 0.03
+    scale: 1.0 + root.crossfadeProgress * 0.02
     z: -2
-    visible: root.showPreview && _sourceB !== ""
+    visible: root.showPreview && _sourceB !== "" && root.crossfadeProgress < 0.99
     opacity: visible ? (1.0 - root.crossfadeProgress) : 0
     source: root._sourceB
     fillMode: Image.PreserveAspectCrop
     asynchronous: true
     smooth: true
-    mipmap: true
+    mipmap: false
     sourceSize: Qt.size(parent.width, parent.height)
     cache: true
+
+    transform: Translate {
+      x: root.parallaxX
+    }
   }
 
   Rectangle {

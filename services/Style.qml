@@ -4,31 +4,18 @@ import QtQuick
 import Quickshell
 import qs.services
 
-/*
-* Style — computed design tokens.
-* Pure computation layer: no file I/O, no persistence.
-*
-* Two categories:
-*   1. Pure constants (font sizes, radii, margins, etc.) — never change at runtime
-*   2. Config-derived values (carousel dims, animation timings) — auto-update when Config changes
-*
-* Usage:
-*   import qs.services
-*   font.pixelSize: Style.fontM
-*   anchors.margins: Style.spaceL
-*/
 Singleton {
   id: root
 
-  // ==================== Scale Ratio ====================
-  // Set once at startup: Style.uiScaleRatio = screen.height / 1080
   property real uiScaleRatio: 1.0
 
   function _s(v) {
-    return Math.round(v * uiScaleRatio);
+    if (v <= 0)
+      return 0;
+    const scaled = Math.round(v * uiScaleRatio);
+    return (v >= 1) ? Math.max(1, scaled) : scaled;
   }
 
-  // ==================== Font Sizes (NOT scaled — Qt handles DPI) ====================
   readonly property real fontXXS: 8
   readonly property real fontXS: 9
   readonly property real fontS: 10
@@ -36,7 +23,6 @@ Singleton {
   readonly property real fontL: 13
   readonly property real fontXL: 16
 
-  // ==================== Radii (configurable) ====================
   readonly property int radiusTiny: _s(2)
   readonly property int radiusXS: _s(4)
   readonly property int radiusS: _s(6)
@@ -46,11 +32,8 @@ Singleton {
   readonly property int radiusXXL: _s(18)
   readonly property int radiusRound: _s(24)
   readonly property int radiusCircle: _s(50)
-
-  // Used by capsule indicators and card elements
   readonly property int settingsRadius: _s(12)
 
-  // ==================== Margins & Spacing ====================
   readonly property int spaceXXS: _s(1)
   readonly property int spaceXS: _s(2)
   readonly property int spaceS: _s(4)
@@ -65,20 +48,18 @@ Singleton {
   readonly property int space2M: spaceM * 2
   readonly property int space2L: spaceL * 2
 
-  // ==================== Fixed Values (not user-configurable) ====================
   readonly property int carouselItemWidth: _s(480)
   readonly property int carouselItemHeight: _s(270)
   readonly property int carouselTopMargin: _s(410)
   readonly property int carouselSideMargin: _s(10)
 
-  // Defaults — read by AppWindow, overridable via Config
   readonly property int defaultCarouselSpacing: _s(24)
   readonly property int defaultCarouselRotation: 41
   readonly property real defaultCarouselPerspective: 0.45
 
   readonly property int defaultScrollDuration: 170
-  readonly property int defaultScrollContinueInterval: 160
-  readonly property int defaultBgSlideDuration: 250
+  readonly property int defaultScrollContinueInterval: 140
+  readonly property int defaultBgSlideDuration: 220
   readonly property int defaultBgParallaxFactor: 40
 
   readonly property int cacheBgWidth: _s(1920)
@@ -91,8 +72,6 @@ Singleton {
   readonly property int gridCellSpacing: _s(20)
   readonly property int gridCellPadding: _s(32)
 
-  // ==================== Pure Constants ====================
-  // Status Bar
   readonly property int barTopMargin: _s(350)
   readonly property int barHeight: _s(40)
   readonly property int barRadius: _s(20)
@@ -108,13 +87,13 @@ Singleton {
   readonly property int barSettingsBtnWidth: _s(32)
   readonly property int barSettingsBtnHeight: _s(28)
   readonly property int barSettingsIconSize: _s(16)
+
   readonly property real barInfoFontSize: fontS
   readonly property real barSearchPlaceholderFontSize: fontS
   readonly property real barSearchInputFontSize: fontS
   readonly property real barTabFontSize: fontS
   readonly property real barSettingsGearFontSize: fontM
 
-  // Wallpaper Card
   readonly property int cardBorderWidth: _s(2)
   readonly property int cardImageFrameMargin: _s(3)
   readonly property int cardInnerPadding: _s(10)
@@ -126,12 +105,9 @@ Singleton {
   readonly property real cardShadowOpacity: 0.25
   readonly property real cardImageFrameOpacity: 0.9
 
-  // Filter Panel
   readonly property int filterFlowWidth: _s(900)
-
-  // Settings Panel
   readonly property int settingsWidth: _s(380)
-  readonly property int settingsMaxHeight: _s(320)
+  readonly property int settingsMaxHeight: _s(340)
   readonly property int settingsPadding: _s(12)
   readonly property int settingsInnerSpacing: _s(10)
   readonly property int settingsTabHeight: _s(26)
@@ -141,48 +117,36 @@ Singleton {
   readonly property int settingsContentSpacing: _s(10)
   readonly property real settingsTabFontSize: fontXS
 
-  // Keyboard Hint
   readonly property real keyboardHintFontSize: fontXS
   readonly property int keyboardHintBottomMargin: _s(20)
 
-  // NixOS Logo Watermark
-  readonly property int logoSize: _s(160)
-  readonly property int logoBottomMargin: _s(120)
-
-  // ==================== Opacity ====================
   readonly property real opacityLight: 0.15
   readonly property real opacityDivider: 0.3
 
-  // Blur layer: panel background alpha (0-1). Higher = more opaque, better text contrast.
   readonly property real barBlurAlpha: 0.5
   readonly property real filterBlurAlpha: 0.6
   readonly property real settingsBlurAlpha: 0.65
 
-  // Blur layer: child component bg alpha (search pill, selector pill, etc.)
   readonly property real childBgAlpha: 0.4
   readonly property real childHoverAlpha: 0.5
 
-  // ==================== Animation Duration (ms) ====================
-  readonly property int animVeryFast: 100
-  readonly property int animFast: 150
-  readonly property int animNormal: 250
-  readonly property int animEnter: 300
-  readonly property int animSlow: 400
+  readonly property int animVeryFast: 90
+  readonly property int animFast: 140
+  readonly property int animNormal: 240
+  readonly property int animEnter: 280
+  readonly property int animSlow: 380
 
-  // Easing Types (Integer values)
-  readonly property int easingOutCubic: 6
-  readonly property int easingOutQuad: 2
-  readonly property int easingOutBack: 14
+  readonly property int easingOutCubic: Easing.OutCubic
+  readonly property int easingOutQuad: Easing.OutQuad
+  readonly property int easingOutBack: Easing.OutBack
 
-  // Tunable Timers
-  readonly property int searchDebounceMs: 150
-  readonly property int logoRotationMs: 30000
+  readonly property int searchDebounceMs: 140
+  readonly property int remoteSearchDebounceMs: 700
+  readonly property int logoRotationMs: 32000
 
-  // Layout Constants
   readonly property int visibleRange: 4
   readonly property int preloadRange: 2
 
-  // ==================== Border ====================
   readonly property int borderS: _s(1)
   readonly property int borderM: _s(2)
 }

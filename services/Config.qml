@@ -4,17 +4,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-/*
-* Config — persistent user configuration (pure JS, no JsonAdapter).
-*
-* Flow:
-*   1. Component.onCompleted → start with _defaults
-*   2. Read config.json via Process → deepMerge into data
-*   3. UI reads:  Config.data.carousel.spacing
-*   4. UI writes: Config.update("carousel.spacing", 25) → modifies data → debounced save
-*   5. Hot-reload: FileView watches config.json → re-read → merge → QML bindings auto-update
-*   */
-
 Singleton {
   id: root
 
@@ -41,29 +30,19 @@ Singleton {
                                         "purity": "100",
                                         "sorting": "toplist"
                                       },
-                                       "appearance": {
-                                         "showShadow": true,
+                                      "appearance": {
+                                        "showShadow": true,
                                         "showBgPreview": true,
                                         "bgOverlayOpacity": 0.4
                                       }
                                     })
 
-  property var data: ({})
+  property var data: _resolvePaths(_deepClone(_defaults))
 
   property Timer _saveTimer: Timer {
     interval: 500
     repeat: false
     onTriggered: _doSave()
-  }
-
-  Component.onCompleted: {
-    root.data = _deepClone(_defaults);
-    Quickshell.execDetached(["mkdir", "-p", Quickshell.env("HOME") + "/.config/npaper"]);
-    Qt.callLater(function () {
-      if (!root.isLoaded) {
-        root._parseAndApplyConfig();
-      }
-    });
   }
 
   FileView {
@@ -82,28 +61,29 @@ Singleton {
     }
   }
 
+  Component.onCompleted: {
+    root._parseAndApplyConfig();
+  }
+
   function _parseAndApplyConfig() {
     var raw = _fileView.text();
     if (!raw || String(raw).trim().length === 0) {
-      Logger.i("Config", "No config file or empty — creating defaults at", root.configPath);
       root.data = _resolvePaths(_deepClone(_defaults));
-      root.isLoaded = true;
       root.previewStyle = root.data.previewStyle || "carousel";
+      root.isLoaded = true;
       root.dataLoaded();
       _doSave();
       return;
     }
+
     try {
       var user = JSON.parse(String(raw).trim());
-      root.data = _deepMerge(_deepClone(_defaults), user);
-      root.data = _resolvePaths(root.data);
+      root.data = _resolvePaths(_deepMerge(_deepClone(_defaults), user));
       root.previewStyle = root.data.previewStyle || "carousel";
-      Logger.i("Config", "Loaded user config");
       root.isLoaded = true;
       root.dataLoaded();
     } catch (e) {
-      Logger.w("Config", "Parse error, using defaults:", e);
-      root.data = _deepClone(_defaults);
+      root.data = _resolvePaths(_deepClone(_defaults));
       root.previewStyle = root.data.previewStyle || "carousel";
       root.isLoaded = true;
       root.dataLoaded();
@@ -135,6 +115,7 @@ Singleton {
     root.data = JSON.parse(JSON.stringify(root.data));
     if (path === "previewStyle")
       root.previewStyle = value;
+
     if (_saveTimer.running) {
       _saveTimer.restart();
     } else {
@@ -144,6 +125,7 @@ Singleton {
 
   function _doSave() {
     root._isSaving = true;
+    Quickshell.execDetached(["mkdir", "-p", Quickshell.env("HOME") + "/.config/npaper"]);
     var resolvedData = _resolvePaths(root.data);
     var ordered = {
       "wallpaperDirs": resolvedData.wallpaperDirs,

@@ -1,19 +1,6 @@
 import QtQuick
 import qs.services
 
-/*
-* SettingsTextInput — labeled text input with placeholder and focus border.
-* Enhanced with better visual hierarchy and focus states.
-*
-* Usage:
-*   SettingsTextInput {
-*     width: parent.width
-*     label: "API Key"
-*     value: root.someValue
-*     placeholder: "your-api-key"
-*     onCommit: function (v) { root._emit("someKey", v) }
-*   }
-*/
 Column {
   id: root
   width: parent ? parent.width : 300
@@ -34,6 +21,7 @@ Column {
   }
 
   Rectangle {
+    id: borderRect
     width: parent.width
     height: Style.barSearchHeight + 6
     radius: Style.barRadius + 2
@@ -52,7 +40,6 @@ Column {
       }
     }
 
-    // Focus glow effect
     Rectangle {
       anchors.fill: parent
       anchors.margins: -3
@@ -68,9 +55,12 @@ Column {
 
     TextInput {
       id: inputField
-      anchors.fill: parent
+      anchors.left: parent.left
+      anchors.right: clearBtn.visible ? clearBtn.left : parent.right
+      anchors.top: parent.top
+      anchors.bottom: parent.bottom
       anchors.leftMargin: Style.spaceL
-      anchors.rightMargin: Style.spaceL
+      anchors.rightMargin: Style.spaceS
       verticalAlignment: TextInput.AlignVCenter
       font.pixelSize: Style.barSearchInputFontSize
       font.family: "monospace"
@@ -78,20 +68,70 @@ Column {
       color: Color.mPrimary
       clip: true
       selectByMouse: true
-      text: root.value
 
-      // Placeholder
+      Binding {
+        target: inputField
+        property: "text"
+        value: root.value
+        when: !inputField.activeFocus
+      }
+
       Text {
         anchors.fill: parent
         verticalAlignment: Text.AlignVCenter
         font: inputField.font
         color: Color.mOutlineVariant
-        opacity: 0.35
+        opacity: 0.38
         text: root.placeholder
         visible: !inputField.text && !inputField.activeFocus
       }
 
-      onEditingFinished: root.commit(text)
+      Keys.onPressed: function (event) {
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+          root.commit(inputField.text);
+          inputField.focus = false;
+          event.accepted = true;
+        } else if (event.key === Qt.Key_Escape) {
+          inputField.text = root.value;
+          inputField.focus = false;
+          event.accepted = true;
+        }
+      }
+
+      onEditingFinished: {
+        root.commit(text);
+      }
+    }
+
+    MouseArea {
+      id: clearBtn
+      width: 24
+      height: 24
+      anchors.right: parent.right
+      anchors.rightMargin: Style.spaceM
+      anchors.verticalCenter: parent.verticalCenter
+      visible: inputField.text.length > 0 && inputField.activeFocus
+      cursorShape: Qt.PointingHandCursor
+
+      Text {
+        anchors.centerIn: parent
+        text: "\uf00d"
+        font.family: "Symbols Nerd Font"
+        font.pixelSize: Style.fontXS
+        color: clearBtn.containsMouse ? Color.mPrimary : Color.mOutline
+      }
+
+      onClicked: {
+        inputField.text = "";
+        inputField.forceActiveFocus();
+      }
+    }
+
+    MouseArea {
+      anchors.fill: parent
+      z: -1
+      cursorShape: Qt.IBeamCursor
+      onClicked: inputField.forceActiveFocus()
     }
   }
 }

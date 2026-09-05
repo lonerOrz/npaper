@@ -5,13 +5,6 @@ import "../utils/CacheUtils.js" as CacheUtils
 import "../utils/FileTypes.js" as FileTypes
 import qs.services
 
-/*
-* LocalSource — local wallpaper directory scanner.
-*
-* Outputs unified items:
-*   { id, type:"local", path, thumb, filename, resolution, fileSize, apply }
-*/
-
 Item {
   id: root
 
@@ -27,6 +20,8 @@ Item {
   property var wallpaperMap: ({})
   property string searchText: ""
   property bool _internalUpdate: false
+
+  property var _pathToModelIndex: ({})
 
   readonly property alias items: localModel
 
@@ -50,19 +45,17 @@ Item {
       root._updateItems();
     }
     function onThumbnailGenerated(path, thumbPath, bgPath, animPath) {
-      let len = localModel.count;
-      for (let i = 0; i < len; i++) {
-        let item = localModel.get(i);
-        if (item && item.path === path) {
-          localModel.setProperty(i, "thumb", "file://" + thumbPath);
-          break;
-        }
+      const idx = root._pathToModelIndex[path];
+      if (idx !== undefined && idx < localModel.count) {
+        localModel.setProperty(idx, "thumb", "file://" + thumbPath);
       }
     }
   }
 
   function _updateItems() {
     localModel.clear();
+    root._pathToModelIndex = {};
+
     const folder = root.wallpaperMap[root.currentFolder];
     if (!folder) {
       if (root.debugMode)
@@ -70,18 +63,26 @@ Item {
       return;
     }
 
-    let filtered;
-    if (!root.searchText) {
-      filtered = folder;
-    } else {
+    let filtered = folder;
+    if (root.searchText) {
       const lower = root.searchText.toLowerCase();
       filtered = folder.filter(p => p.toLowerCase().includes(lower));
     }
 
-    let len = filtered.length;
+    const len = filtered.length;
+    if (len === 0)
+      return;
+
+    const batch = [];
+    const indexMap = {};
     for (let i = 0; i < len; i++) {
-      localModel.append(_makeItem(filtered[i]));
+      const p = filtered[i];
+      batch.push(_makeItem(p));
+      indexMap[p] = i;
     }
+
+    root._pathToModelIndex = indexMap;
+    localModel.append(batch);
   }
 
   function _makeItem(path) {
@@ -98,12 +99,15 @@ Item {
       resolvedThumb = "file://" + path;
     }
 
+    const lastSlash = path.lastIndexOf('/');
+    const fname = (lastSlash >= 0) ? path.substring(lastSlash + 1) : path;
+
     return {
       id: path,
       type: "local",
       path: path,
       thumb: resolvedThumb,
-      filename: path.split('/').pop(),
+      filename: fname,
       resolution: "",
       fileSize: 0,
       isVideo: FileTypes.isVideoFile(path),
@@ -168,10 +172,12 @@ Item {
       root._internalUpdate = true;
       root.wallpaperMap = map;
       root._internalUpdate = false;
+      root._rebuildPathIndex();
     }
 
     deleteProcess.command = ["rm", "-f", path];
-    deleteProcess.exec({});
+    if (!deleteProcess.running)
+      deleteProcess.exec({});
   }
 
   function moveWallpaper(path, targetFolder, idx) {
@@ -197,15 +203,29 @@ Item {
       root._internalUpdate = true;
       root.wallpaperMap = map;
       root._internalUpdate = false;
+      root._rebuildPathIndex();
 
       let destDir = dest.substring(0, dest.lastIndexOf('/'));
       moveProcess.command = ["sh", "-c", "mkdir -p \"$1\" && mv \"$2\" \"$3\"", "npaper-mv", destDir, path, dest];
-      moveProcess.exec({});
+      if (!moveProcess.running)
+        moveProcess.exec({});
     }
   }
 
+  function _rebuildPathIndex() {
+    const folder = root.wallpaperMap[root.currentFolder];
+    if (!folder)
+      return;
+    const indexMap = {};
+    for (let i = 0; i < folder.length; i++) {
+      indexMap[folder[i]] = i;
+    }
+    root._pathToModelIndex = indexMap;
+  }
+
   function _getDestinationPath(path, targetFolder) {
-    const filename = path.split('/').pop();
+    const lastSlash = path.lastIndexOf('/');
+    const filename = (lastSlash >= 0) ? path.substring(lastSlash + 1) : path;
     let baseDir = "";
     for (let i = 0; i < root.dirs.length; i++) {
       let d = root.dirs[i];
@@ -240,28 +260,42 @@ Item {
     id: listProcess
     stdout: StdioCollector {
       onStreamFinished: {
-        const lines = text.trim().split('\n').filter(l => l.length > 0);
+        const raw = text.trim();
+        if (!raw) {
+          root.wallpaperMap = {};
+          root.folders = [];
+          root._updateItems();
+          root.dataLoaded();
+          return;
+        }
+
+        const lines = raw.split('\n');
         const folderMap = {};
         const folderList = [];
-        lines.forEach(line => {
-                        const sepIdx = line.indexOf('|');
-                        if (sepIdx > 0) {
-                          const folder = line.substring(0, sepIdx);
-                          const path = line.substring(sepIdx + 1);
-                          if (!folderMap[folder]) {
-                            folderMap[folder] = [];
-                            folderList.push(folder);
-                          }
-                          folderMap[folder].push(path);
-                        }
-                      });
+        const total = lines.length;
+
+        for (let i = 0; i < total; i++) {
+          const line = lines[i];
+          const sepIdx = line.indexOf('|');
+          if (sepIdx > 0) {
+            const folder = line.substring(0, sepIdx);
+            const path = line.substring(sepIdx + 1);
+            if (!folderMap[folder]) {
+              folderMap[folder] = [];
+              folderList.push(folder);
+            }
+            folderMap[folder].push(path);
+          }
+        }
+
         root.wallpaperMap = folderMap;
         root.folders = folderList;
         if (folderList.length > 0 && !folderList.includes(root.currentFolder)) {
           root.currentFolder = folderList[0];
         }
         root._updateItems();
-        Logger.i("LocalSource: loaded", lines.length, "wallpapers into", folderList.length, "folders");
+        if (root.debugMode)
+          Logger.i("LocalSource: loaded", total, "wallpapers into", folderList.length, "folders");
         root.dataLoaded();
       }
     }

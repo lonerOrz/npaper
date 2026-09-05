@@ -12,6 +12,9 @@ QtObject {
   property var configViewModel: null
   property var statusBar: null
 
+  property bool _initialized: false
+  property var _dmConn: null
+
   property bool settingsOpen: false
   property string searchText: ""
   property int bgCurrent: -1
@@ -29,22 +32,42 @@ QtObject {
 
   property var _searchDebounce: Timer {
     interval: Style.searchDebounceMs
+    repeat: false
+    onTriggered: root._doSearch()
+  }
+
+  property var _remoteSearchDebounce: Timer {
+    interval: Style.remoteSearchDebounceMs
+    repeat: false
     onTriggered: root._doSearch()
   }
 
   property var _bgUpdateDebounce: Timer {
-    interval: 150
+    interval: 120
     repeat: false
     onTriggered: {
-      if (root.displayManager && root.displayManager.currentIndex >= 0 && root.displayManager.currentIndex < (root.adapter ? root.adapter.count : 0)) {
+      if (root.displayManager && root.displayManager.currentIndex >= 0 && root.adapter && root.displayManager.currentIndex < root.adapter.count) {
         root.bgCurrent = root.displayManager.currentIndex;
       }
     }
   }
 
+  onBgCurrentChanged: {
+    if (root.bgCurrent >= 0 && root.adapter && root.bgCurrent < root.adapter.count) {
+      const item = root.adapter.getItem(root.bgCurrent);
+      if (item && item.type === "local" && root.colorExtractor) {
+        root.colorExtractor.run(item.path);
+      } else {
+        root.dominantColor = Color.mPrimary;
+      }
+    }
+  }
+
   function init() {
-    if (!adapter)
+    if (!adapter || root._initialized)
       return;
+
+    root._initialized = true;
 
     adapter.dataLoaded.connect(function () {
       root.applyFolderSelection();
@@ -60,11 +83,24 @@ QtObject {
   }
 
   function bindDisplayManager(dm) {
+    if (root._dmConn && root._dmConn.target) {
+      root._dmConn.target.onCurrentIndexChanged.disconnect(root._dmConn.handler);
+    }
     root.displayManager = dm;
     if (dm) {
-      dm.onCurrentIndexChanged.connect(function () {
-        root._bgUpdateDebounce.restart();
-      });
+      root._dmConn = {
+        target: dm,
+        handler: function () {
+          root._bgUpdateDebounce.restart();
+        }
+      };
+      dm.onCurrentIndexChanged.connect(root._dmConn.handler);
+    }
+  }
+
+  Component.onDestruction: {
+    if (root._dmConn && root._dmConn.target) {
+      root._dmConn.target.onCurrentIndexChanged.disconnect(root._dmConn.handler);
     }
   }
 
@@ -87,16 +123,6 @@ QtObject {
       root.statusBar.focusSearch();
   }
 
-  function onBgCurrentChanged() {
-    if (root.bgCurrent >= 0 && root.adapter && root.bgCurrent < root.adapter.count) {
-      const item = root.adapter.getItem(root.bgCurrent);
-      if (item && item.type === "local" && root.colorExtractor)
-        root.colorExtractor.run(item.path);
-      else
-        root.dominantColor = Color.mPrimary;
-    }
-  }
-
   function _doSearch() {
     if (!root.adapter)
       return;
@@ -104,13 +130,14 @@ QtObject {
     root.adapter.setSearch(root.searchText);
 
     if (root.searchText) {
-      root.displayManager.scrollTo(0);
+      if (root.displayManager)
+        root.displayManager.scrollTo(0);
       root.bgCurrent = -1;
       root.bgCurrent = 0;
 
       if (root.adapter.count > 0) {
         const item = root.adapter.getItem(0);
-        if (item.type === "local" && root.colorExtractor)
+        if (item && item.type === "local" && root.colorExtractor)
           root.colorExtractor.run(item.path);
       }
     } else {
@@ -136,7 +163,7 @@ QtObject {
 
     if (root.adapter && root.adapter.count > 0) {
       const item = root.adapter.getItem(0);
-      if (item.type === "local" && root.colorExtractor)
+      if (item && item.type === "local" && root.colorExtractor)
         root.colorExtractor.run(item.path);
     }
   }
@@ -153,7 +180,7 @@ QtObject {
       return;
 
     const fs = root.adapter.folders;
-    if (fs.length === 0)
+    if (!fs || fs.length === 0)
       return;
 
     const idx = fs.indexOf(root.adapter.currentFolder);
@@ -166,7 +193,7 @@ QtObject {
       return;
 
     const fs = root.adapter.folders;
-    if (fs.length === 0)
+    if (!fs || fs.length === 0)
       return;
 
     const idx = fs.indexOf(root.adapter.currentFolder);
@@ -176,7 +203,10 @@ QtObject {
 
   function handleSearchInput(text) {
     root.searchText = text;
-    root._searchDebounce.restart();
+    if (root.adapter && root.adapter.currentSource === "remote")
+      root._remoteSearchDebounce.restart();
+    else
+      root._searchDebounce.restart();
   }
 
   function handleSearchClear() {
@@ -186,8 +216,8 @@ QtObject {
   }
 
   function handleSearchSubmit() {
-    root._doSearch();
     root._searchDebounce.stop();
+    root._doSearch();
   }
 
   function toggleSettings() {
@@ -203,6 +233,16 @@ QtObject {
         root.displayManager.focusView();
     } else {
       Qt.quit();
+    }
+  }
+
+  function handleRequestRandom() {
+    if (!root.adapter || root.adapter.count === 0)
+      return;
+
+    const randomIdx = Math.floor(Math.random() * root.adapter.count);
+    if (root.displayManager) {
+      root.displayManager.scrollTo(randomIdx);
     }
   }
 
@@ -223,8 +263,10 @@ QtObject {
   }
 
   function handleRequestToggleWallhaven(filter) {
-    filter.filterVisible = !filter.filterVisible;
+    if (!filter)
+      return;
 
+    filter.filterVisible = !filter.filterVisible;
     if (filter.filterVisible && root.adapter)
       root.adapter.switchSource("remote");
     if (!filter.filterVisible && root.adapter)
@@ -232,6 +274,8 @@ QtObject {
   }
 
   function applyItem(item) {
+    if (!item)
+      return;
     if (root.wallpaperApplier)
       root.wallpaperApplier.apply(item.path);
     Qt.quit();

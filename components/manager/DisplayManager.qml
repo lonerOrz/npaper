@@ -38,7 +38,7 @@ FocusScope {
 
   readonly property int currentIndex: _activeView ? _activeView.currentIndex : _lastActiveIndex
   readonly property real scrollTarget: _activeView ? _activeView.scrollTarget : _lastActiveIndex
-  readonly property real contentOffset: _activeView ? _activeView.scrollTarget - _activeView.currentIndex : 0
+  readonly property real contentOffset: _activeView ? (_activeView.scrollTarget - _activeView.currentIndex) : 0
 
   property int _lastActiveIndex: 0
 
@@ -49,32 +49,28 @@ FocusScope {
   }
 
   function reset() {
-    if (_activeView)
+    if (_activeView && typeof _activeView.reset === "function")
       _activeView.reset();
   }
 
   function scrollTo(idx) {
     _lastActiveIndex = idx;
-    if (_activeView)
+    if (_activeView && typeof _activeView.scrollTo === "function")
       _activeView.scrollTo(idx);
   }
 
   function focusView() {
-    if (_activeView)
+    root.forceActiveFocus();
+    if (_activeView && typeof _activeView.focusView === "function")
       _activeView.focusView();
   }
 
   function queueVisibleThumbnails() {
-    if (!root.cacheService || !root.adapter)
+    if (!root.cacheService || !root.adapter || root.adapter.currentSource !== "local")
       return;
-    if (root.adapter.currentSource !== "local")
-      return;
-    if (root.displayMode === "grid" && gridLoader.item)
-      gridLoader.item.queueVisibleThumbnails();
-    else if (root.displayMode === "slanted" && slantedLoader.item)
-      slantedLoader.item.queueVisibleThumbnails();
-    else if (carouselLoader.item)
-      carouselLoader.item.queueVisibleThumbnails();
+    if (_activeView && typeof _activeView.queueVisibleThumbnails === "function") {
+      _activeView.queueVisibleThumbnails();
+    }
   }
 
   onDisplayModeChanged: {
@@ -85,26 +81,52 @@ FocusScope {
     else if (root.displayMode === "slanted")
       _slantedLoaded = true;
 
-    _syncIndexAndFocus();
-  }
-
-  function _syncIndexAndFocus() {
     if (_activeView) {
       _activeView.scrollTo(_lastActiveIndex);
       _activeView.focusView();
-      root.queueVisibleThumbnails();
+      queueVisibleThumbnails();
     }
   }
 
   Component.onCompleted: {
-    if (root.displayMode === "carousel")
-      _carouselLoaded = true;
-    else if (root.displayMode === "grid")
-      _gridLoaded = true;
-    else if (root.displayMode === "slanted")
-      _slantedLoaded = true;
-
     Qt.callLater(root.queueVisibleThumbnails);
+  }
+
+  function _handleQuit() {
+    if (appViewModel)
+      appViewModel.handleRequestQuit();
+  }
+  function _handleSettings() {
+    if (appViewModel)
+      appViewModel.toggleSettings();
+  }
+  function _handlePrevFolder() {
+    if (appViewModel)
+      appViewModel.prevFolder();
+  }
+  function _handleNextFolder() {
+    if (appViewModel)
+      appViewModel.nextFolder();
+  }
+  function _handleFocusSearch() {
+    if (appViewModel)
+      appViewModel.focusSearch();
+  }
+  function _handleApplyItem(item) {
+    if (appViewModel)
+      appViewModel.applyItem(item);
+  }
+  function _handleToggleWallhaven() {
+    if (appViewModel)
+      appViewModel.handleRequestToggleWallhaven(root.wallhavenFilter);
+  }
+  function _handleRefresh() {
+    if (appViewModel)
+      appViewModel.refreshCache();
+  }
+  function _handleToggleViewMode() {
+    if (appViewModel)
+      appViewModel.handleRequestToggleViewMode();
   }
 
   Loader {
@@ -118,9 +140,8 @@ FocusScope {
     onLoaded: {
       if (item) {
         item.scrollTo(root._lastActiveIndex);
-        if (root.displayMode === "carousel") {
+        if (root.displayMode === "carousel")
           item.focusView();
-        }
         root.queueVisibleThumbnails();
       }
     }
@@ -140,17 +161,15 @@ FocusScope {
       parallaxFactor: root.parallaxFactor
       showShadow: root.configViewModel ? root.configViewModel.appearance.showShadow : true
 
-      onRequestQuit: root.appViewModel ? root.appViewModel.handleRequestQuit() : null
-      onRequestSettings: root.appViewModel ? root.appViewModel.toggleSettings() : null
-      onRequestPrevFolder: root.appViewModel ? root.appViewModel.prevFolder() : null
-      onRequestNextFolder: root.appViewModel ? root.appViewModel.nextFolder() : null
-      onRequestFocusSearch: root.appViewModel ? root.appViewModel.focusSearch() : null
-      onRequestApplyItem: function (item) {
-        root.appViewModel ? root.appViewModel.applyItem(item) : null;
-      }
-      onRequestToggleWallhaven: root.appViewModel ? root.appViewModel.handleRequestToggleWallhaven(root.wallhavenFilter) : null
-      onRequestRefresh: root.appViewModel ? root.appViewModel.refreshCache() : null
-      onRequestToggleViewMode: root.appViewModel ? root.appViewModel.handleRequestToggleViewMode() : null
+      onRequestQuit: root._handleQuit
+      onRequestSettings: root._handleSettings
+      onRequestPrevFolder: root._handlePrevFolder
+      onRequestNextFolder: root._handleNextFolder
+      onRequestFocusSearch: root._handleFocusSearch
+      onRequestApplyItem: root._handleApplyItem
+      onRequestToggleWallhaven: root._handleToggleWallhaven
+      onRequestRefresh: root._handleRefresh
+      onRequestToggleViewMode: root._handleToggleViewMode
     }
   }
 
@@ -165,9 +184,8 @@ FocusScope {
     onLoaded: {
       if (item) {
         item.scrollTo(root._lastActiveIndex);
-        if (root.displayMode === "grid") {
+        if (root.displayMode === "grid")
           item.focusView();
-        }
         root.queueVisibleThumbnails();
       }
     }
@@ -178,17 +196,15 @@ FocusScope {
       appViewModel: root.appViewModel
       wallhavenFilter: root.wallhavenFilter
 
-      onRequestQuit: root.appViewModel ? root.appViewModel.handleRequestQuit() : null
-      onRequestSettings: root.appViewModel ? root.appViewModel.toggleSettings() : null
-      onRequestPrevFolder: root.appViewModel ? root.appViewModel.prevFolder() : null
-      onRequestNextFolder: root.appViewModel ? root.appViewModel.nextFolder() : null
-      onRequestFocusSearch: root.appViewModel ? root.appViewModel.focusSearch() : null
-      onRequestApplyItem: function (item) {
-        root.appViewModel ? root.appViewModel.applyItem(item) : null;
-      }
-      onRequestToggleWallhaven: root.appViewModel ? root.appViewModel.handleRequestToggleWallhaven(root.wallhavenFilter) : null
-      onRequestRefresh: root.appViewModel ? root.appViewModel.refreshCache() : null
-      onRequestToggleViewMode: root.appViewModel ? root.appViewModel.handleRequestToggleViewMode() : null
+      onRequestQuit: root._handleQuit
+      onRequestSettings: root._handleSettings
+      onRequestPrevFolder: root._handlePrevFolder
+      onRequestNextFolder: root._handleNextFolder
+      onRequestFocusSearch: root._handleFocusSearch
+      onRequestApplyItem: root._handleApplyItem
+      onRequestToggleWallhaven: root._handleToggleWallhaven
+      onRequestRefresh: root._handleRefresh
+      onRequestToggleViewMode: root._handleToggleViewMode
     }
   }
 
@@ -203,9 +219,8 @@ FocusScope {
     onLoaded: {
       if (item) {
         item.scrollTo(root._lastActiveIndex);
-        if (root.displayMode === "slanted") {
+        if (root.displayMode === "slanted")
           item.focusView();
-        }
         root.queueVisibleThumbnails();
       }
     }
@@ -222,17 +237,15 @@ FocusScope {
       parallaxFactor: root.parallaxFactor
       showShadow: root.configViewModel ? root.configViewModel.appearance.showShadow : true
 
-      onRequestQuit: root.appViewModel ? root.appViewModel.handleRequestQuit() : null
-      onRequestSettings: root.appViewModel ? root.appViewModel.toggleSettings() : null
-      onRequestPrevFolder: root.appViewModel ? root.appViewModel.prevFolder() : null
-      onRequestNextFolder: root.appViewModel ? root.appViewModel.nextFolder() : null
-      onRequestFocusSearch: root.appViewModel ? root.appViewModel.focusSearch() : null
-      onRequestApplyItem: function (item) {
-        root.appViewModel ? root.appViewModel.applyItem(item) : null;
-      }
-      onRequestToggleWallhaven: root.appViewModel ? root.appViewModel.handleRequestToggleWallhaven(root.wallhavenFilter) : null
-      onRequestRefresh: root.appViewModel ? root.appViewModel.refreshCache() : null
-      onRequestToggleViewMode: root.appViewModel ? root.appViewModel.handleRequestToggleViewMode() : null
+      onRequestQuit: root._handleQuit
+      onRequestSettings: root._handleSettings
+      onRequestPrevFolder: root._handlePrevFolder
+      onRequestNextFolder: root._handleNextFolder
+      onRequestFocusSearch: root._handleFocusSearch
+      onRequestApplyItem: root._handleApplyItem
+      onRequestToggleWallhaven: root._handleToggleWallhaven
+      onRequestRefresh: root._handleRefresh
+      onRequestToggleViewMode: root._handleToggleViewMode
     }
   }
 }

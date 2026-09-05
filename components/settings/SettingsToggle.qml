@@ -1,17 +1,6 @@
 import QtQuick
 import qs.services
 
-/*
-* SettingsToggle — labeled toggle switch with animated knob.
-*
-* Usage:
-*   SettingsToggle {
-*     width: parent.width
-*     text: "Card Shadow"
-*     checked: root.showShadow
-*     onToggled: function (val) { root.settingChanged("appearance.showShadow", val) }
-*   }
-*/
 Item {
   id: root
   width: parent ? parent.width : 300
@@ -21,12 +10,10 @@ Item {
   property bool checked: false
   signal toggled(bool val)
 
-  // Background hover
   Rectangle {
     anchors.fill: parent
-    radius: Style.radiusM
-    color: hoverArea.containsMouse ? Qt.rgba(Qt.lighter(Color.mSurfaceContainer, 1.08).r, Qt.lighter(Color.mSurfaceContainer, 1.08).g, Qt.lighter(Color.mSurfaceContainer, 1.08).b, Style.childBgAlpha) : "transparent"
-    opacity: 0.6
+    radius: Style.radiusS
+    color: mainHoverArea.containsMouse ? Qt.rgba(Color.mSurfaceContainerHigh.r, Color.mSurfaceContainerHigh.g, Color.mSurfaceContainerHigh.b, Style.childHoverAlpha) : "transparent"
     Behavior on color {
       ColorAnimation {
         duration: Style.animFast
@@ -34,70 +21,82 @@ Item {
     }
   }
 
-  Row {
-    anchors.fill: parent
+  Text {
+    anchors.left: parent.left
     anchors.leftMargin: Style.spaceM
+    anchors.right: toggleTrack.left
     anchors.rightMargin: Style.spaceM
-    spacing: Style.spaceM
+    anchors.verticalCenter: parent.verticalCenter
+    text: root.text
+    color: root.checked ? Color.mOnSurface : Color.mOnSurfaceVariant
+    font.pixelSize: Style.fontS
+    font.weight: root.checked ? Font.Medium : Font.Normal
+    elide: Text.ElideRight
 
-    Text {
-      width: parent.width - 44
-      text: root.text
-      color: Color.mOnSurface
-      font.pixelSize: Style.fontS
-      font.weight: Font.Medium
-      verticalAlignment: Text.AlignVCenter
-      elide: Text.ElideRight
+    Behavior on color {
+      ColorAnimation {
+        duration: Style.animFast
+      }
+    }
+  }
+
+  Rectangle {
+    id: toggleTrack
+    width: 34
+    height: 18
+    anchors.right: parent.right
+    anchors.rightMargin: Style.spaceM
+    anchors.verticalCenter: parent.verticalCenter
+    radius: height / 2
+
+    color: root.checked ? Color.mPrimary : Qt.rgba(Color.mSurfaceContainerHighest.r, Color.mSurfaceContainerHighest.g, Color.mSurfaceContainerHighest.b, Style.childBgAlpha)
+    border.width: root.checked ? 0 : 1
+    border.color: root.checked ? "transparent" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, 0.4)
+
+    Behavior on color {
+      ColorAnimation {
+        duration: Style.animFast
+      }
+    }
+    Behavior on border.color {
+      ColorAnimation {
+        duration: Style.animFast
+      }
     }
 
-    // Toggle switch
-    Item {
-      width: 32
-      height: 16
+    Rectangle {
+      id: knob
+      width: 12
+      height: 12
       anchors.verticalCenter: parent.verticalCenter
+      radius: 6
+      x: root.checked ? (parent.width - width - 3) : 3
 
-      // Track
-      Rectangle {
-        anchors.fill: parent
-        radius: height / 2
-        color: root.checked ? Color.mPrimary : Qt.rgba(Color.mSurfaceContainerHighest.r, Color.mSurfaceContainerHighest.g, Color.mSurfaceContainerHighest.b, Style.childBgAlpha)
-        border.width: root.checked ? 0 : 1
-        border.color: root.checked ? "transparent" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, Style.childBgAlpha)
-        opacity: root.checked ? 1.0 : 0.7
-        Behavior on color {
-          ColorAnimation {
-            duration: Style.animFast
-          }
+      color: root.checked ? Color.mSurfaceContainerLowest : Color.mOutline
+      scale: mainHoverArea.containsMouse ? 1.08 : 1.0
+
+      Behavior on x {
+        NumberAnimation {
+          duration: 180
+          easing.type: Easing.OutBack
+          easing.overshoot: 1.15
         }
       }
-
-      // Knob
-      Rectangle {
-        width: 10
-        height: 10
-        anchors.verticalCenter: parent.verticalCenter
-        x: root.checked ? parent.width - width - 3 : 3
-        radius: height / 2
-        color: Color.mInverseSurface
-        opacity: 0.95
-        Behavior on x {
-          NumberAnimation {
-            duration: Style.animFast
-            easing.type: Easing.OutCubic
-          }
+      Behavior on scale {
+        NumberAnimation {
+          duration: Style.animFast
         }
       }
-
-      MouseArea {
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked: root.toggled(!root.checked)
+      Behavior on color {
+        ColorAnimation {
+          duration: Style.animFast
+        }
       }
     }
   }
 
   MouseArea {
-    id: hoverArea
+    id: mainHoverArea
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor

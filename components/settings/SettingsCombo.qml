@@ -2,19 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import qs.services
 
-/*
-* SettingsCombo — labeled dropdown selector.
-* Uses Popup + ListView for reliable dropdown behavior with scroll support.
-*
-* Usage:
-*   SettingsCombo {
-*     width: parent.width
-*     label: "Sorting"
-*     value: root.currentValue
-*     items: ["toplist", "date_added", "views", "random"]
-*     onSelect: function (v) { root._emit("sorting", v) }
-*   }
-*/
 Column {
   id: root
   width: parent ? parent.width : 300
@@ -40,9 +27,14 @@ Column {
     radius: Style.barRadius + 2
     color: Qt.rgba(Color.mSurfaceContainer.r, Color.mSurfaceContainer.g, Color.mSurfaceContainer.b, Style.childBgAlpha)
     border.width: 1
-    border.color: Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.childBgAlpha)
+    border.color: comboHover.containsMouse ? Color.mPrimary : Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.childBgAlpha)
 
-    // Hover effect
+    Behavior on border.color {
+      ColorAnimation {
+        duration: Style.animFast
+      }
+    }
+
     Rectangle {
       anchors.fill: parent
       radius: parent.radius
@@ -56,49 +48,40 @@ Column {
     }
 
     Text {
-      anchors.fill: parent
+      anchors.left: parent.left
+      anchors.right: arrowIcon.left
       anchors.leftMargin: Style.spaceL
-      anchors.rightMargin: Style.spaceXL
-      verticalAlignment: Text.AlignVCenter
+      anchors.rightMargin: Style.spaceM
+      anchors.verticalCenter: parent.verticalCenter
       horizontalAlignment: Text.AlignRight
       color: Color.mPrimary
       font.pixelSize: Style.barSearchInputFontSize
       font.family: "monospace"
-      font.weight: Font.Normal
+      font.weight: Font.Medium
       text: root.value
       elide: Text.ElideRight
     }
 
-    // Dropdown icon
-    Rectangle {
+    Text {
+      id: arrowIcon
       anchors.right: parent.right
       anchors.rightMargin: Style.spaceL
       anchors.verticalCenter: parent.verticalCenter
-      width: 12
-      height: 12
-      radius: 2
+      text: "\uf078"
+      font.family: "Symbols Nerd Font"
+      font.pixelSize: Style.fontXS
+      color: comboHover.containsMouse ? Color.mPrimary : Color.mOutlineVariant
+
       rotation: comboPopup.opened ? 180 : 0
-      color: "transparent"
-
-      Canvas {
-        anchors.fill: parent
-        onPaint: {
-          var ctx = getContext("2d");
-          ctx.reset();
-          ctx.beginPath();
-          ctx.moveTo(2, 4);
-          ctx.lineTo(6, 8);
-          ctx.lineTo(10, 4);
-          ctx.strokeStyle = Color.mOutlineVariant;
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-        }
-      }
-
       Behavior on rotation {
         NumberAnimation {
           duration: Style.animFast
           easing.type: Easing.OutCubic
+        }
+      }
+      Behavior on color {
+        ColorAnimation {
+          duration: Style.animFast
         }
       }
     }
@@ -115,17 +98,16 @@ Column {
   Popup {
     id: comboPopup
     x: 0
-    y: displayRect.height
+    y: displayRect.height + 4
     width: parent.width
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     parent: displayRect
 
-    // Height bound: scale with items but cap at 280px
-    readonly property real _itemH: 36
-    readonly property real _pad: 12
-    height: Math.min(root.items.length * _itemH + _pad, 280)
+    readonly property real _itemH: 34
+    readonly property real _pad: 8
+    height: Math.min((root.items ? root.items.length : 0) * _itemH + _pad, 220)
 
     background: Rectangle {
       radius: Style.radiusM
@@ -137,7 +119,7 @@ Column {
         anchors.fill: parent
         radius: parent.radius
         color: Color.mShadow
-        opacity: 0.2
+        opacity: 0.25
         anchors.margins: -4
         z: -1
       }
@@ -145,26 +127,57 @@ Column {
 
     contentItem: ListView {
       id: _listView
-      model: root.items
+      model: root.items || []
       clip: true
+      boundsBehavior: Flickable.StopAtBounds
       interactive: contentHeight > height
 
       delegate: ItemDelegate {
+        id: delegateItem
         width: ListView.view.width
-        height: 36
+        height: 34
         text: modelData
 
+        readonly property bool isSelected: modelData === root.value
+
         background: Rectangle {
-          color: hovered ? Qt.rgba(Color.mPrimary.r, Color.mPrimary.g, Color.mPrimary.b, 0.1) : "transparent"
+          color: {
+            if (delegateItem.isSelected)
+              return Qt.rgba(Color.mPrimary.r, Color.mPrimary.g, Color.mPrimary.b, 0.18);
+            if (delegateItem.hovered)
+              return Qt.rgba(Color.mPrimary.r, Color.mPrimary.g, Color.mPrimary.b, 0.08);
+            return "transparent";
+          }
+          Behavior on color {
+            ColorAnimation {
+              duration: Style.animVeryFast
+            }
+          }
         }
 
-        contentItem: Text {
-          text: parent.text
-          color: Color.mOnSurface
-          font.pixelSize: Style.fontS
-          font.family: "monospace"
-          verticalAlignment: Text.AlignVCenter
-          leftPadding: Style.spaceM
+        contentItem: Row {
+          anchors.fill: parent
+          anchors.leftMargin: Style.spaceM
+          anchors.rightMargin: Style.spaceM
+          spacing: Style.spaceS
+
+          Text {
+            text: delegateItem.isSelected ? "\uf00c" : ""
+            font.family: "Symbols Nerd Font"
+            font.pixelSize: Style.fontXS
+            color: Color.mPrimary
+            anchors.verticalCenter: parent.verticalCenter
+            width: 14
+          }
+
+          Text {
+            text: delegateItem.text
+            color: delegateItem.isSelected ? Color.mPrimary : Color.mOnSurface
+            font.pixelSize: Style.fontS
+            font.family: "monospace"
+            font.weight: delegateItem.isSelected ? Font.Bold : Font.Normal
+            anchors.verticalCenter: parent.verticalCenter
+          }
         }
 
         onClicked: {

@@ -4,20 +4,9 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-/*
-* Color palette singleton — loads ~/.config/npaper/color.json
-*
-* Defaults are defined in _defaults. When color.json exists,
-* it overrides matching keys. FileView watches for hot-reload.
-*
-* Usage:
-*   import qs.services
-*   color: Color.mPrimary
-*/
 Singleton {
   id: root
 
-  // ── Defaults ──────────────────────────────────────────────
   readonly property var _defaults: ({
                                       "mPrimary": "#6a9eff",
                                       "mOnPrimary": "#001E2C",
@@ -67,7 +56,6 @@ Singleton {
                                       "mOnTertiaryFixedVariant": "#004B71"
                                     })
 
-  // ── Live color properties ─────────────────────────────────
   property color mPrimary: _defaults.mPrimary
   property color mOnPrimary: _defaults.mOnPrimary
   property color mPrimaryContainer: _defaults.mPrimaryContainer
@@ -115,7 +103,6 @@ Singleton {
   property color mOnTertiaryFixed: _defaults.mOnTertiaryFixed
   property color mOnTertiaryFixedVariant: _defaults.mOnTertiaryFixedVariant
 
-  // ── FileView: Load & Hot-Reload ───────────────────────────
   readonly property string colorPath: Quickshell.env("HOME") + "/.config/npaper/color.json"
 
   FileView {
@@ -124,22 +111,39 @@ Singleton {
     watchChanges: true
     printErrors: false
 
-    onLoaded: {
-      try {
-        var t = colorFile.text();
-        if (t)
-        _apply(JSON.parse(t));
-      } catch (e) { /* invalid JSON → keep defaults */ }
+    onLoadedChanged: {
+      if (loaded)
+        root._readAndApply();
     }
-    onFileChanged: reload()
+
+    onFileChanged: {
+      root._readAndApply();
+    }
   }
 
-  function _apply(cfg) {
-    if (!cfg)
+  Component.onCompleted: {
+    if (colorFile.loaded) {
+      root._readAndApply();
+    }
+  }
+
+  function _readAndApply() {
+    try {
+      const raw = colorFile.text();
+      if (!raw || raw.trim().length === 0)
+        return;
+      const parsed = JSON.parse(raw.trim());
+      root._applyOverrides(parsed);
+    } catch (e) {}
+  }
+
+  function _applyOverrides(cfg) {
+    if (!cfg || typeof cfg !== "object")
       return;
     for (var k in cfg) {
-      if (root[k] !== undefined)
+      if (root.hasOwnProperty(k) && typeof root[k] !== "function") {
         root[k] = cfg[k];
+      }
     }
   }
 }

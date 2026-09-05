@@ -2,20 +2,17 @@ import QtQuick
 import QtQuick.Layouts
 import qs.services
 
-/* FilterGroup — labeled container for a row of filter pills.
-* Enhanced with gradient background and subtle border.
-*/
 Item {
   id: root
 
   required property string label
   default property alias content: pillRow.data
 
-  // Explicit dimensions
-  height: Style.barSearchHeight + Style.spaceM
-  width: pillRow.implicitWidth + Style.spaceXXL
+  implicitWidth: pillRow.implicitWidth + Style.spaceM * 2
+  implicitHeight: Style.barSearchHeight + Style.spaceM
+  width: implicitWidth
+  height: implicitHeight
 
-  // Background with subtle gradient
   Rectangle {
     anchors.fill: parent
     radius: Style.barRadius
@@ -31,7 +28,7 @@ Item {
     }
     border.width: 1
     border.color: Qt.rgba(Color.mOutlineVariant.r, Color.mOutlineVariant.g, Color.mOutlineVariant.b, Style.childBgAlpha * 0.5)
-    opacity: 0.8
+    opacity: 0.85
   }
 
   Row {
@@ -39,19 +36,18 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     anchors.left: parent.left
     anchors.leftMargin: Style.spaceM
-    anchors.right: parent.right
-    anchors.rightMargin: Style.spaceM
     spacing: Style.spaceS
     layoutDirection: Qt.LeftToRight
 
-    // Label with underline
     Item {
       height: Style.barSearchHeight
-      width: labelText.implicitWidth + Style.spaceM
+      width: labelText.implicitWidth + Style.spaceM * 2
 
       Text {
         id: labelText
-        anchors.centerIn: parent
+        anchors.left: parent.left
+        anchors.leftMargin: Style.spaceXS
+        anchors.verticalCenter: parent.verticalCenter
         text: root.label
         font.pixelSize: Style.fontXXS
         font.weight: Font.Bold
@@ -60,13 +56,22 @@ Item {
       }
 
       Rectangle {
-        anchors.horizontalCenter: labelText.horizontalCenter
+        anchors.left: labelText.left
         anchors.top: labelText.bottom
         anchors.topMargin: 2
         width: labelText.contentWidth
         height: 1
         color: Color.mOutlineVariant
-        opacity: 0.3
+        opacity: 0.35
+      }
+
+      Rectangle {
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        width: 1
+        height: 14
+        color: Color.mOutlineVariant
+        opacity: 0.25
       }
     }
   }

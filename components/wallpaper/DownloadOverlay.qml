@@ -1,25 +1,8 @@
 import QtQuick
 import qs.services
 
-/*
-* DownloadOverlay — Reusable download button overlay for wallpaper cards.
-* Used by WallpaperCard.qml (CarouselView) and GridView.qml.
-*
-* Required inputs:
-*   whId          — Wallhaven wallpaper ID (e.g., "abc123")
-*   downloadPath  — Remote URL for download
-*   whService     — WallhavenService instance
-*   downloadStatus — Map from whService
-*   downloadProgress — Map from whService
-*   downloadPaths — Map from whService
-*
-* Signals:
-*   onApplyLocal(localPath) — Emitted when Apply is clicked on a downloaded wallpaper
-*/
-
 Item {
   id: root
-
   anchors.fill: parent
   z: 10
 
@@ -32,9 +15,10 @@ Item {
 
   signal applyLocal(string localPath)
 
-  readonly property string dlStatus: root.downloadStatus[root.whId] || ""
-  readonly property real dlProgress: root.downloadProgress[root.whId] || 0
+  readonly property string dlStatus: (root.downloadStatus && root.downloadStatus[root.whId]) ? root.downloadStatus[root.whId] : ""
+  readonly property real dlProgress: (root.downloadProgress && root.downloadProgress[root.whId] !== undefined) ? root.downloadProgress[root.whId] : 0.0
   readonly property bool isDownloading: dlStatus === "downloading"
+  readonly property bool isError: dlStatus === "error"
 
   readonly property string existingLocalPath: {
     if (root.whService && root.whService.localWallhavenPaths) {
@@ -52,15 +36,15 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    radius: root.parent ? (root.parent.radius || 0) : 0
+    radius: root.parent ? (root.parent.radius || Style.radiusL) : Style.radiusL
     gradient: Gradient {
       GradientStop {
         position: 0.0
-        color: Qt.rgba(0, 0, 0, 0.20)
+        color: Qt.rgba(0, 0, 0, 0.25)
       }
       GradientStop {
         position: 1.0
-        color: Qt.rgba(0, 0, 0, 0.70)
+        color: Qt.rgba(0, 0, 0, 0.75)
       }
     }
   }
@@ -75,7 +59,7 @@ Item {
       width: Math.max(96, btnDlText.implicitWidth + Style.spaceL)
       height: 32
       radius: height / 2
-      color: dlMouse.containsMouse ? Color.mPrimary : Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, 0.6)
+      color: dlMouse.containsMouse ? Color.mPrimary : Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, 0.65)
       border.width: dlMouse.containsMouse ? 0 : 1
       border.color: dlMouse.containsMouse ? "transparent" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, 0.3)
       visible: !root.isLocallyAvailable
@@ -96,11 +80,11 @@ Item {
       Text {
         id: btnDlText
         anchors.centerIn: parent
-        text: "\uf019  Download"
+        text: root.isError ? "\uf021  Retry" : "\uf019  Download"
         font.pixelSize: Style.fontXS
         font.family: "Symbols Nerd Font"
         font.weight: Font.Bold
-        color: dlMouse.containsMouse ? Color.mSurfaceContainerLowest : Color.mOnSurface
+        color: root.isError ? "#ff5555" : (dlMouse.containsMouse ? Color.mSurfaceContainerLowest : Color.mOnSurface)
       }
 
       MouseArea {
@@ -120,7 +104,7 @@ Item {
       width: Math.max(96, btnApplyText.implicitWidth + Style.spaceL)
       height: 32
       radius: height / 2
-      color: applyMouse.containsMouse ? Color.mPrimary : Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, 0.6)
+      color: applyMouse.containsMouse ? Color.mPrimary : Qt.rgba(Color.mSurfaceContainerLowest.r, Color.mSurfaceContainerLowest.g, Color.mSurfaceContainerLowest.b, 0.65)
       border.width: applyMouse.containsMouse ? 0 : 1
       border.color: applyMouse.containsMouse ? "transparent" : Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, 0.3)
       scale: applyMouse.containsMouse ? 1.05 : 1.0
@@ -167,28 +151,47 @@ Item {
 
   Column {
     anchors.centerIn: parent
-    spacing: Style.spaceXS
+    spacing: Style.spaceS
     visible: root.isDownloading
 
-    Text {
+    Row {
       anchors.horizontalCenter: parent.horizontalCenter
-      text: "Downloading..."
-      font.pixelSize: Style.fontXS
-      font.weight: Font.Medium
-      color: Color.mPrimary
+      spacing: Style.spaceXS
+
+      Text {
+        text: "Downloading..."
+        font.pixelSize: Style.fontXS
+        font.weight: Font.Medium
+        color: Color.mPrimary
+      }
+
+      Text {
+        text: Math.round(root.dlProgress * 100) + "%"
+        font.pixelSize: Style.fontXS
+        font.family: "monospace"
+        font.weight: Font.Bold
+        color: Color.mPrimary
+      }
     }
 
     Rectangle {
-      width: 80
-      height: 3
+      width: 100
+      height: 4
       radius: 2
-      color: Color.mSurfaceContainerHighest
+      color: Qt.rgba(Color.mSurfaceContainerHighest.r, Color.mSurfaceContainerHighest.g, Color.mSurfaceContainerHighest.b, 0.6)
 
       Rectangle {
-        width: parent.width * root.dlProgress
+        width: parent.width * Math.max(0.05, Math.min(1.0, root.dlProgress))
         height: parent.height
         radius: parent.radius
         color: Color.mPrimary
+
+        Behavior on width {
+          NumberAnimation {
+            duration: 140
+            easing.type: Easing.OutCubic
+          }
+        }
       }
     }
   }

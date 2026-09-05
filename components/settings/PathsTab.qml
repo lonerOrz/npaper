@@ -10,7 +10,7 @@ Column {
   property var wallpaperDirs: []
   property string cacheDir: ""
 
-  signal settingChanged(string key, variant value)
+  signal settingChanged(string key, var value)
 
   anchors.top: parent.top
   anchors.left: parent.left
@@ -18,12 +18,16 @@ Column {
   anchors.margins: Style.settingsPadding
   spacing: Style.settingsContentSpacing + 2
 
-  // Section header with underline
+  function _withAlpha(colorVal, alphaVal) {
+    return Qt.rgba(colorVal.r, colorVal.g, colorVal.b, alphaVal);
+  }
+
   Row {
     width: parent.width
     spacing: Style.spaceM
 
     Text {
+      id: sectionTitle
       text: "STORAGE"
       color: Color.mOutline
       font.pixelSize: Style.fontXS + 1
@@ -32,20 +36,14 @@ Column {
     }
 
     Rectangle {
-      width: parent.width - _sectionText.implicitWidth - Style.spaceM
+      width: Math.max(10, parent.width - sectionTitle.implicitWidth - Style.spaceM)
       height: 1
-      anchors.verticalCenter: _sectionText.verticalCenter
+      anchors.verticalCenter: sectionTitle.verticalCenter
       color: Color.mOutlineVariant
       opacity: 0.3
     }
-
-    Text {
-      id: _sectionText
-      visible: false
-    }
   }
 
-  // ── Wallpaper Directories ──
   Column {
     width: parent.width
     spacing: Style.spaceS
@@ -57,13 +55,20 @@ Column {
       font.weight: Font.Medium
     }
 
-    // Directory list
     Column {
       width: parent.width
       spacing: Style.spaceXS
 
+      Text {
+        visible: !root.wallpaperDirs || root.wallpaperDirs.length === 0
+        text: "No wallpaper directories configured"
+        color: Color.mOutline
+        font.pixelSize: Style.fontXS
+        font.italic: true
+      }
+
       Repeater {
-        model: root.wallpaperDirs
+        model: root.wallpaperDirs || []
 
         Row {
           width: parent.width
@@ -76,19 +81,19 @@ Column {
             font.pixelSize: Style.fontXS
             font.family: "monospace"
             elide: Text.ElideMiddle
+            anchors.verticalCenter: parent.verticalCenter
           }
 
-          // Remove button
           MouseArea {
-            width: 20
-            height: 20
+            width: 22
+            height: 22
             cursorShape: Qt.PointingHandCursor
             hoverEnabled: true
 
             Rectangle {
               anchors.fill: parent
               radius: Style.radiusXS
-              color: parent.containsMouse ? Qt.alpha("#ff5555", 0.12) : "transparent"
+              color: parent.containsMouse ? Qt.rgba(1.0, 0.33, 0.33, 0.15) : "transparent"
               Behavior on color {
                 ColorAnimation {
                   duration: Style.animVeryFast
@@ -105,7 +110,7 @@ Column {
             }
 
             onClicked: {
-              var dirs = root.wallpaperDirs.slice();
+              const dirs = (root.wallpaperDirs || []).slice();
               dirs.splice(index, 1);
               root.settingChanged("wallpaperDirs", dirs);
             }
@@ -114,20 +119,24 @@ Column {
       }
     }
 
-    // Add button
     MouseArea {
       width: parent.width
-      height: 26
+      height: 28
       cursorShape: Qt.PointingHandCursor
       hoverEnabled: true
 
       Rectangle {
         anchors.fill: parent
         radius: Style.radiusS
-        color: parent.containsMouse ? Qt.alpha(Color.mPrimary, 0.08) : "transparent"
-        border.color: Color.mOutline
+        color: parent.containsMouse ? root._withAlpha(Color.mPrimary, 0.12) : "transparent"
+        border.color: parent.containsMouse ? Color.mPrimary : Color.mOutline
         border.width: Style.borderS
         Behavior on color {
+          ColorAnimation {
+            duration: Style.animVeryFast
+          }
+        }
+        Behavior on border.color {
           ColorAnimation {
             duration: Style.animVeryFast
           }
@@ -150,7 +159,9 @@ Column {
     id: folderPicker
     title: "Select Wallpaper Folder"
     onAccepted: function (path) {
-      var dirs = root.wallpaperDirs.slice();
+      if (!path || path.trim().length === 0)
+        return;
+      const dirs = (root.wallpaperDirs || []).slice();
       if (dirs.indexOf(path) === -1) {
         dirs.push(path);
         root.settingChanged("wallpaperDirs", dirs);
@@ -158,7 +169,6 @@ Column {
     }
   }
 
-  // ── Cache Directory ──
   Row {
     width: parent.width
     spacing: Style.spaceM
@@ -184,17 +194,23 @@ Column {
     }
 
     MouseArea {
-      width: 24
-      height: 24
+      width: 26
+      height: 26
       cursorShape: Qt.PointingHandCursor
       hoverEnabled: true
+      anchors.verticalCenter: parent.verticalCenter
 
       Rectangle {
         anchors.fill: parent
         radius: Style.radiusS
-        color: parent.containsMouse ? Qt.alpha(Color.mPrimary, 0.12) : Color.mSurfaceContainerHigh
-        border.color: Color.mOutline
+        color: parent.containsMouse ? root._withAlpha(Color.mPrimary, 0.15) : Color.mSurfaceContainerHigh
+        border.color: parent.containsMouse ? Color.mPrimary : Color.mOutline
         border.width: Style.borderS
+        Behavior on color {
+          ColorAnimation {
+            duration: Style.animVeryFast
+          }
+        }
       }
 
       Text {
@@ -213,7 +229,9 @@ Column {
     id: cachePicker
     title: "Select Cache Folder"
     onAccepted: function (path) {
-      root.settingChanged("cacheDir", path);
+      if (path && path.trim().length > 0) {
+        root.settingChanged("cacheDir", path.trim());
+      }
     }
   }
 }

@@ -11,7 +11,7 @@ Column {
   property bool showBgPreview: true
   property real bgOverlayOpacity: 0.4
 
-  signal settingChanged(string key, variant value)
+  signal settingChanged(string key, var value)
 
   anchors.top: parent.top
   anchors.left: parent.left
@@ -19,14 +19,13 @@ Column {
   anchors.margins: Style.settingsPadding
   spacing: Style.settingsContentSpacing + 2
 
-  // Overlay section header
   Row {
     width: parent.width
     spacing: Style.spaceM
 
     Text {
-      id: _overlayHeader
-      text: "OVERLAY"
+      id: overlayHeader
+      text: "OVERLAY & BACKGROUND"
       color: Color.mOutline
       font.pixelSize: Style.fontXS + 1
       font.weight: Font.Bold
@@ -34,9 +33,9 @@ Column {
     }
 
     Rectangle {
-      width: parent.width - _overlayHeader.implicitWidth - Style.spaceM
+      width: Math.max(10, parent.width - overlayHeader.implicitWidth - Style.spaceM)
       height: 1
-      anchors.verticalCenter: _overlayHeader.verticalCenter
+      anchors.verticalCenter: overlayHeader.verticalCenter
       color: Color.mOutlineVariant
       opacity: 0.3
     }
@@ -44,17 +43,16 @@ Column {
 
   SettingsSlider {
     width: parent.width
-    label: "Opacity"
+    label: "Background Dimming"
     value: root.bgOverlayOpacity
     min: 0.0
     max: 1.0
     step: 0.05
     onCommit: function (v) {
-      root.settingChanged("appearance.bgOverlayOpacity", v);
+      root.settingChanged("appearance.bgOverlayOpacity", Math.round(v * 100) / 100);
     }
   }
 
-  // Divider
   Rectangle {
     width: parent.width
     height: 1
@@ -62,14 +60,13 @@ Column {
     opacity: 0.2
   }
 
-  // Effects section header
   Row {
     width: parent.width
     spacing: Style.spaceM
 
     Text {
-      id: _effectsHeader
-      text: "EFFECTS"
+      id: effectsHeader
+      text: "VISUAL EFFECTS"
       color: Color.mOutline
       font.pixelSize: Style.fontXS + 1
       font.weight: Font.Bold
@@ -77,9 +74,9 @@ Column {
     }
 
     Rectangle {
-      width: parent.width - _effectsHeader.implicitWidth - Style.spaceM
+      width: Math.max(10, parent.width - effectsHeader.implicitWidth - Style.spaceM)
       height: 1
-      anchors.verticalCenter: _effectsHeader.verticalCenter
+      anchors.verticalCenter: effectsHeader.verticalCenter
       color: Color.mOutlineVariant
       opacity: 0.3
     }
@@ -91,15 +88,16 @@ Column {
 
     SettingsToggle {
       width: parent.width
-      text: "Card Shadow"
+      text: "Card Drop Shadow"
       checked: root.showShadow
       onToggled: function (val) {
         root.settingChanged("appearance.showShadow", val);
       }
     }
+
     SettingsToggle {
       width: parent.width
-      text: "Background Preview"
+      text: "Full Background Preview"
       checked: root.showBgPreview
       onToggled: function (val) {
         root.settingChanged("appearance.showBgPreview", val);

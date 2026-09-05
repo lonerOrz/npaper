@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
-import QtQuick.Shapes
 import Quickshell
 import "../../utils/CacheUtils.js" as CacheUtils
 import qs.components.common
@@ -56,7 +55,6 @@ FocusScope {
       return;
     var modelLen = model.count !== undefined ? model.count : model.length;
     var cols = Math.max(1, Math.ceil(thumbGridView.width / thumbGridView.cellWidth));
-    var rows = Math.max(1, Math.ceil(thumbGridView.height / thumbGridView.cellHeight));
     var preloadRows = 2;
     var startRow = Math.max(0, Math.floor(thumbGridView.contentY / thumbGridView.cellHeight) - preloadRows);
     var endRow = Math.min(Math.ceil((thumbGridView.contentY + thumbGridView.height) / thumbGridView.cellHeight) + preloadRows, Math.ceil(modelLen / cols));
@@ -90,7 +88,7 @@ FocusScope {
     model: root.adapter ? root.adapter.items : null
     clip: false
 
-    cacheBuffer: cellHeight * 5
+    cacheBuffer: cellHeight * 3
 
     Behavior on width {
       NumberAnimation {
@@ -101,18 +99,6 @@ FocusScope {
 
     cellWidth: root._gridCellW + root._gridCellSpacing
     cellHeight: root._gridCellH + root._gridCellSpacing
-    Behavior on cellWidth {
-      NumberAnimation {
-        duration: Style.animNormal
-        easing.type: Easing.OutCubic
-      }
-    }
-    Behavior on cellHeight {
-      NumberAnimation {
-        duration: Style.animNormal
-        easing.type: Easing.OutCubic
-      }
-    }
 
     interactive: false
     boundsBehavior: Flickable.StopAtBounds
@@ -124,8 +110,8 @@ FocusScope {
 
     property real _savedContentY: 0
     property bool _modelChanging: false
-
     property real _scrollTarget: 0
+
     onContentYChanged: {
       if (!_modelChanging)
         _savedContentY = contentY;
@@ -148,6 +134,7 @@ FocusScope {
     Timer {
       id: _whLoadMoreTimer
       interval: 300
+      repeat: false
       onTriggered: {
         if (root.adapter && root.adapter.currentSource === "remote" && root.adapter.whService && root.adapter.whService.hasMore && !root.adapter.whService.loading && !root.adapter._whLoadingMore) {
           var maxY = thumbGridView.contentHeight - thumbGridView.height;
@@ -161,7 +148,8 @@ FocusScope {
 
     Timer {
       id: _thumbQueueTimer
-      interval: 150
+      interval: 120
+      repeat: false
       onTriggered: queueVisibleThumbnails()
     }
 
@@ -169,7 +157,7 @@ FocusScope {
       id: _gridScrollAnim
       target: thumbGridView
       property: "contentY"
-      duration: 400
+      duration: 350
       easing.type: Easing.OutCubic
       onFinished: {
         _thumbQueueTimer.restart();
@@ -188,70 +176,6 @@ FocusScope {
       _gridScrollAnim.from = contentY;
       _gridScrollAnim.to = _scrollTarget;
       _gridScrollAnim.start();
-    }
-
-    function _snapScrollTo(target) {
-      var maxY = contentHeight - height;
-      _scrollTarget = Math.max(0, Math.min(target, maxY));
-      _gridScrollAnim.stop();
-      _gridScrollAnim.from = contentY;
-      _gridScrollAnim.to = _scrollTarget;
-      _gridScrollAnim.start();
-    }
-
-    function _ensureVisible(idx) {
-      var row = Math.floor(idx / Math.max(1, Math.ceil(thumbGridView.width / thumbGridView.cellWidth)));
-      var rowTop = row * cellHeight;
-      var rowBottom = rowTop + cellHeight;
-      if (rowTop < contentY)
-        _snapScrollTo(rowTop);
-      else if (rowBottom > contentY + height)
-        _snapScrollTo(rowBottom - height);
-    }
-
-    add: Transition {
-      ParallelAnimation {
-        NumberAnimation {
-          property: "opacity"
-          from: 0
-          to: 1
-          duration: Style.animEnter
-          easing.type: Easing.OutCubic
-        }
-        NumberAnimation {
-          property: "scale"
-          from: 0.8
-          to: 1.0
-          duration: Style.animEnter
-          easing.type: Easing.OutBack
-          easing.overshoot: 1.5
-        }
-      }
-    }
-
-    remove: Transition {
-      ParallelAnimation {
-        NumberAnimation {
-          property: "opacity"
-          to: 0
-          duration: Style.animFast
-          easing.type: Easing.InCubic
-        }
-        NumberAnimation {
-          property: "scale"
-          to: 0.95
-          duration: Style.animFast
-          easing.type: Easing.InCubic
-        }
-      }
-    }
-
-    displaced: Transition {
-      NumberAnimation {
-        properties: "x,y"
-        duration: Style.animNormal
-        easing.type: Easing.OutCubic
-      }
     }
 
     MouseArea {
@@ -274,7 +198,8 @@ FocusScope {
       height: root._gridCellH
 
       required property int index
-      property var modelData: null
+
+      readonly property var itemData: root.adapter ? root.adapter.getItem(index) : null
 
       HoverHandler {
         id: gridItemHover
@@ -283,33 +208,12 @@ FocusScope {
       readonly property bool isCurrent: GridView.isCurrentItem
       readonly property bool isHovered: gridItemHover.hovered
 
-      function _resolveItem() {
-        var m = thumbGridView.model;
-        if (m && index >= 0 && index < m.count)
-          return m.get(index);
-        return null;
-      }
-
-      Component.onCompleted: {
-        gridItem.modelData = gridItem._resolveItem();
-      }
-      onIndexChanged: {
-        gridItem.modelData = gridItem._resolveItem();
-      }
-
-      Connections {
-        target: root.adapter ? root.adapter.whService : null
-        function onResultsUpdated() {
-          gridItem.modelData = gridItem._resolveItem();
-        }
-      }
-
-      scale: isCurrent ? 1.05 : 1.0
+      scale: isCurrent ? 1.04 : 1.0
       z: isCurrent ? 20 : 0
 
       Behavior on scale {
         NumberAnimation {
-          duration: Style.animNormal
+          duration: Style.animFast
           easing.type: Easing.OutCubic
         }
       }
@@ -319,7 +223,7 @@ FocusScope {
         anchors.margins: gridItem.isCurrent ? Style.spaceM : Style.spaceS
         radius: Style.radiusL
         color: Color.mShadow
-        opacity: gridItem.isCurrent ? 0.35 : (gridItem.isHovered ? 0.25 : 0.15)
+        opacity: gridItem.isCurrent ? 0.35 : (gridItem.isHovered ? 0.22 : 0.12)
         z: -1
       }
 
@@ -329,57 +233,11 @@ FocusScope {
         visible: false
         layer.enabled: true
 
-        Shape {
+        Rectangle {
           anchors.fill: parent
+          radius: Style.radiusL
+          color: "white"
           antialiasing: true
-          preferredRendererType: Shape.CurveRenderer
-          ShapePath {
-            fillColor: "white"
-            strokeColor: "transparent"
-            strokeWidth: 0
-            startX: Style.radiusL
-            startY: 0
-            PathLine {
-              x: width - Style.radiusL
-              y: 0
-            }
-            PathArc {
-              x: width
-              y: Style.radiusL
-              radiusX: Style.radiusL
-              radiusY: Style.radiusL
-            }
-            PathLine {
-              x: width
-              y: height - Style.radiusL
-            }
-            PathArc {
-              x: width - Style.radiusL
-              y: height
-              radiusX: Style.radiusL
-              radiusY: Style.radiusL
-            }
-            PathLine {
-              x: Style.radiusL
-              y: height
-            }
-            PathArc {
-              x: 0
-              y: height - Style.radiusL
-              radiusX: Style.radiusL
-              radiusY: Style.radiusL
-            }
-            PathLine {
-              x: 0
-              y: Style.radiusL
-            }
-            PathArc {
-              x: Style.radiusL
-              y: 0
-              radiusX: Style.radiusL
-              radiusY: Style.radiusL
-            }
-          }
         }
       }
 
@@ -390,8 +248,8 @@ FocusScope {
         layer.effect: MultiEffect {
           maskEnabled: true
           maskSource: cardMask
-          maskThresholdMin: 0.3
-          maskSpreadAtMin: 0.3
+          maskThresholdMin: 0.4
+          maskSpreadAtMin: 0.4
         }
 
         Rectangle {
@@ -408,7 +266,7 @@ FocusScope {
         Image {
           id: thumbImage
           anchors.fill: parent
-          source: CacheUtils.resolveGridStaticSource(root.cacheService ? root.cacheService.thumbHashToPath : {}, gridItem.modelData)
+          source: CacheUtils.resolveGridStaticSource(root.cacheService ? root.cacheService.thumbHashToPath : {}, gridItem.itemData)
           visible: source !== ""
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
@@ -427,15 +285,15 @@ FocusScope {
         AnimatedImage {
           id: animatedGif
           anchors.fill: parent
-          source: CacheUtils.resolveGridAnimatedSource(root.cacheService ? root.cacheService.thumbHashToPath : {}, gridItem.modelData)
+          source: CacheUtils.resolveGridAnimatedSource(root.cacheService ? root.cacheService.thumbHashToPath : {}, gridItem.itemData)
           visible: source !== "" && gridItem.isCurrent
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
           smooth: true
-          mipmap: true
           cache: true
           sourceSize: Qt.size(root._gridCellW, root._gridCellH)
           playing: source !== "" && gridItem.isCurrent
+          paused: !gridItem.isCurrent
           opacity: status === AnimatedImage.Ready ? 1.0 : 0.0
           Behavior on opacity {
             NumberAnimation {
@@ -448,13 +306,11 @@ FocusScope {
       readonly property bool _needsDownload: {
         if (!(root.adapter && root.adapter.currentSource === "remote"))
           return false;
-        var id = gridItem.modelData ? gridItem.modelData.id.replace("wallhaven-", "") : "";
+        var id = gridItem.itemData ? gridItem.itemData.id.replace("wallhaven-", "") : "";
         if (!id)
           return false;
         var ws = root.adapter.whService;
-        if (!ws || !ws.localWallhavenPaths)
-          return true;
-        return !ws.localWallhavenPaths[id];
+        return (ws && ws.localWallhavenPaths) ? !ws.localWallhavenPaths[id] : true;
       }
 
       Rectangle {
@@ -491,24 +347,31 @@ FocusScope {
         border.width: gridItem.isCurrent ? Style.borderM : (gridItem.isHovered ? Style.borderS : 0)
       }
 
-      Rectangle {
+      Loader {
         anchors.fill: parent
-        radius: Style.radiusL
-        color: "transparent"
-        visible: root.adapter && root.adapter.currentSource === "remote" && !!gridItem.modelData
-        opacity: gridItem.isHovered ? 1 : 0
         z: 15
+        active: gridItem.isHovered && !!gridItem.itemData
+        opacity: active ? 1.0 : 0.0
+        Behavior on opacity {
+          NumberAnimation {
+            duration: Style.animFast
+          }
+        }
 
+        sourceComponent: (root.adapter && root.adapter.currentSource === "remote") ? remoteGridOverlayComp : localGridOverlayComp
+      }
+
+      Component {
+        id: remoteGridOverlayComp
         DownloadOverlay {
-          opacity: parent.opacity
-          whId: gridItem.modelData ? gridItem.modelData.id.replace("wallhaven-", "") : ""
-          downloadPath: gridItem.modelData ? gridItem.modelData.path : ""
+          whId: gridItem.itemData ? gridItem.itemData.id.replace("wallhaven-", "") : ""
+          downloadPath: gridItem.itemData ? gridItem.itemData.path : ""
           whService: root.adapter ? root.adapter.whService : null
           downloadStatus: (root.adapter && root.adapter.whService && root.adapter.whService.downloadStatus) ? root.adapter.whService.downloadStatus : ({})
           downloadProgress: (root.adapter && root.adapter.whService && root.adapter.whService.downloadProgress) ? root.adapter.whService.downloadProgress : ({})
           downloadPaths: (root.adapter && root.adapter.whService && root.adapter.whService.downloadPaths) ? root.adapter.whService.downloadPaths : ({})
           onApplyLocal: function (localPath) {
-            var localItem = Object.assign({}, gridItem.modelData, {
+            var localItem = Object.assign({}, gridItem.itemData, {
                                             path: localPath,
                                             type: "local"
                                           });
@@ -517,23 +380,15 @@ FocusScope {
         }
       }
 
-      Rectangle {
-        anchors.fill: parent
-        radius: Style.radiusL
-        color: "transparent"
-        visible: root.adapter && root.adapter.currentSource === "local" && !!gridItem.modelData
-        opacity: gridItem.isHovered ? 1 : 0
-        z: 15
-
+      Component {
+        id: localGridOverlayComp
         LocalOverlay {
-          opacity: parent.opacity
-          wallpaperPath: gridItem.modelData ? gridItem.modelData.path : ""
+          wallpaperPath: gridItem.itemData ? gridItem.itemData.path : ""
           itemIndex: index
         }
       }
 
       MouseArea {
-        id: itemMouse
         anchors.fill: parent
         hoverEnabled: true
         z: 1
@@ -542,8 +397,8 @@ FocusScope {
           thumbGridView.currentIndex = gridItem.index;
         }
         onClicked: {
-          if (gridItem.modelData)
-            root.adapter.smartApply(gridItem.modelData);
+          if (gridItem.itemData)
+            root.adapter.smartApply(gridItem.itemData);
         }
       }
     }
@@ -565,6 +420,7 @@ FocusScope {
       }
       onWallhavenToggled: thumbGridView.forceActiveFocus()
     }
+
     Keys.onPressed: function (event) {
       kbdHandler.handleKeyPress(event);
     }
@@ -573,6 +429,7 @@ FocusScope {
   Timer {
     id: gridScrollFadeTimer
     interval: 800
+    repeat: false
     onTriggered: root.gridScrollActive = false
   }
 
