@@ -207,8 +207,8 @@ Item {
     color: "transparent"
     z: 20
     visible: root.isCenter || root._isHovered
-    border.width: root.isCenter ? Style.borderM : Style.borderS
-    border.color: root.isCenter ? Color.mPrimary : Qt.lighter(Color.mPrimaryContainer, 1.15)
+    border.width: root.isCenter ? 2 : 1
+    border.color: root.isCenter ? Color.mPrimary : Qt.rgba(Color.mPrimaryContainer.r, Color.mPrimaryContainer.g, Color.mPrimaryContainer.b, 0.6)
 
     Behavior on border.color {
       ColorAnimation {
@@ -219,13 +219,12 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    anchors.margins: -Style.borderM
-    radius: root.itemRadius + Style.borderM
+    anchors.margins: -3
+    radius: root.itemRadius + 3
     color: "transparent"
-    border.width: Style.borderS
-    border.color: Color.mPrimary
-    opacity: root.isCenter ? 0.35 : 0.0
-    z: 19
+    border.width: 1
+    opacity: root.isCenter ? 0.4 : 0.0
+    z: 24
     visible: opacity > 0.01
 
     Behavior on opacity {

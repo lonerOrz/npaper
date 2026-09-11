@@ -54,8 +54,8 @@ Singleton {
   readonly property int carouselSideMargin: _s(10)
 
   readonly property int defaultCarouselSpacing: _s(24)
-  readonly property int defaultCarouselRotation: 41
-  readonly property real defaultCarouselPerspective: 0.45
+  readonly property int defaultCarouselRotation: 24
+  readonly property real defaultCarouselPerspective: 0.25
 
   readonly property int defaultScrollDuration: 170
   readonly property int defaultScrollContinueInterval: 140

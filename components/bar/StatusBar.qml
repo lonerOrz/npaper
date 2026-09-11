@@ -58,12 +58,15 @@ Item {
       Layout.preferredHeight: Style.barLogoSize
       Layout.alignment: Qt.AlignVCenter
 
-      RotationAnimation on rotation {
-        from: 0
-        to: 360
-        duration: Style.logoRotationMs
-        loops: Animation.Infinite
-      }
+  readonly property bool isBusy: root.queueCount > 0
+
+  RotationAnimation on rotation {
+    from: 0
+    to: 360
+    duration: Style.logoRotationMs
+    loops: Animation.Infinite
+    running: root.isBusy
+  }
 
       Image {
         anchors.fill: parent

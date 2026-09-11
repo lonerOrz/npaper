@@ -42,8 +42,8 @@ QtObject {
     onTriggered: root._doSearch()
   }
 
-  property var _bgUpdateDebounce: Timer {
-    interval: 120
+    property var _bgUpdateDebounce: Timer {
+    interval: 80
     repeat: false
     onTriggered: {
       if (root.displayManager && root.displayManager.currentIndex >= 0 && root.adapter && root.displayManager.currentIndex < root.adapter.count) {
@@ -267,10 +267,15 @@ QtObject {
       return;
 
     filter.filterVisible = !filter.filterVisible;
-    if (filter.filterVisible && root.adapter)
-      root.adapter.switchSource("remote");
-    if (!filter.filterVisible && root.adapter)
-      root.adapter.switchSource("local");
+    if (root.adapter) {
+      root.adapter.switchSource(filter.filterVisible ? "remote" : "local");
+    }
+
+    if (root.displayManager) {
+      root.displayManager.scrollTo(0);
+      root.displayManager.reset();
+    }
+    root.bgCurrent = 0;
   }
 
   function applyItem(item) {

@@ -341,7 +341,7 @@ FocusScope {
           if (gridItem.isCurrent)
             return Color.mPrimary;
           if (gridItem.isHovered)
-            return Qt.lighter(Color.mPrimaryContainer, 1.15);
+            return Qt.rgba(Color.mPrimary.r, Color.mPrimary.g, Color.mPrimary.b, 0.6);
           return "transparent";
         }
         border.width: gridItem.isCurrent ? Style.borderM : (gridItem.isHovered ? Style.borderS : 0)
@@ -356,10 +356,12 @@ FocusScope {
 
       Rectangle {
         anchors.fill: parent
-        anchors.margins: -2
-        radius: Style.radiusL + 2
-        color: Color.mPrimary
-        opacity: gridItem.isCurrent ? 0.25 : 0.0
+        anchors.margins: -3
+        radius: Style.radiusL + 3
+        color: "transparent"
+        border.color: Color.mPrimary
+        border.width: 1
+        opacity: gridItem.isCurrent ? 0.35 : 0.0
         z: 29
         visible: opacity > 0.01
 

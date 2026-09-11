@@ -60,6 +60,17 @@ FocusScope {
     }
   }
 
+  Connections {
+    target: root.whService
+    function onResultsUpdated() {
+      if (!root.whService || root.whService.currentPage !== 1)
+        return;
+      Qt.callLater(function () {
+        scrollController.scrollTo(0);
+      });
+    }
+  }
+
   ScrollController {
     id: scrollController
     count: root.adapter ? root.adapter.count : 0
