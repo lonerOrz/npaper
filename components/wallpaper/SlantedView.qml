@@ -548,6 +548,61 @@ FocusScope {
               itemIndex: delegateItem.index
             }
           }
+
+          Shape {
+            anchors.fill: parent
+            z: 25
+            visible: delegateItem.isCurrent && !delegateItem.flipped
+            antialiasing: true
+
+            ShapePath {
+              fillColor: "transparent"
+              strokeColor: Color.mPrimary
+              strokeWidth: Style.borderM
+              startX: delegateItem._topLeft + delegateItem.cardRadius
+              startY: 0
+              PathLine {
+                x: flipContainer.width - delegateItem.cardRadius
+                y: 0
+              }
+              PathQuad {
+                x: flipContainer.width - (root.skewOffset * 0.12)
+                y: delegateItem.cardRadius
+                controlX: flipContainer.width
+                controlY: 0
+              }
+              PathLine {
+                x: (flipContainer.width - root.skewOffset) + (root.skewOffset * 0.12)
+                y: delegateItem.height - delegateItem.cardRadius
+              }
+              PathQuad {
+                x: (flipContainer.width - root.skewOffset) - delegateItem.cardRadius
+                y: delegateItem.height
+                controlX: (flipContainer.width - root.skewOffset)
+                controlY: delegateItem.height
+              }
+              PathLine {
+                x: delegateItem.cardRadius
+                y: delegateItem.height
+              }
+              PathQuad {
+                x: (root.skewOffset * 0.12)
+                y: delegateItem.height - delegateItem.cardRadius
+                controlX: 0
+                controlY: delegateItem.height
+              }
+              PathLine {
+                x: delegateItem._topLeft - (root.skewOffset * 0.12)
+                y: delegateItem.cardRadius
+              }
+              PathQuad {
+                x: delegateItem._topLeft + delegateItem.cardRadius
+                y: 0
+                controlX: delegateItem._topLeft
+                controlY: 0
+              }
+            }
+          }
         }
 
         Item {

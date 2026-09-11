@@ -57,11 +57,8 @@ Item {
     root._pathToModelIndex = {};
 
     const folder = root.wallpaperMap[root.currentFolder];
-    if (!folder) {
-      if (root.debugMode)
-        Logger.d("LocalSource: No folder found:", root.currentFolder);
+    if (!folder || folder.length === 0)
       return;
-    }
 
     let filtered = folder;
     if (root.searchText) {
@@ -73,11 +70,11 @@ Item {
     if (len === 0)
       return;
 
-    const batch = [];
+    const batch = new Array(len);
     const indexMap = {};
     for (let i = 0; i < len; i++) {
       const p = filtered[i];
-      batch.push(_makeItem(p));
+      batch[i] = _makeItem(p);
       indexMap[p] = i;
     }
 
@@ -95,12 +92,14 @@ Item {
       resolvedThumb = "file://" + cachedThumb;
     } else if (cachedBg) {
       resolvedThumb = "file://" + cachedBg;
-    } else if (!FileTypes.isVideoFile(path) && !FileTypes.isGifFile(path)) {
+    } else if (!path.endsWith(".mp4") && !path.endsWith(".mkv") && !path.endsWith(".webm") && !path.endsWith(".gif")) {
       resolvedThumb = "file://" + path;
     }
 
     const lastSlash = path.lastIndexOf('/');
     const fname = (lastSlash >= 0) ? path.substring(lastSlash + 1) : path;
+    const isVid = FileTypes.isVideoFile(path);
+    const isG = !isVid && FileTypes.isGifFile(path);
 
     return {
       id: path,
@@ -110,8 +109,8 @@ Item {
       filename: fname,
       resolution: "",
       fileSize: 0,
-      isVideo: FileTypes.isVideoFile(path),
-      isGif: FileTypes.isGifFile(path)
+      isVideo: isVid,
+      isGif: isG
     };
   }
 

@@ -336,15 +336,38 @@ FocusScope {
         anchors.fill: parent
         radius: Style.radiusL
         color: "transparent"
-        z: 20
+        z: 30
         border.color: {
           if (gridItem.isCurrent)
             return Color.mPrimary;
           if (gridItem.isHovered)
-            return Qt.lighter(Color.mPrimaryContainer, 1.1);
+            return Qt.lighter(Color.mPrimaryContainer, 1.15);
           return "transparent";
         }
         border.width: gridItem.isCurrent ? Style.borderM : (gridItem.isHovered ? Style.borderS : 0)
+        visible: gridItem.isCurrent || gridItem.isHovered
+
+        Behavior on border.color {
+          ColorAnimation {
+            duration: Style.animFast
+          }
+        }
+      }
+
+      Rectangle {
+        anchors.fill: parent
+        anchors.margins: -2
+        radius: Style.radiusL + 2
+        color: Color.mPrimary
+        opacity: gridItem.isCurrent ? 0.25 : 0.0
+        z: 29
+        visible: opacity > 0.01
+
+        Behavior on opacity {
+          NumberAnimation {
+            duration: Style.animFast
+          }
+        }
       }
 
       Loader {

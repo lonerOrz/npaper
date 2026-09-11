@@ -28,7 +28,7 @@ Item {
   property int thumbnailJobRunning: 0
 
   readonly property int thumbnailQueueMax: 50
-  readonly property int thumbnailConcurrency: 4
+  readonly property int thumbnailConcurrency: 2
   readonly property int thumbWidth: Style.gridCellWidth
   readonly property int thumbHeight: Style.gridCellHeight
   property var thumbnailWorkers: []

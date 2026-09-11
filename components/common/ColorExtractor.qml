@@ -19,7 +19,7 @@ Item {
 
   Timer {
     id: debounceTimer
-    interval: 80
+    interval: 160
     repeat: false
     onTriggered: _executeExtraction()
   }

@@ -307,7 +307,14 @@ QtObject {
       return;
     }
 
-    proc.command = ["sh", "-c", "mkdir -p \"$(dirname \"$1\")\" && curl -# -fsSL -o \"$1\" \"$2\"", "npaper-dl", safeDest, safeUrl];
+    let headerArgs = "-H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0'";
+    if (root.apiKey && root.apiKey.trim().length > 0) {
+      headerArgs += " -H 'X-API-Key: " + root.apiKey.trim() + "'";
+    }
+
+    const downloadScript = "mkdir -p \"$(dirname \"$1\")\" && " + "curl -# -fSL --connect-timeout 10 --retry 2 " + headerArgs + " -o \"$1.tmp\" \"$2\" && " + "test -s \"$1.tmp\" && mv -f \"$1.tmp\" \"$1\" || { rm -f \"$1.tmp\" \"$1\"; exit 1; }";
+
+    proc.command = ["sh", "-c", downloadScript, "npaper-dl", safeDest, safeUrl];
 
     let lastReportedPct = 0.0;
     proc.onProgressUpdate.connect(function (id, pct) {

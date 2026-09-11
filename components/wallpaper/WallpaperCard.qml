@@ -206,14 +206,31 @@ Item {
     radius: root.itemRadius
     color: "transparent"
     z: 20
-    visible: !root.isCenter && root._isHovered
-    border.width: Style.borderS
-    border.color: Qt.lighter(Color.mPrimaryContainer, 1.15)
+    visible: root.isCenter || root._isHovered
+    border.width: root.isCenter ? Style.borderM : Style.borderS
+    border.color: root.isCenter ? Color.mPrimary : Qt.lighter(Color.mPrimaryContainer, 1.15)
 
     Behavior on border.color {
       ColorAnimation {
-        duration: Style.animNormal
-        easing.type: Easing.OutCubic
+        duration: Style.animFast
+      }
+    }
+  }
+
+  Rectangle {
+    anchors.fill: parent
+    anchors.margins: -Style.borderM
+    radius: root.itemRadius + Style.borderM
+    color: "transparent"
+    border.width: Style.borderS
+    border.color: Color.mPrimary
+    opacity: root.isCenter ? 0.35 : 0.0
+    z: 19
+    visible: opacity > 0.01
+
+    Behavior on opacity {
+      NumberAnimation {
+        duration: Style.animFast
       }
     }
   }
