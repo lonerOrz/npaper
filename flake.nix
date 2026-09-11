@@ -45,9 +45,10 @@
             ffmpeg
             imagemagick
             mpvpaper
+            curl
+            fontconfig
           ];
 
-          # Copy source files to store
           npaperSrc = pkgs.runCommand "npaper-src" { } ''
             mkdir -p $out/share/npaper
             cp -r ${./.}/* $out/share/npaper/
@@ -63,7 +64,8 @@
             buildInputs = [ pkgs.makeWrapper ];
             postBuild = ''
               wrapProgram $out/bin/npaper \
-                --prefix PATH : ${lib.makeBinPath runtimeDeps}
+                --prefix PATH : ${lib.makeBinPath runtimeDeps} \
+                --set-default FONTCONFIG_FILE "${pkgs.fontconfig.out}/etc/fonts/fonts.conf"
             '';
           };
         in

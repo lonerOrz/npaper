@@ -133,7 +133,7 @@ Item {
         }
 
         if (step === 2 && _needAnim()) {
-          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-r", "30", "-vf", `scale=${root.animWidth}:${root.animHeight}:force_original_aspect_ratio=increase,crop=${root.animWidth}:${root.animHeight}`, "-t", "10", _animPath];
+          return ["ffmpeg", "-y", ..._ssArgs, "-i", target, "-r", "10", "-vf", `scale=${root.animWidth}:${root.animHeight}:force_original_aspect_ratio=increase,crop=${root.animWidth}:${root.animHeight}`, "-t", "3", _animPath];
         }
 
         if (step === 3 && _needAnim()) {

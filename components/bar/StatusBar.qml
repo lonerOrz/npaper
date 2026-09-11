@@ -65,7 +65,7 @@ Item {
         to: 360
         duration: Style.logoRotationMs
         loops: Animation.Infinite
-        running: root.isBusy
+        running: parent.isBusy
       }
 
       Image {

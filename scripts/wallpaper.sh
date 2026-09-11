@@ -33,8 +33,7 @@ cmd_list_with_folders() {
         canonical_dir="$(readlink -f "$dir" 2>/dev/null || realpath "$dir")"
         [[ -d "$canonical_dir" ]] || continue
 
-        # 一次性使用 find + 单个 awk 进行目录提取与去重，消除所有 Bash 循环与重复进程
-        find -L "$canonical_dir" -type f -regextype posix-extended -iregex "$VALID_EXTS" 2>/dev/null | awk -v base="$canonical_dir" '
+        find "$canonical_dir" -maxdepth 4 -not -path '*/.*' -type f -regextype posix-extended -iregex "$VALID_EXTS" 2>/dev/null | awk -v base="$canonical_dir" '
         BEGIN {
             base_len = length(base);
             # 提取基准目录名作为根分类（例如 wallpapers）
